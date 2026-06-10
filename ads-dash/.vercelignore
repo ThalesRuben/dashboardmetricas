@@ -1,0 +1,24 @@
+# dev/research tooling — não precisa pro build
+tools/
+docs/
+supabase/
+
+# fonte de Supabase / artefatos de DB
+supabase-schema.sql
+HISTORICO.md
+
+# diretório estranho criado por acidente
+{src/
+
+# build local (Vercel re-builda)
+dist/
+
+# segredos — NUNCA subir
+.env
+.env.local
+.env.*.local
+
+# git / IDE
+.git/
+.claude/
+.mcp.json

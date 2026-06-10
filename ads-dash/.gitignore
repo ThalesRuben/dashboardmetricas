@@ -23,3 +23,5 @@ tools/lightrag/*.egg-info/
 # obsidian (vault is committed; per-machine state is not)
 docs/knowledge-graph/.obsidian/workspace*
 docs/knowledge-graph/.obsidian/cache
+
+.vercel
