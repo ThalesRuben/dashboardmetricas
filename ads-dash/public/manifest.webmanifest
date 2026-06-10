@@ -1,0 +1,16 @@
+{
+  "name": "The Blonde Concept · Command Center",
+  "short_name": "TBC",
+  "description": "Painel de marketing — Meta Ads, Google Ads, redes orgânicas, WhatsApp e inteligência competitiva.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#070a0e",
+  "theme_color": "#070a0e",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "categories": ["business", "productivity", "marketing"]
+}

@@ -1,0 +1,2 @@
+# Primitivos genuinamente cross-cutting: ui/, lib/, hooks/, types/
+# Se algo aqui é usado por só 1 feature, mover pra dentro daquela feature.

@@ -1,0 +1,226 @@
+/* ============================================================
+   Backoffice The Blonde Concept — design tokens
+   Redesign v2 — peso visual redistribuído.
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root, [data-theme="dark"], [data-theme="light"] {
+  /* ---- fundo ---- */
+  --bg:            #0a0d12;
+  --bg-elevated:   #11151c;
+  --bg-card:       #11151c;   /* alias — código antigo */
+  --bg-hover:      #161f2a;
+  --bg-input:      #0a0d12;
+  --bg-tile:       #11151c;
+
+  /* ---- borda ---- */
+  --border:        #1a2230;
+  --border-soft:   #141b25;
+  --border-strong: #2a3344;
+
+  /* ---- texto ---- */
+  --text:          #e6e9ef;
+  --text-muted:    #b4b2a9;
+  --text-subtle:   #888780;
+  --text-faint:    #5b6075;
+
+  /* ---- cores semânticas (paleta) ---- */
+  --accent-cyan:    #5dcaa5;
+  --accent-magenta: #d4537e;
+  --accent-amber:   #ef9f27;
+  --accent-purple:  #7f77dd;
+  --accent-blue:    #85b7eb;
+  --accent-red:     #f09595;
+  --accent-green:   #5dcaa5;
+
+  /* aliases pra manter código antigo funcionando */
+  --accent:        var(--accent-cyan);
+  --accent-bright: #7ddcb8;
+  --accent-dim:    #2f8a73;
+  --accent-glow:   rgba(93,202,165,0.45);
+  --accent-tint:   rgba(93,202,165,0.10);
+  --magenta:       var(--accent-magenta);
+  --magenta-tint:  rgba(212,83,126,0.12);
+  --amber:         var(--accent-amber);
+  --amber-tint:    rgba(239,159,39,0.12);
+  --online:        var(--accent-cyan);
+  --violet:        var(--accent-purple);
+
+  /* ---- cores por seção (identidade visual da rota) ---- */
+  --section-dashboard:   var(--accent-cyan);
+  --section-integrations: var(--text-subtle);
+  --section-reports:     var(--accent-cyan);
+  --section-instagram:   var(--accent-magenta);
+  --section-tiktok:      #cccccc;
+  --section-youtube:     #cccccc;
+  --section-whatsapp:    var(--accent-cyan);
+  --section-competitors: var(--accent-amber);
+  --section-ambassadors: var(--accent-magenta);
+  --section-seo:         var(--accent-cyan);
+  --section-ia:          var(--accent-purple);
+  --section-alerts:      var(--accent-amber);
+  --section-settings:    var(--text-subtle);
+  --section-system:      var(--text-subtle);
+
+  /* ---- brand (aliases — código existente) ---- */
+  --color-brand:        var(--accent);
+  --color-brand-light:  var(--accent-tint);
+  --color-brand-dark:   var(--accent-dim);
+  --brand-fg-on-tinted: var(--accent);
+  --brand-bg-tinted:    var(--accent-tint);
+
+  /* ---- plataformas (ads) ---- */
+  --color-meta:   var(--accent-blue);
+  --color-google: var(--accent-cyan);
+  --color-ctwa:   var(--accent-amber);
+  --color-api:    var(--accent-purple);
+
+  /* ---- estados ---- */
+  --color-success:    var(--accent-cyan);
+  --color-success-bg: rgba(93,202,165,0.12);
+  --color-warning:    var(--accent-amber);
+  --color-warning-bg: rgba(239,159,39,0.12);
+  --color-danger:     var(--accent-red);
+  --color-danger-bg:  rgba(240,149,149,0.12);
+
+  /* ---- espaçamento ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 22px;
+  --space-6: 32px;
+
+  /* ---- raio ---- */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+
+  /* ---- tipografia ---- */
+  --font:      'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ---- layout ---- */
+  --sidebar-w: 232px;
+  --topbar-h:  46px;
+
+  /* ---- diversos ---- */
+  --grid-line:   rgba(255,255,255,0.03);
+  --shadow-card: 0 0 0 1px var(--border);
+  --scrollbar:   #2a3344;
+}
+
+html, body { background: var(--bg); }
+
+body {
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  /* fundo limpo — sem malha. A grade visual emerge do conteúdo, não do bg. */
+}
+
+a { text-decoration: none; color: inherit; }
+input, select, textarea, button { font-family: inherit; font-size: inherit; color: inherit; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+::selection { background: var(--accent); color: #04130f; }
+
+/* ============================================================
+   Utilitários compartilhados (uso restrito — não espalhar)
+   ============================================================ */
+
+/* moldura de canto — reservada pra Health Score e hero específico */
+.cc-frame {
+  position: relative;
+}
+.cc-frame::before,
+.cc-frame::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--accent);
+  opacity: 0.45;
+  pointer-events: none;
+}
+.cc-frame::before { top: -1px; left: -1px;  border-right: 0; border-bottom: 0; }
+.cc-frame::after  { bottom: -1px; right: -1px; border-left: 0;  border-top: 0; }
+
+/* botão estilo command center — usado quando precisa de identidade técnica */
+.cc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color .14s, color .14s, background .14s;
+}
+.cc-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.cc-btn--solid {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #04130f;
+}
+.cc-btn--solid:hover {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  color: #04130f;
+}
+.cc-btn--danger:hover {
+  color: var(--magenta);
+  border-color: var(--magenta);
+}
+
+/* botão primário "humano" — Inter, sem caps. Usado nas telas redesenhadas. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color .14s, color .14s, background .14s;
+}
+.btn:hover { border-color: var(--border-strong); background: var(--bg-hover); }
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #04130f;
+  font-weight: 600;
+}
+.btn--primary:hover {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+}
+.btn--ghost { background: transparent; border-color: var(--border); }
+
+@keyframes cc-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}

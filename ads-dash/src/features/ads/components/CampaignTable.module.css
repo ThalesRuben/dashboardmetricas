@@ -1,0 +1,25 @@
+.wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 700px; }
+th { text-align: left; padding: 10px 12px; color: var(--text-subtle); font-weight: 500; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--bg-elevated); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border-soft); color: var(--text); white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg-hover); }
+.campaignName { font-weight: 500; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.tag { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+.tagMeta   { background: var(--brand-bg-tinted);  color: var(--brand-fg-on-tinted); }
+.tagGoogle { background: var(--color-success-bg); color: var(--color-success); }
+.tagCtwa   { background: var(--color-warning-bg); color: var(--color-warning); }
+.tagApi    { background: #EEEDFE; color: #3C3489; }
+
+[data-theme="dark"] .tagGoogle { color: #95C95A; }
+[data-theme="dark"] .tagCtwa   { color: #E5B97D; }
+[data-theme="dark"] .tagApi    { background: #2A2845; color: #B5B0E5; }
+
+.roasGood  { font-weight: 600; color: var(--color-success); }
+.roasBad   { font-weight: 600; color: var(--color-danger); }
+.statusOk  { font-weight: 500; color: var(--color-success); }
+.statusWarn{ font-weight: 500; color: var(--color-warning); }
+
+[data-theme="dark"] .roasGood, [data-theme="dark"] .statusOk   { color: #95C95A; }
+[data-theme="dark"] .roasBad                                   { color: #E47878; }
+[data-theme="dark"] .statusWarn                                { color: #E5B97D; }

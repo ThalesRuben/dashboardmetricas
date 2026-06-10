@@ -1,0 +1,95 @@
+.page { max-width: 1200px; }
+
+.bibleStrip { margin-bottom: var(--space-4); }
+
+.section { margin-bottom: var(--space-6); }
+.h2 {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: var(--space-3);
+}
+
+/* KPIs principais — grade de 4 colunas, sem mira, separadores no topo */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+@media (max-width: 900px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+}
+
+.calm {
+  font-size: 13px;
+  color: var(--text-subtle);
+  padding: var(--space-3) 0;
+}
+
+/* lista "atenção agora" — anomalias + hype juntos */
+.attentionList {
+  display: flex;
+  flex-direction: column;
+}
+.attentionRow {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border-soft);
+}
+.attentionRow:last-child { border-bottom: 1px solid var(--border-soft); }
+.attentionDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.attentionBody { min-width: 0; }
+.attentionTitle {
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.attentionSub {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-subtle);
+}
+
+/* aba "comparar" */
+.compareControls {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+.compareCol { display: flex; flex-direction: column; gap: 4px; }
+.compareLabel { font-size: 11px; color: var(--text-subtle); }
+
+/* aba "campanhas" — gráficos */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+.chartTile {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+}
+.chartTitle {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: var(--space-3);
+}
+
+@media (max-width: 900px) {
+  .chartsGrid { grid-template-columns: 1fr; }
+}

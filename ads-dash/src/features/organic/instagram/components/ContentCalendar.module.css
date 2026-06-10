@@ -1,0 +1,177 @@
+.wrap { margin-bottom: 8px; }
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.title {
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.sub { font-size: 12px; color: var(--text-subtle); margin-top: 4px; max-width: 70ch; }
+
+.legend { display: flex; gap: 14px; flex-shrink: 0; flex-wrap: wrap; }
+.legItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.legDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(15, minmax(160px, 1fr));
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  min-height: 220px;
+  padding: 10px;
+}
+.dayToday {
+  border-color: var(--accent);
+  box-shadow: 0 0 14px -4px var(--accent-glow);
+}
+.dayPast { opacity: 0.62; }
+
+.dayHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 9px;
+  margin-bottom: 9px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.dayDow {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-subtle);
+}
+.dayNum {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.todayTag {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+
+.dayBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.empty {
+  background: none;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: border-color .12s, color .12s;
+}
+.empty:hover { border-color: var(--accent); color: var(--accent); }
+
+.post {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 8px 9px;
+}
+.t_magenta { border-left-color: var(--magenta); }
+.t_accent  { border-left-color: var(--accent); }
+.t_amber   { border-left-color: var(--amber); }
+.t_plain   { border-left-color: var(--text-muted); }
+
+.s_sugerido {
+  background: transparent;
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.postHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.postTipo {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+.postHora {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-faint);
+}
+.postTitulo {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.postFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.postEngaj {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-subtle);
+}
+.stPub { background: var(--color-success); }
+.stSch { background: var(--accent); }
+.stSug { background: var(--amber); }
+
+/* status pill (no rodapé do post) */
+.post .stPub, .post .stSch, .post .stSug {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 2px 5px;
+  border-radius: var(--radius-sm);
+  color: #04130f;
+  width: auto;
+  height: auto;
+  border-radius: 2px;
+}

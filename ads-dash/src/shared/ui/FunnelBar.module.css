@@ -1,0 +1,9 @@
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+.row  { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-bottom: 12px; }
+.step { text-align: center; }
+.val  { font-size: 18px; font-weight: 600; color: var(--text); }
+.lbl  { font-size: 11px; color: var(--text-subtle); margin-top: 2px; }
+.pct  { font-size: 11px; color: var(--text-subtle); margin-top: 2px; }
+.bars { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; }
+.barWrap { height: 6px; background: var(--bg-elevated); border-radius: 3px; overflow: hidden; }
+.bar  { height: 100%; background: var(--color-brand); border-radius: 3px; transition: width 0.4s; }

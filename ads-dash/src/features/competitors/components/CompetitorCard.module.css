@@ -1,0 +1,179 @@
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.identity { flex: 1; min-width: 0; }
+.nome {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.handle {
+  font-size: 11px;
+  color: var(--text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.removeBtn {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 13px;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.removeBtn:hover { color: var(--color-danger); background: var(--color-danger-bg); }
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.metric {
+  background: var(--bg-elevated);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.metricValue {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.metricLabel {
+  font-size: 10px;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 1px;
+}
+.metricDelta { font-size: 10px; margin-top: 2px; font-weight: 600; }
+.deltaUp   { color: var(--color-success); }
+.deltaDown { color: var(--color-danger); }
+[data-theme="dark"] .deltaUp   { color: #95C95A; }
+[data-theme="dark"] .deltaDown { color: #E47878; }
+
+.networks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.netChip {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
+}
+
+.reputacao {
+  font-size: 11px;
+  padding: 6px 9px;
+  border-radius: 7px;
+  line-height: 1.4;
+}
+.reputacao strong { font-weight: 700; }
+.repIcon { margin-right: 3px; }
+.repDetail { color: var(--text-subtle); font-size: 10px; }
+.repGood { background: var(--color-success-bg); color: var(--color-success); }
+.repMid  { background: var(--color-warning-bg); color: var(--color-warning); }
+.repBad  { background: var(--color-danger-bg);  color: var(--color-danger); }
+[data-theme="dark"] .repGood { color: #95C95A; }
+[data-theme="dark"] .repMid  { color: #E5B97D; }
+[data-theme="dark"] .repBad  { color: #E47878; }
+
+.vsYou {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 7px;
+  text-align: center;
+}
+.vsAhead  { background: var(--color-warning-bg); color: var(--color-warning); }
+.vsBehind { background: var(--color-success-bg); color: var(--color-success); }
+[data-theme="dark"] .vsAhead  { color: #E5B97D; }
+[data-theme="dark"] .vsBehind { color: #95C95A; }
+
+.noData {
+  font-size: 11px;
+  color: var(--text-subtle);
+  text-align: center;
+  padding: 12px 0;
+  font-style: italic;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.snapshotBtn, .contentBtn {
+  padding: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.snapshotBtn:hover, .contentBtn:hover {
+  background: var(--brand-bg-tinted);
+  color: var(--brand-fg-on-tinted);
+  border-color: var(--brand-fg-on-tinted);
+}
+
+.contentCount {
+  background: var(--color-brand);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}

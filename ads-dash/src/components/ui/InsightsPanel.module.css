@@ -1,0 +1,89 @@
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.headLeft { display: flex; align-items: center; gap: 10px; }
+
+.aiIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--brand-bg-tinted);
+  color: var(--brand-fg-on-tinted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title { font-size: 13px; font-weight: 600; color: var(--text); }
+.sub   { font-size: 11px; color: var(--text-subtle); margin-top: 1px; }
+
+.badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--brand-bg-tinted);
+  color: var(--brand-fg-on-tinted);
+}
+
+.list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+.body { flex: 1; min-width: 0; }
+.itemTitle { font-size: 12px; font-weight: 600; margin-bottom: 3px; }
+.itemText  { font-size: 11px; line-height: 1.5; color: var(--text-muted); }
+
+.toneSuccess { background: var(--color-success-bg); }
+.toneSuccess .icon { background: var(--color-success); color: #fff; }
+.toneSuccess .itemTitle { color: var(--color-success); }
+
+.toneWarning { background: var(--color-warning-bg); }
+.toneWarning .icon { background: var(--color-warning); color: #fff; }
+.toneWarning .itemTitle { color: var(--color-warning); }
+
+.toneDanger  { background: var(--color-danger-bg); }
+.toneDanger .icon { background: var(--color-danger); color: #fff; }
+.toneDanger .itemTitle { color: var(--color-danger); }
+
+.toneInfo    { background: var(--brand-bg-tinted); }
+.toneInfo .icon { background: var(--color-brand); color: #fff; }
+.toneInfo .itemTitle { color: var(--brand-fg-on-tinted); }
+
+[data-theme="dark"] .toneSuccess .itemTitle { color: #95C95A; }
+[data-theme="dark"] .toneWarning .itemTitle { color: #E5B97D; }
+[data-theme="dark"] .toneDanger  .itemTitle { color: #E47878; }
+
+@media (max-width: 760px) {
+  .list { grid-template-columns: 1fr; }
+}

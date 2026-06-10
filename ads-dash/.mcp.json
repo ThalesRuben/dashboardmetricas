@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "lightrag": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "C:/Users/thale/OneDrive/Desktop/ads-dash/tools/lightrag",
+        "kg-server"
+      ]
+    }
+  }
+}

@@ -1,0 +1,109 @@
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.empty { padding: 24px; text-align: center; font-size: 13px; color: var(--text-subtle); }
+
+.head { margin-bottom: 16px; }
+.title { font-size: 14px; font-weight: 600; color: var(--text); }
+.sub   { font-size: 11px; color: var(--text-subtle); margin-top: 2px; }
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.metricBlock {
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.metricHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.metricLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.rank {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+.rankFirst {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+[data-theme="dark"] .rankFirst { color: #95C95A; }
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 84px 1fr 60px;
+  align-items: center;
+  gap: 8px;
+}
+
+.barName {
+  font-size: 10px;
+  color: var(--text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.barNameYou { color: var(--color-brand); font-weight: 700; }
+
+.barTrack {
+  height: 8px;
+  background: var(--bg-elevated);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.barFill {
+  height: 100%;
+  background: var(--text-faint);
+  border-radius: 4px;
+  transition: width 0.4s ease-out;
+}
+.barFillYou {
+  background: linear-gradient(90deg, var(--color-brand), color-mix(in srgb, var(--color-brand) 65%, #fff));
+}
+
+.barValue {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.barValueYou { color: var(--text); font-weight: 700; }
+
+.vsAvg {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 6px;
+  text-align: center;
+}
+.vsAvgUp   { background: var(--color-success-bg); color: var(--color-success); }
+.vsAvgDown { background: var(--color-warning-bg); color: var(--color-warning); }
+
+[data-theme="dark"] .vsAvgUp   { color: #95C95A; }
+[data-theme="dark"] .vsAvgDown { color: #E5B97D; }

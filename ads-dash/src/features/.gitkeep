@@ -1,0 +1,2 @@
+# Cada subpasta aqui é um módulo de feature isolado.
+# Imports entre features SÓ via o `index.ts` da feature alvo — nunca direto em arquivo interno.

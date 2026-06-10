@@ -1,0 +1,460 @@
+.page { max-width: 1000px; }
+
+/* o container "print-only" não aparece em tela */
+.printable { display: none; }
+
+/* ============================================================
+   Modo impressão / exportar PDF
+   ============================================================ */
+@media print {
+  /* esconde a UI do app (sidebar, hamburger, paleta, AI assistant) */
+  :global(aside),
+  :global(button[class*="hamburger"]),
+  :global([class*="AiAssistant"]),
+  :global([class*="CommandPalette"]),
+  :global([class*="fab"]) {
+    display: none !important;
+  }
+  :global(html), :global(body) {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+  }
+  :global(main),
+  :global([class*="Layout_content"]),
+  :global([class*="Layout_main"]) {
+    padding: 0 !important;
+  }
+
+  /* esconde a versão de tela da Bíblia (tabs + aba ativa) e o header da página */
+  .screenView,
+  :global([class*="PageHeader"]) {
+    display: none !important;
+  }
+
+  /* mostra a versão completa */
+  .printable {
+    display: block !important;
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+    padding: 24px 28px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+
+  /* sobrescreve cards/callouts pra paleta clara */
+  .printable * {
+    color: inherit !important;
+    box-shadow: none !important;
+  }
+  .printable .card,
+  .printable .pillar,
+  .printable .day,
+  .printable .dont,
+  .printable .callout,
+  .printable .formulaRow {
+    background: #fafafa !important;
+    border: 1px solid #e5e5e5 !important;
+    border-radius: 6px !important;
+    page-break-inside: avoid;
+  }
+  .printable .callout {
+    border-left: 3px solid #c68f1e !important;
+  }
+  .printable .pillar,
+  .printable .day {
+    border-top: 2px solid #c68f1e !important;
+  }
+  .printable .calloutMark,
+  .printable .cardTitle,
+  .printable .pillarTitle,
+  .printable .dayName,
+  .printable .musicName,
+  .printable .formulaNum,
+  .printable .printKicker,
+  .printable .printSecNum,
+  .printable .estLabel {
+    color: #b8770f !important;
+  }
+  .printable h1, .printable h2, .printable h3 { color: #0a0a0a !important; }
+  .printable .lead { color: #1a1a1a !important; font-size: 13.5px; }
+  .printable .list li,
+  .printable .pillarText,
+  .printable .refNote,
+  .printable .metaV,
+  .printable .formulaDesc,
+  .printable .dayList li,
+  .printable .musicList li,
+  .printable .dontList li {
+    color: #2a2a2a !important;
+  }
+  .printable .tag {
+    background: #f0f0f0 !important;
+    border: 1px solid #d8d8d8 !important;
+    color: #2a2a2a !important;
+  }
+  .printable .formulaBar { background: #c68f1e !important; opacity: 0.5; }
+  .printable .barTrack { background: #ececec !important; }
+  .printable .dontRule { color: #b8770f !important; }
+
+  /* capa */
+  .printCover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 2px solid #1a1a1a;
+    margin-bottom: 32px;
+    page-break-after: always;
+  }
+  .printKicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.24em;
+    color: #b8770f !important;
+    margin-bottom: 10px;
+  }
+  .printBrand {
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 14px;
+  }
+  .printSubtitle { font-size: 14px; color: #555 !important; margin-bottom: 36px; }
+  .printDate {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #666 !important;
+    letter-spacing: 0.08em;
+  }
+
+  /* sumário */
+  .printToc {
+    padding: 16px 0 24px;
+    page-break-after: always;
+  }
+  .printTocTitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: #888 !important;
+    margin-bottom: 16px;
+  }
+  .printToc ol { list-style: none; padding: 0; }
+  .printToc li {
+    padding: 8px 0;
+    border-bottom: 1px dotted #d8d8d8;
+    font-size: 13px;
+    display: flex;
+    gap: 8px;
+  }
+  .printTocNum {
+    font-family: 'JetBrains Mono', monospace;
+    color: #b8770f !important;
+    font-weight: 700;
+    min-width: 28px;
+  }
+  .printTocTag { color: #888 !important; }
+
+  /* seção */
+  .printSection {
+    page-break-before: always;
+    padding-top: 20px;
+  }
+  .printSecHead {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid #d8d8d8;
+  }
+  .printSecNum {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .printSecTitle { font-size: 24px; font-weight: 700; line-height: 1.1; }
+  .printSecTag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #888 !important;
+    margin-top: 4px;
+  }
+
+  .printFoot {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid #d8d8d8;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    color: #888 !important;
+    text-align: center;
+  }
+
+  @page {
+    size: A4;
+    margin: 14mm 14mm;
+  }
+}
+
+.sectionTag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+  margin-bottom: var(--space-4);
+}
+
+.blocks { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.lead {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+/* callout — regra de ouro */
+.callout {
+  display: flex;
+  gap: 12px;
+  background: var(--bg-elevated);
+  border-left: 2px solid var(--accent-amber);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+}
+.calloutMark { color: var(--accent-amber); flex-shrink: 0; }
+.callout p { font-size: 13.5px; line-height: 1.6; color: var(--text); }
+
+/* card genérico */
+.card {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+}
+.cardTitle {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+/* pilares do conceito */
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+.pillar {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border-top: 2px solid var(--accent-amber);
+  padding: 16px 18px;
+}
+.pillarTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 7px;
+}
+.pillarText { font-size: 12.5px; line-height: 1.55; color: var(--text-muted); }
+
+/* links pros painéis conectados */
+.links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.linkCard {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  transition: border-color .12s;
+}
+.linkCard:hover { border-color: var(--accent-amber); }
+.linkLabel { font-size: 13px; font-weight: 600; color: var(--text); }
+.linkDesc { font-size: 11.5px; color: var(--text-subtle); }
+
+.list { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.list li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.list li::before {
+  content: '—';
+  position: absolute;
+  left: 0;
+  color: var(--accent-amber);
+}
+
+.tags { display: flex; flex-wrap: wrap; gap: 7px; }
+.tag {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.refs { display: flex; flex-direction: column; gap: 10px; }
+.ref { display: flex; flex-direction: column; gap: 2px; }
+.refName { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.refNote { font-size: 12.5px; color: var(--text-subtle); }
+
+/* fórmula de viralização */
+.formula { display: flex; flex-direction: column; gap: 12px; }
+.formulaRow {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 14px;
+  align-items: start;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+}
+.formulaPct { display: flex; flex-direction: column; }
+.formulaNum {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-amber);
+  line-height: 1;
+}
+.formulaLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 3px;
+}
+.formulaBarWrap { min-width: 0; }
+.formulaBar {
+  height: 4px;
+  background: var(--accent-amber);
+  border-radius: 2px;
+  margin-bottom: 8px;
+  opacity: 0.55;
+}
+.formulaDesc { font-size: 12.5px; line-height: 1.55; color: var(--text-muted); }
+
+/* músicas */
+.musicGroups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+.musicName {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+}
+.musicList { list-style: none; margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.musicList li { font-size: 12.5px; color: var(--text-muted); }
+
+/* cronograma de dias */
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--space-3);
+}
+.day {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border-top: 2px solid var(--accent-amber);
+  padding: 16px 18px;
+}
+.dayHead { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.dayLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-subtle);
+}
+.dayName {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+.dayTransmite {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--accent-amber);
+  margin-bottom: 12px;
+}
+.meta { display: flex; gap: 8px; margin-bottom: 6px; }
+.metaK {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  flex: 0 0 64px;
+  padding-top: 2px;
+}
+.metaV { font-size: 12.5px; color: var(--text-muted); line-height: 1.45; }
+.dayAppear {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.dayAppearLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+}
+.dayList { list-style: none; margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+.dayList li { font-size: 12px; color: var(--text-muted); line-height: 1.4; padding-left: 12px; position: relative; }
+.dayList li::before { content: '·'; position: absolute; left: 2px; color: var(--accent-amber); }
+
+/* o que não postar */
+.dontGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-3);
+}
+.dont {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+}
+.dontTitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.dontX { color: var(--accent-red); font-size: 12px; }
+.dontList { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.dontList li { font-size: 12.5px; color: var(--text-subtle); padding-left: 12px; position: relative; }
+.dontList li::before { content: '×'; position: absolute; left: 0; color: var(--accent-red); opacity: 0.6; }
+.dontRule {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--accent-amber);
+}

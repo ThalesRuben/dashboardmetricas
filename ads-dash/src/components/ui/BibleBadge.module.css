@@ -1,0 +1,23 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(239, 159, 39, 0.08);
+  border: 1px solid rgba(239, 159, 39, 0.30);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: var(--text-muted);
+  transition: border-color .14s, background .14s;
+}
+.badge:hover {
+  border-color: var(--accent-amber);
+  background: rgba(239, 159, 39, 0.12);
+}
+.mark { color: var(--accent-amber); flex-shrink: 0; }
+.text { font-size: 12px; }
+.text strong { color: var(--text); font-weight: 600; }
+.arrow {
+  margin-left: auto;
+  color: var(--accent-amber);
+  font-size: 12px;
+}

@@ -1,0 +1,25 @@
+node_modules
+dist
+.env
+.env.local
+.DS_Store
+
+# supabase local stack
+supabase/.branches/
+supabase/.temp/
+
+# TS build artifacts
+*.tsbuildinfo
+
+# lightrag-kg
+tools/lightrag/.venv/
+tools/lightrag/rag_storage/
+tools/lightrag/.index_manifest.json
+tools/lightrag/__pycache__/
+tools/lightrag/**/__pycache__/
+tools/lightrag/.pytest_cache/
+tools/lightrag/*.egg-info/
+
+# obsidian (vault is committed; per-machine state is not)
+docs/knowledge-graph/.obsidian/workspace*
+docs/knowledge-graph/.obsidian/cache

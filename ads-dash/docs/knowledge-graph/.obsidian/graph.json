@@ -1,0 +1,86 @@
+{
+  "collapse-filter": true,
+  "search": "path:entidades/",
+  "showTags": false,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "path:\"entidades/conceitos/\"",
+      "color": {
+        "a": 1,
+        "rgb": 16737996
+      }
+    },
+    {
+      "query": "path:\"entidades/metodos/\"",
+      "color": {
+        "a": 1,
+        "rgb": 4570875
+      }
+    },
+    {
+      "query": "path:\"entidades/dados/\"",
+      "color": {
+        "a": 1,
+        "rgb": 4109794
+      }
+    },
+    {
+      "query": "path:\"entidades/conteudo/\"",
+      "color": {
+        "a": 1,
+        "rgb": 15848209
+      }
+    },
+    {
+      "query": "path:\"entidades/artefatos/\"",
+      "color": {
+        "a": 1,
+        "rgb": 13070788
+      }
+    },
+    {
+      "query": "path:\"entidades/pessoas/\"",
+      "color": {
+        "a": 1,
+        "rgb": 4886754
+      }
+    },
+    {
+      "query": "path:\"entidades/organizacoes/\"",
+      "color": {
+        "a": 1,
+        "rgb": 11796479
+      }
+    },
+    {
+      "query": "path:\"entidades/componentes/\"",
+      "color": {
+        "a": 1,
+        "rgb": 7846335
+      }
+    },
+    {
+      "query": "path:\"mocs/\"",
+      "color": {
+        "a": 1,
+        "rgb": 16776960
+      }
+    }
+  ],
+  "collapse-display": false,
+  "showArrow": false,
+  "textFadeMultiplier": -1.9,
+  "nodeSizeMultiplier": 1.19739583333333,
+  "lineSizeMultiplier": 1.68229166666667,
+  "collapse-forces": false,
+  "centerStrength": 0.5,
+  "repelStrength": 10,
+  "linkStrength": 1,
+  "linkDistance": 250,
+  "scale": 0.05179597905869976,
+  "close": true
+}

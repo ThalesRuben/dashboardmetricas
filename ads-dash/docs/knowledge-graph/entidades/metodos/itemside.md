@@ -1,0 +1,29 @@
+---
+entity: "itemSide"
+entity_type: "method"
+tipo_pt: "Metodo"
+community: 0
+degree: 1
+---
+
+# itemSide
+
+## Tipo
+
+**Metodo**  (method)
+
+## Descricao
+
+A CSS style method that creates a side section for items, organizing them vertically and adjusting flex properties.
+
+## Conexoes (1)
+
+- [[marketradar]]
+
+## Aparece em
+
+- `MarketRadar.module.css`
+
+## Comunidade
+
+Faz parte de [[comunidade-000-instagram-page|Comunidade 0]].

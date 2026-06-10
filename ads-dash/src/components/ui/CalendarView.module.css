@@ -1,0 +1,183 @@
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.navRow { display: flex; align-items: center; gap: 12px; }
+
+.navBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.navBtn:hover { border-color: var(--color-brand); color: var(--color-brand); }
+
+.monthTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: capitalize;
+  min-width: 160px;
+  text-align: center;
+}
+
+.metricRow { display: flex; gap: 4px; flex-wrap: wrap; }
+.metricBtn {
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.metricBtn:hover { background: var(--bg-hover); }
+.metricActive { background: var(--color-brand); color: #fff; border-color: var(--color-brand); font-weight: 500; }
+
+.dowRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-bottom: 4px;
+}
+.dowCell {
+  font-size: 10px;
+  color: var(--text-subtle);
+  text-align: center;
+  padding: 4px 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.blank { aspect-ratio: 1.2; }
+
+.cell {
+  aspect-ratio: 1.2;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: color-mix(in srgb, var(--color-brand) calc(var(--heat, 0) * 100%), var(--bg-elevated));
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.12s, border-color 0.12s;
+  min-height: 0;
+}
+.cell:hover { transform: scale(1.02); border-color: var(--color-brand); }
+
+.cellToday {
+  border-color: var(--color-brand) !important;
+  border-width: 2px;
+  font-weight: 700;
+}
+
+.cellFuture {
+  background: var(--bg-elevated) !important;
+  opacity: 0.4;
+  cursor: default;
+}
+.cellFuture:hover { transform: none; border-color: var(--border-soft); }
+
+.cellNum {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+
+.cell[style*="--heat: 1"] .cellNum,
+.cell[style*="--heat: 0.9"] .cellNum,
+.cell[style*="--heat: 0.8"] .cellNum,
+.cell[style*="--heat: 0.7"] .cellNum { color: #fff; }
+
+.cellMain {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: auto;
+  text-align: right;
+  line-height: 1.1;
+}
+.cell[style*="--heat: 1"] .cellMain,
+.cell[style*="--heat: 0.9"] .cellMain,
+.cell[style*="--heat: 0.8"] .cellMain,
+.cell[style*="--heat: 0.7"] .cellMain { color: #fff; }
+
+.cellPosts {
+  font-size: 9px;
+  color: var(--text-subtle);
+  margin-top: 2px;
+  text-align: right;
+}
+.cell[style*="--heat: 1"] .cellPosts,
+.cell[style*="--heat: 0.9"] .cellPosts,
+.cell[style*="--heat: 0.8"] .cellPosts,
+.cell[style*="--heat: 0.7"] .cellPosts { color: rgba(255,255,255,0.85); }
+
+.tooltipBar {
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+.tooltipBar strong { color: var(--text); }
+.tooltipBar > strong { font-size: 12px; text-transform: capitalize; flex-basis: 100%; margin-bottom: 2px; }
+
+.legend {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.legendLabel { font-size: 10px; color: var(--text-subtle); }
+.legendCells { display: flex; gap: 2px; }
+.legendCell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-brand) calc(var(--heat, 0) * 100%), var(--bg-elevated));
+  border: 1px solid var(--border-soft);
+}
+
+@media (max-width: 600px) {
+  .cellMain { font-size: 9px; }
+  .cellNum  { font-size: 10px; }
+  .cellPosts { display: none; }
+}
