@@ -25,17 +25,25 @@
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: 0;
   font-family: var(--font-mono);
 }
 .ringNum {
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 700;
   color: var(--text);
   line-height: 1;
 }
-.ringMax { font-size: 11px; color: var(--text-subtle); }
+.ringMax {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--text-subtle);
+  line-height: 1;
+  margin-top: 2px;
+}
 
 .headTxt { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .headTag {
