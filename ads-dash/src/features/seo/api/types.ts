@@ -4,6 +4,7 @@ export type SeoDificuldade = 'baixa' | 'média' | 'alta';
 export type SeoOportunidade = 'baixa' | 'média' | 'alta';
 export type SeoPrioridade = 'baixa' | 'média' | 'alta';
 export type SeoStatus = 'ok' | 'alerta' | 'erro';
+export type SeoIntent = 'informacional' | 'comercial' | 'transacional' | 'navegacional' | 'local';
 
 export interface SeoResumo {
   keywords_monitoradas: number;
@@ -41,4 +42,22 @@ export interface SeoSnapshot {
   keywords: SeoKeyword[];
   sugestoes: SeoSugestao[];
   auditoria: SeoAuditoriaItem[];
+}
+
+export interface SeoKeywordIdea {
+  termo: string;
+  volume: number;
+  dificuldade: SeoDificuldade;
+  intent: SeoIntent;
+}
+
+export interface SeoKeywordResearch {
+  termo: string;
+  volume: number;
+  dificuldade: SeoDificuldade;
+  cpc: number;
+  intent: SeoIntent;
+  tendencia: number;
+  ideias: SeoKeywordIdea[];
+  perguntas: string[];
 }

@@ -1,4 +1,4 @@
-import { useSeoAgent } from '@/features/seo'
+import { useSeoAgent, KeywordResearch } from '@/features/seo'
 import KpiCard from '@/shared/ui/KpiCard'
 import PageHeader from '@/components/ui/PageHeader'
 import { fmtNumber, fmtDelta } from '@/shared/lib/format'
@@ -17,7 +17,7 @@ const AUDIT = {
 }
 
 export default function SeoPage() {
-  const { data, loading, usingMock } = useSeoAgent()
+  const { data, loading, usingMock, refresh } = useSeoAgent()
 
   if (loading || !data) {
     return <div className={styles.page}><div className={styles.loading}>Carregando dados de SEO...</div></div>
@@ -63,6 +63,8 @@ export default function SeoPage() {
           />
         </div>
       </section>
+
+      <KeywordResearch onAdded={refresh} />
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Palavras-chave monitoradas</h2>

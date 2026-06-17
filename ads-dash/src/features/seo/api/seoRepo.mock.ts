@@ -1,7 +1,31 @@
 // Implementação mock — snapshot SEO de demonstração.
 
-import type { SeoRepo } from './seoRepo';
-import type { SeoSnapshot } from './types';
+import type { SeoRepo, AddMonitoredInput } from './seoRepo';
+import type {
+  SeoSnapshot,
+  SeoKeywordResearch,
+  SeoKeywordIdea,
+  SeoKeyword,
+  SeoDificuldade,
+  SeoIntent,
+} from './types';
+
+const LS_KEY = 'seo:monitored:extra';
+
+function loadExtras(): SeoKeyword[] {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? (JSON.parse(raw) as SeoKeyword[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveExtras(extras: SeoKeyword[]) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(extras));
+  } catch {}
+}
 
 const MOCK: SeoSnapshot = {
   score: 68,
@@ -41,10 +65,96 @@ const MOCK: SeoSnapshot = {
   ],
 };
 
+// hash determinístico simples (djb2) — mesmo termo sempre gera o mesmo resultado.
+function hash(str: string): number {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function pick<T>(seed: number, arr: T[]): T {
+  return arr[seed % arr.length];
+}
+
+const PREFIXOS = ['melhor', 'como fazer', 'preço de', 'tipos de', 'cuidados com'];
+const SUFIXOS  = ['em casa', 'profissional', 'feminino', 'passo a passo', 'duradouro', '2026'];
+const PERGUNTAS_BASE = [
+  (t: string) => `Quanto custa ${t}?`,
+  (t: string) => `${t.charAt(0).toUpperCase() + t.slice(1)} faz mal?`,
+  (t: string) => `Quanto tempo dura ${t}?`,
+  (t: string) => `Como fazer ${t} em casa?`,
+  (t: string) => `Qual a diferença entre ${t} e outras técnicas?`,
+];
+
+function buildResearch(termoRaw: string): SeoKeywordResearch {
+  const termo = termoRaw.trim().toLowerCase();
+  const h = hash(termo);
+
+  const volume = 200 + (h % 9800);
+  const dificuldade: SeoDificuldade = (['baixa', 'média', 'alta'] as const)[h % 3];
+  const cpc = +(0.4 + ((h >> 3) % 350) / 100).toFixed(2);
+  const intent: SeoIntent = (['informacional', 'comercial', 'transacional', 'local'] as const)[h % 4];
+  const tendencia = ((h >> 5) % 60) - 20; // -20 a +40 (%)
+
+  const ideias: SeoKeywordIdea[] = Array.from({ length: 6 }, (_, i) => {
+    const seed = hash(`${termo}-${i}`);
+    const usaPrefixo = (seed % 2) === 0;
+    const t = usaPrefixo
+      ? `${pick(seed, PREFIXOS)} ${termo}`
+      : `${termo} ${pick(seed >> 2, SUFIXOS)}`;
+    return {
+      termo: t,
+      volume: 80 + (seed % 4200),
+      dificuldade: (['baixa', 'média', 'alta'] as const)[seed % 3],
+      intent: (['informacional', 'comercial', 'transacional', 'local'] as const)[(seed >> 4) % 4],
+    };
+  });
+
+  const perguntas = PERGUNTAS_BASE
+    .map((fn, i) => ({ q: fn(termo), s: hash(`${termo}-q-${i}`) }))
+    .sort((a, b) => a.s - b.s)
+    .slice(0, 4)
+    .map(x => x.q);
+
+  return { termo, volume, dificuldade, cpc, intent, tendencia, ideias, perguntas };
+}
+
 export const mockSeoRepo: SeoRepo = {
   async getSnapshot() {
-    return MOCK;
+    const extras = loadExtras();
+    if (!extras.length) return MOCK;
+    const termos = new Set(MOCK.keywords.map(k => k.termo));
+    const merged = [...MOCK.keywords, ...extras.filter(e => !termos.has(e.termo))];
+    return {
+      ...MOCK,
+      keywords: merged,
+      resumo: { ...MOCK.resumo, keywords_monitoradas: merged.length },
+    };
+  },
+  async researchKeyword(termo: string) {
+    const clean = termo.trim();
+    if (!clean) return null;
+    return buildResearch(clean);
+  },
+  async addMonitoredKeyword(input: AddMonitoredInput) {
+    const termo = input.termo.trim();
+    if (!termo) return { ok: false, error: 'Termo vazio.' };
+    const extras = loadExtras();
+    if (MOCK.keywords.some(k => k.termo === termo) || extras.some(e => e.termo === termo)) {
+      return { ok: false, error: 'Termo já monitorado.' };
+    }
+    const research = buildResearch(termo);
+    extras.push({
+      termo,
+      posicao: 0,
+      posicao_anterior: 0,
+      volume: input.volume ?? research.volume,
+      dificuldade: input.dificuldade ?? research.dificuldade,
+      oportunidade: input.oportunidade ?? 'média',
+    });
+    saveExtras(extras);
+    return { ok: true };
   },
 };
 
-export { MOCK as MOCK_SEO };
+export { MOCK as MOCK_SEO, buildResearch as buildMockResearch };
