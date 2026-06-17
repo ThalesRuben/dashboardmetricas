@@ -40,12 +40,24 @@ export interface WhatsAppOrigem {
 
 export type WhatsAppConversaStatus = 'lead' | 'aberta' | 'agendado' | 'venda';
 
+export type WhatsAppMensagemAutor = 'cliente' | 'atendente';
+
+export interface WhatsAppMensagem {
+  autor: WhatsAppMensagemAutor;
+  texto: string;
+  hora: string;
+}
+
 export interface WhatsAppConversa {
+  id?: string;
   nome: string;
   resumo: string;
   status: WhatsAppConversaStatus;
   hora: string;
   origem: string;
+  telefone?: string;
+  nao_lidas?: number;
+  mensagens?: WhatsAppMensagem[];
 }
 
 export interface WhatsAppSummary {

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useWhatsAppMetrics } from '@/features/whatsapp'
+import { useWhatsAppMetrics, Inbox } from '@/features/whatsapp'
 import { fmtNumber, fmtPct } from '@/shared/lib/format'
 import PageHeader from '@/components/ui/PageHeader'
 import Tabs from '@/components/ui/Tabs'
@@ -16,7 +16,7 @@ const STATUS = {
 
 export default function WhatsAppPage() {
   const { data, loading, usingMock } = useWhatsAppMetrics()
-  const [tab, setTab] = useState('precisam')
+  const [tab, setTab] = useState('inbox')
 
   const urgentes = useMemo(
     () => (data?.conversas_recentes || []).filter(c => STATUS[c.status]?.urgent),
@@ -29,7 +29,13 @@ export default function WhatsAppPage() {
 
   const r = data.resumo
 
+  const naoLidasTotal = (data.conversas_recentes || []).reduce(
+    (acc, c) => acc + (c.nao_lidas || 0),
+    0,
+  )
+
   const tabs = [
+    { id: 'inbox',    label: 'Inbox', badge: naoLidasTotal || undefined },
     { id: 'precisam', label: 'Precisam de você', badge: urgentes.length || undefined },
     { id: 'todas',    label: 'Todas as conversas' },
     { id: 'funil',    label: 'Funil' },
@@ -81,6 +87,10 @@ export default function WhatsAppPage() {
       </section>
 
       <Tabs items={tabs} activeId={tab} onChange={setTab} accentColor="var(--section-whatsapp)" />
+
+      {tab === 'inbox' && (
+        <Inbox conversas={data.conversas_recentes || []} />
+      )}
 
       {tab === 'precisam' && (
         urgentes.length === 0 ? (
