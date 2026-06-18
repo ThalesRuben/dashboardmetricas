@@ -1,9 +1,8 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useAiBrain } from '@/features/ai'
-import { generateInstagramInsights, type Insight } from '@/lib/aiInsights'
-import type { IgData } from '@/app/providers/MetricsContext'
-import styles from './IgAiInsights.module.css'
+import type { Insight } from '@/lib/aiInsights'
+import styles from './OrganicAiInsights.module.css'
 
 interface PlanoItem {
   dia: string
@@ -29,35 +28,56 @@ const TONE_ICON: Record<string, string> = {
   info: 'ℹ',
 }
 
-interface IgAiInsightsProps {
-  ig: IgData
+export interface OrganicAiInsightsProps {
+  /** payload da plataforma — vai como body[payloadKey] no POST */
+  data: unknown
+  /** chave usada no body do POST — ex: 'ig', 'tt', 'yt' */
+  payloadKey: string
+  /** Edge Function a chamar — ex: 'gemini-instagram-insights' */
+  functionName: string
+  /** gerador de insights local — usado como fallback */
+  localFallback: () => Insight[]
+  /** cor de destaque (CSS color/var) — ex: 'var(--section-instagram)' */
+  sectionColor: string
+  /** texto inicial do empty state — pode citar a plataforma */
+  emptyHint?: string
 }
 
-export default function IgAiInsights({ ig }: IgAiInsightsProps) {
+export default function OrganicAiInsights({
+  data,
+  payloadKey,
+  functionName,
+  localFallback,
+  sectionColor,
+  emptyHint = 'Clique em Gerar insights pra a IA analisar a conta inteira.',
+}: OrganicAiInsightsProps) {
   const { brain } = useAiBrain()
   const [result, setResult] = useState<AiResult | null>(null)
   const [source, setSource] = useState<'ai' | 'local' | null>(null)
   const [running, setRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const styleVar = { '--ai-accent': sectionColor } as CSSProperties
+
   async function run() {
     setRunning(true)
     setError(null)
     try {
-      const { data, error: fnError } = await supabase.functions.invoke<AiResult>(
-        'gemini-instagram-insights',
-        { body: { ig, brain } },
+      const body = { [payloadKey]: data, brain }
+      const { data: res, error: fnError } = await supabase.functions.invoke<AiResult>(
+        functionName,
+        { body },
       )
-      if (!fnError && data?.insights?.length) {
-        setResult(data)
+      if (!fnError && res?.insights?.length) {
+        setResult(res)
         setSource('ai')
       } else {
-        setResult({ insights: generateInstagramInsights(ig) })
+        setResult({ insights: localFallback() })
         setSource('local')
         if (fnError) setError('IA indisponível — usando análise por regras.')
       }
     } catch {
-      setResult({ insights: generateInstagramInsights(ig) })
+      setResult({ insights: localFallback() })
       setSource('local')
       setError('IA indisponível — usando análise por regras.')
     } finally {
@@ -66,7 +86,7 @@ export default function IgAiInsights({ ig }: IgAiInsightsProps) {
   }
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} style={styleVar}>
       <div className={styles.head}>
         <div className={styles.headLeft}>
           <div className={styles.aiIcon}>
@@ -102,14 +122,14 @@ export default function IgAiInsights({ ig }: IgAiInsightsProps) {
       {running && (
         <div className={styles.loadingBox}>
           <span className={styles.spinner} />
-          A IA está lendo as métricas e os últimos posts...
+          A IA está lendo as métricas e os últimos conteúdos...
         </div>
       )}
 
       {!result && !running && (
         <div className={styles.empty}>
-          <p>Clique em <strong>Gerar insights</strong> pra a IA analisar a conta inteira.</p>
-          <p>Ela cruza seguidores, engajamento, alcance e os últimos posts com o <strong>Cérebro da IA</strong> (Central de IA → Cérebro) e devolve um plano estratégico — não só métricas.</p>
+          <p>{emptyHint}</p>
+          <p>Ela cruza as métricas com o <strong>Cérebro da IA</strong> (Central de IA → Cérebro) e devolve um plano estratégico — não só números.</p>
         </div>
       )}
 

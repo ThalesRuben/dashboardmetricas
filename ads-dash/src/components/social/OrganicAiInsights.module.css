@@ -22,7 +22,7 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: var(--section-instagram);
+  background: var(--ai-accent, var(--accent-magenta));
   color: #0a0d12;
   display: flex;
   align-items: center;
@@ -54,8 +54,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--section-instagram);
-  border: 1px solid var(--section-instagram);
+  background: var(--ai-accent, var(--accent-magenta));
+  border: 1px solid var(--ai-accent, var(--accent-magenta));
   border-radius: var(--radius-sm);
   color: #0a0d12;
   font-family: var(--font-sans);
@@ -77,9 +77,9 @@
   border-radius: 10px;
 }
 .sourceAi {
-  color: var(--section-instagram);
-  background: rgba(212, 83, 126, 0.1);
-  border: 1px solid rgba(212, 83, 126, 0.3);
+  color: var(--ai-accent, var(--accent-magenta));
+  background: color-mix(in srgb, var(--ai-accent, var(--accent-magenta)) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ai-accent, var(--accent-magenta)) 30%, transparent);
 }
 .sourceLocal {
   color: var(--text-subtle);
@@ -124,7 +124,7 @@
   display: inline-block;
   width: 3px;
   height: 14px;
-  background: var(--section-instagram);
+  background: var(--ai-accent, var(--accent-magenta));
   border-radius: 2px;
 }
 
@@ -188,8 +188,8 @@
 .tone-danger { border-left-color: var(--accent-red); }
 .tone-danger .insightIcon { background: var(--accent-red); }
 
-.tone-info { border-left-color: var(--section-instagram); }
-.tone-info .insightIcon { background: var(--section-instagram); color: #0a0d12; }
+.tone-info { border-left-color: var(--ai-accent, var(--accent-magenta)); }
+.tone-info .insightIcon { background: var(--ai-accent, var(--accent-magenta)); color: #0a0d12; }
 
 .list {
   list-style: none;
@@ -211,7 +211,7 @@
 
 .list li::before {
   content: '▸';
-  color: var(--section-instagram);
+  color: var(--ai-accent, var(--accent-magenta));
   flex-shrink: 0;
   margin-top: 1px;
 }
@@ -246,9 +246,9 @@
   letter-spacing: 0.04em;
   padding: 2px 6px;
   border-radius: 10px;
-  background: rgba(212, 83, 126, 0.1);
-  color: var(--section-instagram);
-  border: 1px solid rgba(212, 83, 126, 0.3);
+  background: color-mix(in srgb, var(--ai-accent, var(--accent-magenta)) 10%, transparent);
+  color: var(--ai-accent, var(--accent-magenta));
+  border: 1px solid color-mix(in srgb, var(--ai-accent, var(--accent-magenta)) 30%, transparent);
   width: fit-content;
 }
 
@@ -276,7 +276,7 @@
 }
 
 .alerta {
-  background: rgba(220, 95, 95, 0.08);
+  background: color-mix(in srgb, var(--accent-red) 8%, transparent);
   border-left: 3px solid var(--accent-red);
 }
 .alerta .cardTitle::before { background: var(--accent-red); }
@@ -299,7 +299,7 @@
   width: 14px;
   height: 14px;
   border: 2px solid var(--border);
-  border-top-color: var(--section-instagram);
+  border-top-color: var(--ai-accent, var(--accent-magenta));
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

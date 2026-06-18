@@ -1,14 +1,23 @@
+import { useState } from 'react'
 import { useYouTubeMetrics } from '@/features/organic/youtube'
+import { generateYouTubeInsights } from '@/lib/aiInsights'
 import KpiCard from '@/shared/ui/KpiCard'
 import SocialLineChart from '@/components/social/SocialLineChart'
 import SocialVideoList from '@/components/social/SocialVideoList'
 import OrganicAccountBar from '@/components/social/OrganicAccountBar'
+import OrganicAiInsights from '@/components/social/OrganicAiInsights'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
+import Tabs from '@/components/ui/Tabs'
 import { fmtNumber, fmtCompact, fmtPct } from '@/shared/lib/format'
 import styles from './SocialPage.module.css'
 
 const YT_COLOR = '#FF0000'
+
+const TABS = [
+  { id: 'visao', label: 'Visão geral' },
+  { id: 'ia',    label: 'IA Insights' },
+]
 
 function fmtDuration(seg) {
   const s = Number(seg) || 0
@@ -27,6 +36,7 @@ const VIDEO_METRICS = [
 
 export default function YouTubePage() {
   const { data, loading, usingMock } = useYouTubeMetrics()
+  const [tab, setTab] = useState('visao')
 
   if (loading || !data) {
     return <div className={styles.page}><div className={styles.loading}>Carregando métricas do YouTube...</div></div>
@@ -79,34 +89,53 @@ export default function YouTubePage() {
         }
       />
 
-      <section className={styles.kpiGrid}>
-        <KpiCard label="Inscritos"          value={fmtNumber(c.inscritos)}          delta={`${deltaUp?'+':''}${fmtNumber(c.inscritos_delta_30d)} em 30d`} up={deltaUp} />
-        <KpiCard label="Visualizações/dia"  value={fmtNumber(c.visualizacoes_dia)}  delta="+9% vs ontem" up />
-        <KpiCard label="Horas assistidas"   value={fmtCompact(c.horas_assistidas)}  delta="+18% em 30d" up />
-        <KpiCard label="Engajamento"        value={fmtPct(c.engajamento_taxa, 1)}   delta="+0.3pp" up />
-        <KpiCard label="Vídeos publicados"  value={fmtNumber(c.total_videos)}       neutral />
-      </section>
+      <Tabs items={TABS} activeId={tab} onChange={setTab} accentColor={YT_COLOR} />
 
-      <section className={styles.chartsGrid}>
-        <div className={styles.chartCard}>
-          <h3 className={styles.chartTitle}>Crescimento de inscritos</h3>
-          <SocialLineChart serie={c.serie_inscritos} color="#FF0000" />
-        </div>
-        <div className={styles.chartCard}>
-          <h3 className={styles.chartTitle}>Visualizações por semana</h3>
-          <SocialLineChart serie={c.serie_views} color="#CC0000" type="bar" />
-        </div>
-      </section>
+      {tab === 'visao' && (
+        <>
+          <section className={styles.kpiGrid}>
+            <KpiCard label="Inscritos"          value={fmtNumber(c.inscritos)}          delta={`${deltaUp?'+':''}${fmtNumber(c.inscritos_delta_30d)} em 30d`} up={deltaUp} />
+            <KpiCard label="Visualizações/dia"  value={fmtNumber(c.visualizacoes_dia)}  delta="+9% vs ontem" up />
+            <KpiCard label="Horas assistidas"   value={fmtCompact(c.horas_assistidas)}  delta="+18% em 30d" up />
+            <KpiCard label="Engajamento"        value={fmtPct(c.engajamento_taxa, 1)}   delta="+0.3pp" up />
+            <KpiCard label="Vídeos publicados"  value={fmtNumber(c.total_videos)}       neutral />
+          </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Top vídeos dos últimos 30 dias</h2>
-        <SocialVideoList
-          videos={data.videos}
-          titleField="titulo"
-          metrics={VIDEO_METRICS}
-          accent={YT_COLOR}
-        />
-      </section>
+          <section className={styles.chartsGrid}>
+            <div className={styles.chartCard}>
+              <h3 className={styles.chartTitle}>Crescimento de inscritos</h3>
+              <SocialLineChart serie={c.serie_inscritos} color="#FF0000" />
+            </div>
+            <div className={styles.chartCard}>
+              <h3 className={styles.chartTitle}>Visualizações por semana</h3>
+              <SocialLineChart serie={c.serie_views} color="#CC0000" type="bar" />
+            </div>
+          </section>
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Top vídeos dos últimos 30 dias</h2>
+            <SocialVideoList
+              videos={data.videos}
+              titleField="titulo"
+              metrics={VIDEO_METRICS}
+              accent={YT_COLOR}
+            />
+          </section>
+        </>
+      )}
+
+      {tab === 'ia' && (
+        <section className={styles.section}>
+          <OrganicAiInsights
+            data={data}
+            payloadKey="yt"
+            functionName="gemini-youtube-insights"
+            localFallback={() => generateYouTubeInsights(data)}
+            sectionColor={YT_COLOR}
+            emptyHint="Clique em Gerar insights pra a IA analisar o canal de YouTube inteiro."
+          />
+        </section>
+      )}
     </div>
   )
 }

@@ -42,3 +42,9 @@ verify_jwt = false
 
 [functions.gemini-instagram-insights]
 verify_jwt = false
+
+[functions.gemini-tiktok-insights]
+verify_jwt = false
+
+[functions.gemini-youtube-insights]
+verify_jwt = false

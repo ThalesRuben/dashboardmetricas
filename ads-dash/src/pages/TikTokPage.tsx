@@ -1,15 +1,24 @@
+import { useState } from 'react'
 import { useTikTokMetrics } from '@/features/organic/tiktok'
+import { generateTikTokInsights } from '@/lib/aiInsights'
 import KpiCard from '@/shared/ui/KpiCard'
 import SocialLineChart from '@/components/social/SocialLineChart'
 import SocialVideoList from '@/components/social/SocialVideoList'
 import OrganicAccountBar from '@/components/social/OrganicAccountBar'
+import OrganicAiInsights from '@/components/social/OrganicAiInsights'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
+import Tabs from '@/components/ui/Tabs'
 import { fmtNumber, fmtCompact, fmtPct } from '@/shared/lib/format'
 import styles from './SocialPage.module.css'
 
 const TIKTOK_COLOR = '#000000'
 const TIKTOK_ACCENT = '#FE2C55'
+
+const TABS = [
+  { id: 'visao', label: 'Visão geral' },
+  { id: 'ia',    label: 'IA Insights' },
+]
 
 const VIDEO_METRICS = [
   { key: 'visualizacoes',     label: 'views',   icon: '▶', fmt: fmtCompact },
@@ -21,6 +30,7 @@ const VIDEO_METRICS = [
 
 export default function TikTokPage() {
   const { data, loading, usingMock } = useTikTokMetrics()
+  const [tab, setTab] = useState('visao')
 
   if (loading || !data) {
     return <div className={styles.page}><div className={styles.loading}>Carregando métricas do TikTok...</div></div>
@@ -74,34 +84,53 @@ export default function TikTokPage() {
         }
       />
 
-      <section className={styles.kpiGrid}>
-        <KpiCard label="Seguidores"        value={fmtNumber(a.seguidores)}      delta={`${deltaUp?'+':''}${fmtNumber(a.seguidores_delta_30d)} em 30d`} up={deltaUp} />
-        <KpiCard label="Curtidas totais"   value={fmtCompact(a.curtidas_total)} delta="+8.4k em 30d" up />
-        <KpiCard label="Visualizações/dia" value={fmtNumber(a.visualizacoes_dia)} delta="+14% vs ontem" up />
-        <KpiCard label="Engajamento"       value={fmtPct(a.engajamento_taxa, 1)} delta="+0.6pp" up />
-        <KpiCard label="Vídeos publicados" value={fmtNumber(a.total_videos)}    neutral />
-      </section>
+      <Tabs items={TABS} activeId={tab} onChange={setTab} accentColor={TIKTOK_ACCENT} />
 
-      <section className={styles.chartsGrid}>
-        <div className={styles.chartCard}>
-          <h3 className={styles.chartTitle}>Crescimento de seguidores</h3>
-          <SocialLineChart serie={a.serie_seguidores} color="#25F4EE" />
-        </div>
-        <div className={styles.chartCard}>
-          <h3 className={styles.chartTitle}>Visualizações por dia</h3>
-          <SocialLineChart serie={a.serie_views} color="#FE2C55" type="bar" />
-        </div>
-      </section>
+      {tab === 'visao' && (
+        <>
+          <section className={styles.kpiGrid}>
+            <KpiCard label="Seguidores"        value={fmtNumber(a.seguidores)}      delta={`${deltaUp?'+':''}${fmtNumber(a.seguidores_delta_30d)} em 30d`} up={deltaUp} />
+            <KpiCard label="Curtidas totais"   value={fmtCompact(a.curtidas_total)} delta="+8.4k em 30d" up />
+            <KpiCard label="Visualizações/dia" value={fmtNumber(a.visualizacoes_dia)} delta="+14% vs ontem" up />
+            <KpiCard label="Engajamento"       value={fmtPct(a.engajamento_taxa, 1)} delta="+0.6pp" up />
+            <KpiCard label="Vídeos publicados" value={fmtNumber(a.total_videos)}    neutral />
+          </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Top vídeos dos últimos 30 dias</h2>
-        <SocialVideoList
-          videos={data.videos}
-          titleField="caption"
-          metrics={VIDEO_METRICS}
-          accent={TIKTOK_COLOR}
-        />
-      </section>
+          <section className={styles.chartsGrid}>
+            <div className={styles.chartCard}>
+              <h3 className={styles.chartTitle}>Crescimento de seguidores</h3>
+              <SocialLineChart serie={a.serie_seguidores} color="#25F4EE" />
+            </div>
+            <div className={styles.chartCard}>
+              <h3 className={styles.chartTitle}>Visualizações por dia</h3>
+              <SocialLineChart serie={a.serie_views} color="#FE2C55" type="bar" />
+            </div>
+          </section>
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Top vídeos dos últimos 30 dias</h2>
+            <SocialVideoList
+              videos={data.videos}
+              titleField="caption"
+              metrics={VIDEO_METRICS}
+              accent={TIKTOK_COLOR}
+            />
+          </section>
+        </>
+      )}
+
+      {tab === 'ia' && (
+        <section className={styles.section}>
+          <OrganicAiInsights
+            data={data}
+            payloadKey="tt"
+            functionName="gemini-tiktok-insights"
+            localFallback={() => generateTikTokInsights(data)}
+            sectionColor={TIKTOK_ACCENT}
+            emptyHint="Clique em Gerar insights pra a IA analisar a conta de TikTok inteira."
+          />
+        </section>
+      )}
     </div>
   )
 }

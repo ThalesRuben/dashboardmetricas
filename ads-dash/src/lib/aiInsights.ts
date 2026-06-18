@@ -1,5 +1,7 @@
 import type { AdsPayload, Goal } from '@/features/ads/api/types'
 import type { IgData } from '@/app/providers/MetricsContext'
+import type { TikTokSummary } from '@/features/organic/tiktok/api/types'
+import type { YouTubeSummary } from '@/features/organic/youtube/api/types'
 
 export type InsightTone = 'success' | 'warning' | 'danger' | 'info'
 
@@ -237,6 +239,164 @@ export function generateInstagramInsights(ig: IgData | null | undefined): Insigh
       tone: 'info',
       title: 'Conta saudável',
       body: 'Sem alertas. Mantenha frequência de pelo menos 4 posts/semana sendo 60% Reels.',
+    })
+  }
+
+  return out.slice(0, 5)
+}
+
+// === TikTok ===
+// TikTok não tem hypeDetector nem séries longas — analisamos engajamento,
+// crescimento, mix de vídeos e formato.
+export function generateTikTokInsights(tt: TikTokSummary | null | undefined): Insight[] {
+  if (!tt?.account) return []
+  const out: Insight[] = []
+  const a = tt.account
+  const videos = tt.videos || []
+
+  if (a.engajamento_taxa >= 8) {
+    out.push({
+      tone: 'success',
+      title: `Engajamento forte: ${a.engajamento_taxa}%`,
+      body: `TikTok orgânico bom roda em 5-8%. Você está acima — mantenha a frequência e teste hooks novos pra escalar alcance.`,
+    })
+  } else if (a.engajamento_taxa < 3) {
+    out.push({
+      tone: 'warning',
+      title: `Engajamento baixo: ${a.engajamento_taxa}%`,
+      body: `Setor de beleza no TikTok roda em 5-8%. Hooks fracos nos primeiros 2s costumam ser o motivo. Teste 3 aberturas diferentes essa semana.`,
+    })
+  }
+
+  if (a.seguidores_delta_30d <= 0) {
+    out.push({
+      tone: 'danger',
+      title: 'Sem crescimento de seguidores em 30d',
+      body: `Algoritmo do TikTok premia frequência: 1 vídeo/dia mínimo. Considera entrar em tendências de áudio populares — multiplica alcance.`,
+    })
+  } else if (a.seguidores_delta_30d > 500) {
+    out.push({
+      tone: 'success',
+      title: `+${a.seguidores_delta_30d} seguidores em 30d`,
+      body: `Crescimento forte. Aproveita pra direcionar tráfego pro Instagram ou WhatsApp via bio.`,
+    })
+  }
+
+  const top = [...videos].sort((x, y) => (y.engajamento_taxa || 0) - (x.engajamento_taxa || 0))[0]
+  if (top && top.engajamento_taxa >= 10) {
+    out.push({
+      tone: 'success',
+      title: `Replicar: "${(top.caption || '').slice(0, 40)}..."`,
+      body: `Esse vídeo bombou (${top.engajamento_taxa}% engajamento, ${(top.visualizacoes || 0).toLocaleString('pt-BR')} views). Reproduza o formato/tema nos próximos 2 vídeos.`,
+    })
+  }
+
+  const avgViews = videos.length
+    ? videos.reduce((s, v) => s + (v.visualizacoes || 0), 0) / videos.length
+    : 0
+  if (avgViews > 0 && avgViews < a.seguidores * 0.5) {
+    out.push({
+      tone: 'warning',
+      title: `Views médias bem abaixo da base`,
+      body: `Vídeos rendem em média ${Math.round(avgViews).toLocaleString('pt-BR')} views pra uma base de ${a.seguidores.toLocaleString('pt-BR')} seguidores. Pode ser shadowban leve — varia formato e horário de postagem.`,
+    })
+  }
+
+  if (videos.length < 8) {
+    out.push({
+      tone: 'info',
+      title: `Só ${videos.length} vídeos nos últimos 30d`,
+      body: `TikTok precisa de volume — mínimo 4-5/semana pro algoritmo entender seu nicho. Aumenta frequência antes de qualquer outra coisa.`,
+    })
+  }
+
+  if (out.length === 0) {
+    out.push({
+      tone: 'info',
+      title: 'Conta saudável',
+      body: 'Sem alertas. Continue postando 1x/dia e aproveite áudios em tendência.',
+    })
+  }
+
+  return out.slice(0, 5)
+}
+
+// === YouTube ===
+// YouTube prioriza retenção média + horas assistidas. Foco diferente do IG/TT.
+export function generateYouTubeInsights(yt: YouTubeSummary | null | undefined): Insight[] {
+  if (!yt?.channel) return []
+  const out: Insight[] = []
+  const c = yt.channel
+  const videos = yt.videos || []
+
+  const avgRetention = videos.length
+    ? videos.reduce((s, v) => s + (v.retencao_media || 0), 0) / videos.length
+    : 0
+
+  if (avgRetention >= 50) {
+    out.push({
+      tone: 'success',
+      title: `Retenção média forte: ${avgRetention.toFixed(0)}%`,
+      body: `Acima de 50% é raro. O algoritmo do YouTube recompensa isso com mais sugestões. Aproveita pra publicar a próxima série em sequência.`,
+    })
+  } else if (avgRetention > 0 && avgRetention < 30) {
+    out.push({
+      tone: 'danger',
+      title: `Retenção baixa: ${avgRetention.toFixed(0)}%`,
+      body: `Abaixo de 30% mata o alcance. Causa típica: introdução longa. Vai direto ao ponto nos primeiros 15s — corta tudo que não for o "hook" principal.`,
+    })
+  }
+
+  if (c.inscritos_delta_30d <= 0) {
+    out.push({
+      tone: 'warning',
+      title: 'Sem novos inscritos em 30d',
+      body: `Provável: thumbnails fracas ou títulos sem promessa clara. Testa thumbnails com rosto + texto grande (até 4 palavras) e A/B com YouTube Studio.`,
+    })
+  } else if (c.inscritos_delta_30d > 100) {
+    out.push({
+      tone: 'success',
+      title: `+${c.inscritos_delta_30d} inscritos em 30d`,
+      body: `Crescimento saudável. Cria um vídeo de "boas-vindas ao canal" curto (60s) pra fixar — converte mais visitantes em inscritos.`,
+    })
+  }
+
+  if (videos.length > 0 && videos.length < 4) {
+    out.push({
+      tone: 'info',
+      title: `Só ${videos.length} vídeo${videos.length>1?'s':''} nos últimos 30d`,
+      body: `YouTube exige consistência. 1 vídeo longo/semana + 2 Shorts é o mínimo pra o algoritmo te apresentar a novos públicos.`,
+    })
+  }
+
+  const shorts = videos.filter(v => (v.duracao_seg || 0) <= 60)
+  const longs = videos.filter(v => (v.duracao_seg || 0) > 60)
+  if (shorts.length > 0 && longs.length > 0) {
+    const shortsAvg = shorts.reduce((s, v) => s + (v.visualizacoes || 0), 0) / shorts.length
+    const longsAvg  = longs.reduce((s, v) => s + (v.visualizacoes || 0), 0) / longs.length
+    if (shortsAvg > longsAvg * 2) {
+      out.push({
+        tone: 'info',
+        title: 'Shorts rendem 2x mais views que vídeos longos',
+        body: `Use os Shorts como porta de entrada e nos primeiros segundos diga "veja o tutorial completo no meu canal". Converte view de Short em inscrito.`,
+      })
+    }
+  }
+
+  const top = [...videos].sort((a, b) => (b.visualizacoes || 0) - (a.visualizacoes || 0))[0]
+  if (top && top.visualizacoes > c.visualizacoes_dia * 5) {
+    out.push({
+      tone: 'success',
+      title: `Replicar: "${(top.titulo || '').slice(0, 40)}..."`,
+      body: `Esse vídeo destacou — ${top.visualizacoes.toLocaleString('pt-BR')} views, ${top.retencao_media}% de retenção. Vale uma sequência ou versão atualizada em ~60d.`,
+    })
+  }
+
+  if (out.length === 0) {
+    out.push({
+      tone: 'info',
+      title: 'Canal saudável',
+      body: 'Sem alertas. Mantenha 1 vídeo longo/semana e foca em retenção dos primeiros 30s.',
     })
   }
 

@@ -13,8 +13,9 @@ import IgReachChart from '@/features/organic/instagram/components/IgReachChart'
 import IgTimeline from '@/features/organic/instagram/components/IgTimeline'
 import ChannelEngines from '@/features/organic/instagram/components/ChannelEngines'
 import ContentCalendar from '@/features/organic/instagram/components/ContentCalendar'
-import IgAiInsights from '@/features/organic/instagram/components/IgAiInsights'
 import OrganicAccountBar from '@/components/social/OrganicAccountBar'
+import OrganicAiInsights from '@/components/social/OrganicAiInsights'
+import { generateInstagramInsights } from '@/lib/aiInsights'
 import InsightsPanel from '@/components/ui/InsightsPanel'
 import styles from './InstagramPage.module.css'
 
@@ -214,7 +215,14 @@ export default function InstagramPage() {
 
       {tab === 'ia' && (
         <section className={styles.section}>
-          <IgAiInsights ig={data} />
+          <OrganicAiInsights
+            data={data}
+            payloadKey="ig"
+            functionName="gemini-instagram-insights"
+            localFallback={() => generateInstagramInsights(data)}
+            sectionColor="var(--section-instagram)"
+            emptyHint="Clique em Gerar insights pra a IA analisar a conta de Instagram inteira."
+          />
         </section>
       )}
     </div>
