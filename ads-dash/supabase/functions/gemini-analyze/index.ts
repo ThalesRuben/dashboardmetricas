@@ -16,7 +16,7 @@
 // automaticamente para o motor de regras local (src/lib/viralAnalysis.js).
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
-const MODEL = 'gemini-1.5-flash'
+const MODEL = 'gemini-2.0-flash'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,7 +47,7 @@ ${JSON.stringify(video, null, 2)}
 
 Responda SOMENTE com um JSON válido (sem markdown) neste formato exato:
 {
-  "modelo": "gemini-1.5-flash",
+  "modelo": "gemini-2.0-flash",
   "score": <0-100>,
   "veredito": { "label": "<texto curto>", "tone": "accent|amber|magenta" },
   "fatores": [ { "dimensao": "<nome>", "valor": <0-100>, "nota": "<frase>" } ],

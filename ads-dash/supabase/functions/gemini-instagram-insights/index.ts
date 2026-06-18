@@ -21,7 +21,7 @@
 // motor de regras local (generateInstagramInsights em src/lib/aiInsights.ts).
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
-const MODEL = 'gemini-1.5-flash'
+const MODEL = 'gemini-2.0-flash'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -91,7 +91,7 @@ ${JSON.stringify(posts, null, 2)}
 Analise a conta como um todo e devolva insights estratégicos acionáveis.
 Responda SOMENTE com JSON válido (sem markdown) neste formato:
 {
-  "modelo": "gemini-1.5-flash",
+  "modelo": "gemini-2.0-flash",
   "resumo": "<2-3 frases sobre o estado geral da conta>",
   "insights": [
     {
