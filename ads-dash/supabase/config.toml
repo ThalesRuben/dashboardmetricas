@@ -31,5 +31,14 @@ double_confirm_changes = true
 enable_confirmations = false
 
 # Edge functions (criar em ./functions/<nome>/index.ts)
-[functions]
+[functions.send-report]
 verify_jwt = true
+
+[functions.instagram-sync]
+verify_jwt = false
+
+[functions.gemini-analyze]
+verify_jwt = false
+
+[functions.gemini-instagram-insights]
+verify_jwt = false
