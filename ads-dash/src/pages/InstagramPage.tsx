@@ -13,6 +13,8 @@ import IgReachChart from '@/features/organic/instagram/components/IgReachChart'
 import IgTimeline from '@/features/organic/instagram/components/IgTimeline'
 import ChannelEngines from '@/features/organic/instagram/components/ChannelEngines'
 import ContentCalendar from '@/features/organic/instagram/components/ContentCalendar'
+import IgAccountBar from '@/features/organic/instagram/components/IgAccountBar'
+import IgAiInsights from '@/features/organic/instagram/components/IgAiInsights'
 import InsightsPanel from '@/components/ui/InsightsPanel'
 import styles from './InstagramPage.module.css'
 
@@ -21,6 +23,7 @@ const TABS = [
   { id: 'conteudo',   label: 'Conteúdo'            },
   { id: 'calendario', label: 'Calendário'          },
   { id: 'timeline',   label: 'Timeline'            },
+  { id: 'ia',         label: 'IA Insights'         },
 ]
 
 const TIPO_MAP = { REEL: 'reel', VIDEO: 'reel', IMAGE: 'image', CAROUSEL: 'carousel', STORY: 'story' }
@@ -81,21 +84,16 @@ export default function InstagramPage() {
     <div className={styles.page}>
       <PageHeader
         section="instagram"
-        title={`Instagram orgânico · ${a.username}`}
+        title="Instagram orgânico"
         subtitle={topHype ? `${HYPE_LEVELS[topHype.level].label} agora — ${hypePosts.length} post${hypePosts.length>1?'s':''} acima da média` : null}
-        actions={
-          <button className="btn" onClick={handleSync} disabled={syncing}>
-            {syncing ? 'Sincronizando...' : '↻ Sincronizar'}
-          </button>
-        }
       />
+
+      <IgAccountBar usingMock={usingMock} syncing={syncing} onSync={handleSync} />
 
       <Tabs items={TABS} activeId={tab} onChange={setTab} accentColor="var(--section-instagram)" />
 
       {tab === 'visao' && (
         <>
-          {usingMock && <Banner>Dados de demonstração. Conecte a conta em <strong>Integrações → Instagram</strong>.</Banner>}
-
           <section className={styles.kpis}>
             <KpiCard
               label="Seguidores"
@@ -198,12 +196,14 @@ export default function InstagramPage() {
           <IgTimeline posts={data.posts} account={data.account} />
         </section>
       )}
+
+      {tab === 'ia' && (
+        <section className={styles.section}>
+          <IgAiInsights ig={data} />
+        </section>
+      )}
     </div>
   )
-}
-
-function Banner({ children }) {
-  return <div className={styles.banner}>ⓘ {children}</div>
 }
 
 function ChartTile({ title, children, full = false }) {
