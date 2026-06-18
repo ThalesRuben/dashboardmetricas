@@ -11,7 +11,6 @@ export { analyzeViral, VIRAL_PRESETS } from './lib/viralAnalysis';
 export { default as ChannelEngines } from './components/ChannelEngines';
 export { default as ContentCalendar } from './components/ContentCalendar';
 export { default as HypeBanner } from './components/HypeBanner';
-export { default as IgAccountBar } from './components/IgAccountBar';
 export { default as IgAiInsights } from './components/IgAiInsights';
 export { default as IgEngagementChart } from './components/IgEngagementChart';
 export { default as IgGrowthChart } from './components/IgGrowthChart';

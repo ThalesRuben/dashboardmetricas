@@ -13,8 +13,8 @@ import IgReachChart from '@/features/organic/instagram/components/IgReachChart'
 import IgTimeline from '@/features/organic/instagram/components/IgTimeline'
 import ChannelEngines from '@/features/organic/instagram/components/ChannelEngines'
 import ContentCalendar from '@/features/organic/instagram/components/ContentCalendar'
-import IgAccountBar from '@/features/organic/instagram/components/IgAccountBar'
 import IgAiInsights from '@/features/organic/instagram/components/IgAiInsights'
+import OrganicAccountBar from '@/components/social/OrganicAccountBar'
 import InsightsPanel from '@/components/ui/InsightsPanel'
 import styles from './InstagramPage.module.css'
 
@@ -88,7 +88,22 @@ export default function InstagramPage() {
         subtitle={topHype ? `${HYPE_LEVELS[topHype.level].label} agora — ${hypePosts.length} post${hypePosts.length>1?'s':''} acima da média` : null}
       />
 
-      <IgAccountBar usingMock={usingMock} syncing={syncing} onSync={handleSync} />
+      <OrganicAccountBar
+        connectorKey="instagram"
+        platformLabel="Instagram"
+        sectionColor="var(--section-instagram)"
+        knownAccounts={['@theblondeconcept', '@salao.bella']}
+        usingMock={usingMock}
+        syncing={syncing}
+        onSync={handleSync}
+        icon={
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="5" />
+            <circle cx="12" cy="12" r="4" />
+            <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+          </svg>
+        }
+      />
 
       <Tabs items={TABS} activeId={tab} onChange={setTab} accentColor="var(--section-instagram)" />
 

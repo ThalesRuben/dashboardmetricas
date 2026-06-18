@@ -2,12 +2,14 @@ import { useTikTokMetrics } from '@/features/organic/tiktok'
 import KpiCard from '@/shared/ui/KpiCard'
 import SocialLineChart from '@/components/social/SocialLineChart'
 import SocialVideoList from '@/components/social/SocialVideoList'
+import OrganicAccountBar from '@/components/social/OrganicAccountBar'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
 import { fmtNumber, fmtCompact, fmtPct } from '@/shared/lib/format'
 import styles from './SocialPage.module.css'
 
 const TIKTOK_COLOR = '#000000'
+const TIKTOK_ACCENT = '#FE2C55'
 
 const VIDEO_METRICS = [
   { key: 'visualizacoes',     label: 'views',   icon: '▶', fmt: fmtCompact },
@@ -54,16 +56,23 @@ export default function TikTokPage() {
     <div className={styles.page}>
       <PageHeader
         section="tiktok"
-        title={`TikTok · ${a.username}`}
+        title="TikTok orgânico"
         subtitle="Últimos 30 dias"
       />
 
-      {usingMock && (
-        <div className={styles.mockBanner}>
-          ⓘ Dados de demonstração. O TikTok não tem API pública de insights orgânicos por padrão —
-          os números podem ser inseridos manualmente ou via TikTok Business API (requer aprovação).
-        </div>
-      )}
+      <OrganicAccountBar
+        connectorKey="tiktok"
+        platformLabel="TikTok"
+        sectionColor={TIKTOK_ACCENT}
+        knownAccounts={[a.username, '@theblondeconcept']}
+        usingMock={usingMock}
+        metaOverride={usingMock ? 'TikTok orgânico não tem API pública — inserção manual ou TikTok Business API (requer aprovação)' : undefined}
+        icon={
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.84-.1z" />
+          </svg>
+        }
+      />
 
       <section className={styles.kpiGrid}>
         <KpiCard label="Seguidores"        value={fmtNumber(a.seguidores)}      delta={`${deltaUp?'+':''}${fmtNumber(a.seguidores_delta_30d)} em 30d`} up={deltaUp} />
