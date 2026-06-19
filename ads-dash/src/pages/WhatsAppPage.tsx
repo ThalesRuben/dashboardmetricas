@@ -89,9 +89,7 @@ export default function WhatsAppPage() {
 
       <Tabs items={tabs} activeId={tab} onChange={setTab} accentColor="var(--section-whatsapp)" />
 
-      {tab === 'inbox' && (
-        <Inbox conversas={data.conversas_recentes || []} />
-      )}
+      {tab === 'inbox' && <Inbox />}
 
       {tab === 'precisam' && (
         urgentes.length === 0 ? (

@@ -8,12 +8,21 @@ import type {
   WhatsAppDisparoInput,
   WhatsAppDisparoResultado,
   WhatsAppDisparoHistorico,
+  WhatsAppThreadReal,
+  WhatsAppMsgReal,
+  ReplyResultado,
 } from './types';
 
 export interface WhatsAppRepo {
   getSummary(): Promise<WhatsAppSummary | null>;
   enviarDisparo(input: WhatsAppDisparoInput): Promise<WhatsAppDisparoResultado>;
   listarDisparos(limit?: number): Promise<WhatsAppDisparoHistorico[]>;
+
+  // Inbox em tempo real
+  listarThreads(limit?: number): Promise<WhatsAppThreadReal[]>;
+  listarMsgs(threadId: string, limit?: number): Promise<WhatsAppMsgReal[]>;
+  enviarResposta(threadId: string, texto: string): Promise<ReplyResultado>;
+  marcarLido(threadId: string): Promise<void>;
 }
 
 export const whatsappRepo: WhatsAppRepo = createRepo<WhatsAppRepo>({

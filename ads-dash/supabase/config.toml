@@ -51,3 +51,9 @@ verify_jwt = false
 
 [functions.whatsapp-send]
 verify_jwt = false
+
+[functions.inbox-ingest]
+verify_jwt = false
+
+[functions.inbox-reply]
+verify_jwt = false

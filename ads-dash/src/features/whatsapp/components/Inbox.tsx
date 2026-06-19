@@ -1,51 +1,61 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import type { WhatsAppConversa, WhatsAppConversaStatus, WhatsAppMensagem } from '../api/types'
+import { useInbox } from '../hooks/useInbox'
+import type {
+  WhatsAppThreadReal,
+  WhatsAppMsgReal,
+  WhatsAppThreadStatusReal,
+} from '../api/types'
 import styles from './Inbox.module.css'
-
-interface InboxProps {
-  conversas: WhatsAppConversa[]
-}
 
 type Filter = 'todas' | 'nao_lidas' | 'leads' | 'agendados'
 
-const STATUS_LABEL: Record<WhatsAppConversaStatus, string> = {
-  lead:     'Lead',
-  aberta:   'Aberta',
-  agendado: 'Agendado',
-  venda:    'Venda',
+const STATUS_LABEL: Record<WhatsAppThreadStatusReal, string> = {
+  lead:      'Lead',
+  aberta:    'Aberta',
+  agendado:  'Agendado',
+  venda:     'Venda',
+  arquivada: 'Arquivada',
 }
 
-const STATUS_TONE: Record<WhatsAppConversaStatus, string> = {
-  lead:     'amber',
-  aberta:   'plain',
-  agendado: 'accent',
-  venda:    'success',
+const STATUS_TONE: Record<WhatsAppThreadStatusReal, string> = {
+  lead:      'amber',
+  aberta:    'plain',
+  agendado:  'accent',
+  venda:     'success',
+  arquivada: 'subtle',
 }
 
-export default function Inbox({ conversas }: InboxProps) {
+const JANELA_MS = 24 * 60 * 60 * 1000
+
+export default function Inbox() {
+  const {
+    threads,
+    msgs,
+    activeThread,
+    setActiveId,
+    enviando,
+    erroEnvio,
+    enviar,
+    realtime,
+  } = useInbox()
   const [filter, setFilter] = useState<Filter>('todas')
-  const [activeId, setActiveId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
-    if (filter === 'nao_lidas') return conversas.filter(c => (c.nao_lidas || 0) > 0)
-    if (filter === 'leads')     return conversas.filter(c => c.status === 'lead')
-    if (filter === 'agendados') return conversas.filter(c => c.status === 'agendado')
-    return conversas
-  }, [conversas, filter])
+    if (filter === 'nao_lidas') return threads.filter((t) => (t.nao_lidas || 0) > 0)
+    if (filter === 'leads')     return threads.filter((t) => t.status === 'lead')
+    if (filter === 'agendados') return threads.filter((t) => t.status === 'agendado')
+    return threads
+  }, [threads, filter])
 
+  // Auto-seleciona primeira da lista filtrada
   useEffect(() => {
-    if (!filtered.length) { setActiveId(null); return }
-    if (!activeId || !filtered.find(c => c.id === activeId)) {
-      setActiveId(filtered[0].id || null)
+    if (filtered.length === 0) return
+    if (!activeThread || !filtered.find((t) => t.id === activeThread.id)) {
+      setActiveId(filtered[0].id)
     }
-  }, [filtered, activeId])
+  }, [filtered, activeThread, setActiveId])
 
-  const active = useMemo(
-    () => conversas.find(c => c.id === activeId) || null,
-    [conversas, activeId],
-  )
-
-  const naoLidas = conversas.reduce((acc, c) => acc + (c.nao_lidas || 0), 0)
+  const naoLidas = threads.reduce((acc, t) => acc + (t.nao_lidas || 0), 0)
 
   return (
     <div className={styles.inbox}>
@@ -53,9 +63,10 @@ export default function Inbox({ conversas }: InboxProps) {
         <div className={styles.listHead}>
           <span className={styles.listTitle}>Conversas</span>
           {naoLidas > 0 && <span className={styles.headBadge}>{naoLidas} não lidas</span>}
+          {realtime && <span className={styles.headBadge} style={{ marginLeft: 6 }}>ao vivo</span>}
         </div>
         <div className={styles.filters}>
-          {(['todas', 'nao_lidas', 'leads', 'agendados'] as Filter[]).map(f => (
+          {(['todas', 'nao_lidas', 'leads', 'agendados'] as Filter[]).map((f) => (
             <button
               key={f}
               className={`${styles.filterChip} ${filter === f ? styles.filterChipOn : ''}`}
@@ -70,27 +81,29 @@ export default function Inbox({ conversas }: InboxProps) {
           {filtered.length === 0 && (
             <li className={styles.empty}>Nada por aqui.</li>
           )}
-          {filtered.map(c => (
+          {filtered.map((t) => (
             <li
-              key={c.id}
-              className={`${styles.listItem} ${c.id === activeId ? styles.listItemActive : ''}`}
-              onClick={() => setActiveId(c.id || null)}
+              key={t.id}
+              className={`${styles.listItem} ${t.id === activeThread?.id ? styles.listItemActive : ''}`}
+              onClick={() => setActiveId(t.id)}
             >
-              <span className={styles.avatar}>{c.nome.slice(0, 1)}</span>
+              <span className={styles.avatar}>{(t.contato_nome || t.contato_phone).slice(0, 1)}</span>
               <div className={styles.listBody}>
                 <div className={styles.listTop}>
-                  <span className={styles.listName}>{c.nome}</span>
-                  <span className={styles.listTime}>{c.hora}</span>
+                  <span className={styles.listName}>{t.contato_nome || t.contato_phone}</span>
+                  <span className={styles.listTime}>{fmtHora(t.ultima_atividade)}</span>
                 </div>
                 <div className={styles.listBottom}>
-                  <span className={styles.listPreview}>{lastPreview(c)}</span>
-                  {(c.nao_lidas || 0) > 0 && (
-                    <span className={styles.unread}>{c.nao_lidas}</span>
+                  <span className={styles.listPreview}>{t.ultima_msg_preview || '—'}</span>
+                  {(t.nao_lidas || 0) > 0 && (
+                    <span className={styles.unread}>{t.nao_lidas}</span>
                   )}
                 </div>
                 <div className={styles.listMeta}>
-                  <span className={`${styles.tag} ${styles['t_' + STATUS_TONE[c.status]]}`}>{STATUS_LABEL[c.status]}</span>
-                  <span className={styles.metaOrigem}>via {c.origem}</span>
+                  <span className={`${styles.tag} ${styles['t_' + STATUS_TONE[t.status]]}`}>
+                    {STATUS_LABEL[t.status]}
+                  </span>
+                  <span className={styles.metaOrigem}>via {t.origem}</span>
                 </div>
               </div>
             </li>
@@ -99,11 +112,21 @@ export default function Inbox({ conversas }: InboxProps) {
       </aside>
 
       <section className={styles.threadPane}>
-        {active ? <Thread conversa={active} /> : <EmptyThread />}
+        {activeThread ? (
+          <Thread
+            thread={activeThread}
+            msgs={msgs}
+            enviando={enviando}
+            erroEnvio={erroEnvio}
+            onSend={enviar}
+          />
+        ) : (
+          <EmptyThread />
+        )}
       </section>
 
       <aside className={styles.contactPane}>
-        {active ? <ContactPanel conversa={active} /> : null}
+        {activeThread ? <ContactPanel thread={activeThread} totalMsgs={msgs.length} /> : null}
       </aside>
     </div>
   )
@@ -116,66 +139,93 @@ function filterLabel(f: Filter) {
   return 'Agendados'
 }
 
-function lastPreview(c: WhatsAppConversa): string {
-  const last = c.mensagens?.[c.mensagens.length - 1]
-  if (!last) return c.resumo
-  const prefix = last.autor === 'atendente' ? 'Você: ' : ''
-  return prefix + last.texto
+interface ThreadProps {
+  thread: WhatsAppThreadReal
+  msgs: WhatsAppMsgReal[]
+  enviando: boolean
+  erroEnvio: string | null
+  onSend: (texto: string) => Promise<unknown>
 }
 
-function Thread({ conversa }: { conversa: WhatsAppConversa }) {
+function Thread({ thread, msgs, enviando, erroEnvio, onSend }: ThreadProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [texto, setTexto] = useState('')
 
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [conversa.id])
+  }, [thread.id, msgs.length])
 
-  const mensagens = conversa.mensagens || []
+  const janelaAberta = !!thread.ultima_msg_cliente_em
+    && (Date.now() - new Date(thread.ultima_msg_cliente_em).getTime()) < JANELA_MS
+
+  async function submit() {
+    if (!texto.trim() || enviando) return
+    const r = await onSend(texto)
+    if (r) setTexto('')
+  }
 
   return (
     <>
       <header className={styles.threadHead}>
-        <span className={styles.avatarLg}>{conversa.nome.slice(0, 1)}</span>
+        <span className={styles.avatarLg}>{(thread.contato_nome || thread.contato_phone).slice(0, 1)}</span>
         <div className={styles.threadHeadBody}>
-          <span className={styles.threadName}>{conversa.nome}</span>
+          <span className={styles.threadName}>{thread.contato_nome || thread.contato_phone}</span>
           <span className={styles.threadSub}>
-            {conversa.telefone || '—'} · via {conversa.origem}
+            {thread.contato_phone || '—'} · via {thread.origem}
           </span>
         </div>
-        <span className={`${styles.tag} ${styles['t_' + STATUS_TONE[conversa.status]]}`}>
-          {STATUS_LABEL[conversa.status]}
+        <span className={`${styles.tag} ${styles['t_' + STATUS_TONE[thread.status]]}`}>
+          {STATUS_LABEL[thread.status]}
         </span>
       </header>
 
       <div className={styles.threadBody} ref={scrollRef}>
-        <div className={styles.dateDivider}><span>Hoje</span></div>
-        {mensagens.length === 0 ? (
+        <div className={styles.dateDivider}><span>{fmtData(thread.ultima_atividade)}</span></div>
+        {msgs.length === 0 ? (
           <p className={styles.threadEmpty}>Sem mensagens ainda.</p>
         ) : (
-          mensagens.map((m, i) => <Bubble key={i} m={m} />)
+          msgs.map((m) => <Bubble key={m.id} m={m} />)
         )}
       </div>
+
+      {!janelaAberta && (
+        <div className={styles.janelaAviso}>
+          Janela de 24h fechada. Use a aba <strong>Disparo em massa</strong> com um template HSM
+          pra reabrir a conversa.
+        </div>
+      )}
+      {erroEnvio && <div className={styles.janelaAviso}>Erro: {erroEnvio}</div>}
 
       <footer className={styles.composer}>
         <input
           className={styles.composerInput}
-          placeholder="Envio desabilitado — plugue a WhatsApp Cloud API em Integrações"
-          disabled
+          placeholder={janelaAberta ? 'Escreva sua resposta…' : 'Janela fechada — use template'}
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
+          disabled={!janelaAberta || enviando}
         />
-        <button className={styles.composerBtn} type="button" disabled>Enviar</button>
+        <button
+          className={styles.composerBtn}
+          type="button"
+          disabled={!janelaAberta || enviando || !texto.trim()}
+          onClick={submit}
+        >
+          {enviando ? 'Enviando…' : 'Enviar'}
+        </button>
       </footer>
     </>
   )
 }
 
-function Bubble({ m }: { m: WhatsAppMensagem }) {
+function Bubble({ m }: { m: WhatsAppMsgReal }) {
   const isMe = m.autor === 'atendente'
   return (
     <div className={`${styles.bubbleRow} ${isMe ? styles.bubbleRowMe : ''}`}>
       <div className={`${styles.bubble} ${isMe ? styles.bubbleMe : styles.bubbleThem}`}>
         <p className={styles.bubbleText}>{m.texto}</p>
-        <span className={styles.bubbleTime}>{m.hora}</span>
+        <span className={styles.bubbleTime}>{fmtHora(m.hora)}</span>
       </div>
     </div>
   )
@@ -189,40 +239,47 @@ function EmptyThread() {
   )
 }
 
-function ContactPanel({ conversa }: { conversa: WhatsAppConversa }) {
+function ContactPanel({ thread, totalMsgs }: { thread: WhatsAppThreadReal; totalMsgs: number }) {
   return (
     <>
       <div className={styles.contactHead}>
-        <span className={styles.avatarLg}>{conversa.nome.slice(0, 1)}</span>
-        <span className={styles.contactName}>{conversa.nome}</span>
-        <span className={styles.contactPhone}>{conversa.telefone || '—'}</span>
+        <span className={styles.avatarLg}>{(thread.contato_nome || thread.contato_phone).slice(0, 1)}</span>
+        <span className={styles.contactName}>{thread.contato_nome || thread.contato_phone}</span>
+        <span className={styles.contactPhone}>{thread.contato_phone || '—'}</span>
       </div>
       <dl className={styles.contactList}>
         <div className={styles.contactItem}>
           <dt>Status</dt>
           <dd>
-            <span className={`${styles.tag} ${styles['t_' + STATUS_TONE[conversa.status]]}`}>
-              {STATUS_LABEL[conversa.status]}
+            <span className={`${styles.tag} ${styles['t_' + STATUS_TONE[thread.status]]}`}>
+              {STATUS_LABEL[thread.status]}
             </span>
           </dd>
         </div>
         <div className={styles.contactItem}>
           <dt>Origem</dt>
-          <dd>{conversa.origem}</dd>
+          <dd>{thread.origem}</dd>
         </div>
         <div className={styles.contactItem}>
           <dt>Última atividade</dt>
-          <dd>{conversa.hora}</dd>
+          <dd>{fmtData(thread.ultima_atividade)} {fmtHora(thread.ultima_atividade)}</dd>
         </div>
         <div className={styles.contactItem}>
           <dt>Mensagens</dt>
-          <dd>{conversa.mensagens?.length ?? 0}</dd>
-        </div>
-        <div className={styles.contactItem}>
-          <dt>Resumo</dt>
-          <dd className={styles.contactResumo}>{conversa.resumo}</dd>
+          <dd>{totalMsgs}</dd>
         </div>
       </dl>
     </>
   )
+}
+
+function fmtHora(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  } catch { return iso }
+}
+function fmtData(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  } catch { return iso }
 }

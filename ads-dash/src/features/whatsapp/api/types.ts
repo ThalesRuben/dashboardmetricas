@@ -111,3 +111,48 @@ export interface WhatsAppDisparoHistorico {
   status: 'em_andamento' | 'concluido' | 'erro';
   criado_em: string;
 }
+
+// ============================================================
+// Inbox em tempo real (tabelas whatsapp_contatos/threads/msgs)
+// ============================================================
+
+export type WhatsAppThreadStatusReal =
+  | 'lead'
+  | 'aberta'
+  | 'agendado'
+  | 'venda'
+  | 'arquivada';
+
+export type WhatsAppMsgStatus = 'enviada' | 'entregue' | 'lida' | 'erro';
+
+export interface WhatsAppMsgReal {
+  id: string;
+  thread_id: string;
+  autor: WhatsAppMensagemAutor;
+  texto: string;
+  status: WhatsAppMsgStatus;
+  hora: string; // ISO
+  msg_id_externo: string | null;
+}
+
+export interface WhatsAppThreadReal {
+  id: string;
+  contato_id: string;
+  contato_nome: string | null;
+  contato_phone: string;
+  status: WhatsAppThreadStatusReal;
+  origem: string;
+  nao_lidas: number;
+  ultima_atividade: string;            // ISO
+  ultima_msg_cliente_em: string | null; // ISO
+  ultima_msg_preview: string | null;
+}
+
+export interface ReplyResultado {
+  ok: boolean;
+  msg_id?: string;
+  external_id?: string | null;
+  sem_config?: boolean;
+  fora_da_janela?: boolean;
+  erro?: string;
+}

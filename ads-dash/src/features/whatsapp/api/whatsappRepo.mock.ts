@@ -175,6 +175,48 @@ export const mockWhatsAppRepo: WhatsAppRepo = {
   async listarDisparos(limit = 20) {
     return DISPAROS_MEM.slice(0, limit);
   },
+
+  // Inbox real → no mock, derivamos das conversas_recentes do summary.
+  async listarThreads(limit = 20) {
+    return MOCK.conversas_recentes.slice(0, limit).map((c) => ({
+      id: c.id || crypto.randomUUID(),
+      contato_id: c.id || crypto.randomUUID(),
+      contato_nome: c.nome,
+      contato_phone: (c.telefone || '').replace(/\D/g, ''),
+      status: c.status as any,
+      origem: c.origem,
+      nao_lidas: c.nao_lidas || 0,
+      ultima_atividade: new Date().toISOString(),
+      ultima_msg_cliente_em: new Date().toISOString(),
+      ultima_msg_preview:
+        c.mensagens && c.mensagens.length > 0
+          ? c.mensagens[c.mensagens.length - 1].texto
+          : c.resumo,
+    }));
+  },
+
+  async listarMsgs(threadId: string) {
+    const c = MOCK.conversas_recentes.find((x) => x.id === threadId);
+    if (!c) return [];
+    const baseHora = new Date();
+    return (c.mensagens || []).map((m, i) => ({
+      id: `${threadId}-${i}`,
+      thread_id: threadId,
+      autor: m.autor,
+      texto: m.texto,
+      status: 'entregue' as const,
+      hora: new Date(baseHora.getTime() - (c.mensagens!.length - i) * 60_000).toISOString(),
+      msg_id_externo: null,
+    }));
+  },
+
+  async enviarResposta() {
+    return { ok: true, sem_config: true };
+  },
+
+  async marcarLido() {
+    /* noop no mock */
+  },
 };
 
 export { MOCK as MOCK_WHATSAPP };
