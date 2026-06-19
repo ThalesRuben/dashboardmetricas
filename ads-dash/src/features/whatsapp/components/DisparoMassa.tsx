@@ -16,13 +16,16 @@ const PUBLICO_LABEL: Record<Publico, string> = {
   colar: 'Colar lista de números',
 }
 
+const EXEMPLO_MSG =
+  'Oi {{1}}! Aqui é do The Blonde Concept ✨ Temos horários disponíveis essa semana — quer dar uma olhada?'
+
 export default function DisparoMassa({ conversas }: Props) {
   const { historico, ultimoResultado, enviando, erro, disparar } = useWhatsAppDisparos()
 
   const [publico, setPublico] = useState<Publico>('leads')
   const [colado, setColado] = useState('')
-  const [templateName, setTemplateName] = useState('')
-  const [language, setLanguage] = useState('pt_BR')
+  const [rotulo, setRotulo] = useState('')
+  const [mensagem, setMensagem] = useState('')
   const [varsRaw, setVarsRaw] = useState('')
   const [confirmar, setConfirmar] = useState(false)
 
@@ -42,20 +45,27 @@ export default function DisparoMassa({ conversas }: Props) {
       .filter(c => !!c.telefone)
       .map(c => ({
         phone: (c.telefone || '').replace(/\D/g, ''),
-        params: variables.length ? [c.nome, ...variables.slice(1)] : undefined,
+        params: [c.nome, ...variables.slice(1)],
       }))
   }, [publico, colado, conversas, variables])
 
   const validos = destinatarios.filter(r => r.phone.length >= 10)
 
-  const podeDisparar = templateName.trim().length > 0 && validos.length > 0 && !enviando
+  const previewParams = validos[0]?.params || variables
+  const previewMsg = aplicarVars(mensagem || EXEMPLO_MSG, previewParams)
+
+  const podeDisparar =
+    rotulo.trim().length > 0 &&
+    mensagem.trim().length > 0 &&
+    validos.length > 0 &&
+    !enviando
 
   async function onDisparar() {
     if (!podeDisparar) return
     if (!confirmar) { setConfirmar(true); return }
     await disparar({
-      template_name: templateName.trim(),
-      language,
+      rotulo: rotulo.trim(),
+      mensagem: mensagem.trim(),
       variables,
       recipients: validos,
     })
@@ -99,33 +109,34 @@ export default function DisparoMassa({ conversas }: Props) {
           </div>
         </section>
 
-        {/* coluna 2: template */}
+        {/* coluna 2: mensagem */}
         <section className={styles.card}>
-          <h3 className={styles.title}>2. Template HSM</h3>
-          <label className={styles.label}>Nome do template (aprovado na Meta)</label>
+          <h3 className={styles.title}>2. Mensagem</h3>
+          <label className={styles.label}>Rótulo do disparo (identificador interno)</label>
           <input
             className={styles.input}
-            placeholder="ex: boas_vindas"
-            value={templateName}
-            onChange={e => { setTemplateName(e.target.value); setConfirmar(false) }}
+            placeholder="ex: promo-junho"
+            value={rotulo}
+            onChange={e => { setRotulo(e.target.value); setConfirmar(false) }}
           />
-          <label className={styles.label}>Idioma</label>
-          <input
-            className={styles.input}
-            placeholder="pt_BR"
-            value={language}
-            onChange={e => setLanguage(e.target.value)}
+          <label className={styles.label}>Texto da mensagem</label>
+          <textarea
+            className={styles.textarea}
+            rows={5}
+            placeholder={EXEMPLO_MSG}
+            value={mensagem}
+            onChange={e => { setMensagem(e.target.value); setConfirmar(false) }}
           />
-          <label className={styles.label}>Variáveis do corpo (separadas por <code>|</code>)</label>
+          <label className={styles.label}>Variáveis padrão (separadas por <code>|</code>)</label>
           <input
             className={styles.input}
-            placeholder="ex: Marina | sábado às 14h"
+            placeholder="ex: cliente | sábado às 14h"
             value={varsRaw}
             onChange={e => setVarsRaw(e.target.value)}
           />
           <p className={styles.hint}>
-            Use <code>|</code> entre as variáveis. Pra públicos filtrados, a 1ª variável é
-            substituída automaticamente pelo nome de cada contato.
+            Use <code>{'{{1}}'}</code>, <code>{'{{2}}'}</code>… na mensagem.
+            Pra públicos filtrados, <code>{'{{1}}'}</code> vira o nome de cada contato automaticamente.
           </p>
         </section>
 
@@ -133,20 +144,17 @@ export default function DisparoMassa({ conversas }: Props) {
         <section className={styles.card}>
           <h3 className={styles.title}>3. Preview & disparo</h3>
           <div className={styles.preview}>
-            <span className={styles.pvLabel}>Template</span>
-            <span className={styles.pvValue}>{templateName || '—'}</span>
-            <span className={styles.pvLabel}>Idioma</span>
-            <span className={styles.pvValue}>{language}</span>
-            <span className={styles.pvLabel}>Variáveis</span>
-            <span className={styles.pvValue}>{variables.length ? variables.join(' · ') : '—'}</span>
+            <span className={styles.pvLabel}>Rótulo</span>
+            <span className={styles.pvValue}>{rotulo || '—'}</span>
             <span className={styles.pvLabel}>Destinatários</span>
             <span className={styles.pvValue}>{validos.length}</span>
+            <span className={styles.pvLabel}>Preview</span>
+            <span className={styles.pvValue} style={{ whiteSpace: 'pre-wrap' }}>{previewMsg || '—'}</span>
           </div>
 
           {confirmar && (
             <div className={styles.confirm}>
-              Confirmar envio para <strong>{validos.length}</strong> número(s)? Esta ação consome
-              créditos da Meta.
+              Confirmar envio para <strong>{validos.length}</strong> número(s) via Z-API?
             </div>
           )}
 
@@ -173,8 +181,8 @@ export default function DisparoMassa({ conversas }: Props) {
               </div>
               {ultimoResultado.sem_config && (
                 <p className={styles.hint}>
-                  Nenhuma mensagem foi enviada de verdade — configure <code>WHATSAPP_TOKEN</code> e{' '}
-                  <code>WHATSAPP_PHONE_NUMBER_ID</code> nos secrets da edge function.
+                  Nenhuma mensagem foi enviada — configure <code>ZAPI_INSTANCE_ID</code>,{' '}
+                  <code>ZAPI_TOKEN</code> e <code>ZAPI_CLIENT_TOKEN</code> nos secrets.
                 </p>
               )}
             </div>
@@ -191,8 +199,7 @@ export default function DisparoMassa({ conversas }: Props) {
             <thead>
               <tr>
                 <th>Quando</th>
-                <th>Template</th>
-                <th>Idioma</th>
+                <th>Rótulo</th>
                 <th>Total</th>
                 <th>Enviados</th>
                 <th>Falhas</th>
@@ -204,7 +211,6 @@ export default function DisparoMassa({ conversas }: Props) {
                 <tr key={h.id}>
                   <td>{fmtData(h.criado_em)}</td>
                   <td>{h.template_name}</td>
-                  <td>{h.template_lang}</td>
                   <td>{h.total}</td>
                   <td className={styles.ok}>{h.enviados}</td>
                   <td className={h.falhas > 0 ? styles.fail : ''}>{h.falhas}</td>
@@ -228,6 +234,13 @@ function parsePhones(raw: string): string[] {
     .split(/[\n,;]/)
     .map(s => s.replace(/\D/g, ''))
     .filter(p => p.length >= 10)
+}
+
+function aplicarVars(template: string, params: string[]): string {
+  return template.replace(/\{\{(\d+)\}\}/g, (_, idx) => {
+    const i = Number(idx) - 1
+    return params[i] != null ? String(params[i]) : ''
+  })
 }
 
 function fmtData(iso: string): string {

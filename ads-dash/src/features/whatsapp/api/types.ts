@@ -76,9 +76,9 @@ export interface WhatsAppDisparoRecipient {
 }
 
 export interface WhatsAppDisparoInput {
-  template_name: string;
-  language?: string;
-  variables?: string[];
+  rotulo: string;       // identificador interno do disparo (aparece no histórico)
+  mensagem: string;     // texto livre; aceita {{1}}, {{2}}, ... como placeholders
+  variables?: string[]; // valores default usados quando recipient não tem params
   recipients: WhatsAppDisparoRecipient[];
   dry_run?: boolean;
 }

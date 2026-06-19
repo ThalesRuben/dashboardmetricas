@@ -25,8 +25,6 @@ const STATUS_TONE: Record<WhatsAppThreadStatusReal, string> = {
   arquivada: 'subtle',
 }
 
-const JANELA_MS = 24 * 60 * 60 * 1000
-
 export default function Inbox() {
   const {
     threads,
@@ -156,9 +154,6 @@ function Thread({ thread, msgs, enviando, erroEnvio, onSend }: ThreadProps) {
     if (el) el.scrollTop = el.scrollHeight
   }, [thread.id, msgs.length])
 
-  const janelaAberta = !!thread.ultima_msg_cliente_em
-    && (Date.now() - new Date(thread.ultima_msg_cliente_em).getTime()) < JANELA_MS
-
   async function submit() {
     if (!texto.trim() || enviando) return
     const r = await onSend(texto)
@@ -189,27 +184,21 @@ function Thread({ thread, msgs, enviando, erroEnvio, onSend }: ThreadProps) {
         )}
       </div>
 
-      {!janelaAberta && (
-        <div className={styles.janelaAviso}>
-          Janela de 24h fechada. Use a aba <strong>Disparo em massa</strong> com um template HSM
-          pra reabrir a conversa.
-        </div>
-      )}
       {erroEnvio && <div className={styles.janelaAviso}>Erro: {erroEnvio}</div>}
 
       <footer className={styles.composer}>
         <input
           className={styles.composerInput}
-          placeholder={janelaAberta ? 'Escreva sua resposta…' : 'Janela fechada — use template'}
+          placeholder="Escreva sua resposta…"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
-          disabled={!janelaAberta || enviando}
+          disabled={enviando}
         />
         <button
           className={styles.composerBtn}
           type="button"
-          disabled={!janelaAberta || enviando || !texto.trim()}
+          disabled={enviando || !texto.trim()}
           onClick={submit}
         >
           {enviando ? 'Enviando…' : 'Enviar'}

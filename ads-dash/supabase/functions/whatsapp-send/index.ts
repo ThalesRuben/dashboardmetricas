@@ -1,40 +1,41 @@
 // Supabase Edge Function — whatsapp-send
 //
-// Dispara mensagens em massa via WhatsApp Cloud API (Meta) usando template HSM.
+// Dispara mensagens em massa via Z-API (WhatsApp Web).
+// Z-API não tem o conceito de "template HSM" — manda texto livre.
+// A mensagem pode conter {{1}}, {{2}}, ... que são substituídos por
+// recipient.params (ou variables como fallback global).
+//
 // Salva o resultado consolidado em `whatsapp_disparos`.
 //
-// Variáveis de ambiente (Supabase → Edge Functions → Secrets):
+// Variáveis de ambiente:
 //   SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY
-//   WHATSAPP_TOKEN              token permanente do app Meta (System User)
-//   WHATSAPP_PHONE_NUMBER_ID    ex: 123456789012345
-//   INTERNAL_API_KEY            opcional — se setada, exige header x-internal-key
-//
-// Deploy:
-//   supabase functions deploy whatsapp-send --no-verify-jwt
+//   ZAPI_INSTANCE_ID
+//   ZAPI_TOKEN
+//   ZAPI_CLIENT_TOKEN
+//   INTERNAL_API_KEY      opcional
 //
 // Body esperado:
 //   {
-//     "tenant_id": "uuid",                  // opcional, usa default se omitido
-//     "template_name": "boas_vindas",
-//     "language": "pt_BR",                  // opcional, default pt_BR
-//     "variables": ["Marina"],              // opcional — variáveis padrão p/ body
+//     "tenant_id": "uuid",                  // opcional
+//     "rotulo": "promocao-junho",           // identifica o disparo no histórico
+//     "mensagem": "Oi {{1}}, hoje temos...",// texto com placeholders {{n}}
+//     "variables": ["Marina"],              // valores padrão (usados se recipient não trouxer params)
 //     "recipients": [
 //       { "phone": "5511984321100", "params": ["Marina"] },
-//       { "phone": "5511990214488" }        // usa "variables" se params omitido
+//       { "phone": "5511990214488" }
 //     ],
-//     "dry_run": false                      // se true, não chama API e não grava
+//     "dry_run": false
 //   }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const SUPABASE_URL  = Deno.env.get('SUPABASE_URL')!
-const SERVICE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const WA_TOKEN      = Deno.env.get('WHATSAPP_TOKEN')
-const WA_PHONE_ID   = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')
-const INTERNAL_KEY  = Deno.env.get('INTERNAL_API_KEY')
-
-const GRAPH = 'https://graph.facebook.com/v19.0'
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const ZAPI_INSTANCE     = Deno.env.get('ZAPI_INSTANCE_ID')
+const ZAPI_TOKEN        = Deno.env.get('ZAPI_TOKEN')
+const ZAPI_CLIENT_TOKEN = Deno.env.get('ZAPI_CLIENT_TOKEN')
+const INTERNAL_KEY      = Deno.env.get('INTERNAL_API_KEY')
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,8 +46,8 @@ const corsHeaders = {
 interface Recipient { phone: string; params?: string[] }
 interface SendBody {
   tenant_id?: string
-  template_name: string
-  language?: string
+  rotulo: string
+  mensagem: string
   variables?: string[]
   recipients: Recipient[]
   dry_run?: boolean
@@ -66,29 +67,27 @@ Deno.serve(async (req) => {
     return json({ error: 'JSON inválido' }, 400)
   }
 
-  if (!body.template_name) return json({ error: 'template_name é obrigatório' }, 400)
+  if (!body.mensagem) return json({ error: 'mensagem é obrigatória' }, 400)
+  if (!body.rotulo)   return json({ error: 'rotulo é obrigatório' }, 400)
   if (!Array.isArray(body.recipients) || body.recipients.length === 0) {
     return json({ error: 'recipients vazio' }, 400)
   }
 
-  const language = body.language || 'pt_BR'
   const dryRun = !!body.dry_run
-
-  // Sem secrets configurados → roda em modo dry-run forçado e retorna
-  // resultado simulado pra UI não quebrar enquanto o token não chega.
-  const semConfig = !WA_TOKEN || !WA_PHONE_ID
+  const semConfig = !ZAPI_INSTANCE || !ZAPI_TOKEN || !ZAPI_CLIENT_TOKEN
   const efetivoDry = dryRun || semConfig
 
   const resultados: Array<{ phone: string; ok: boolean; id?: string; error?: string }> = []
 
   for (const r of body.recipients) {
     const params = r.params || body.variables || []
+    const texto  = aplicarVars(body.mensagem, params)
     if (efetivoDry) {
       resultados.push({ phone: r.phone, ok: true, id: 'dry-run' })
       continue
     }
     try {
-      const id = await sendTemplate(r.phone, body.template_name, language, params)
+      const id = await zapiSendText(r.phone, texto)
       resultados.push({ phone: r.phone, ok: true, id })
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -99,19 +98,19 @@ Deno.serve(async (req) => {
   const enviados = resultados.filter(x => x.ok).length
   const falhas   = resultados.length - enviados
 
-  // Persiste o disparo (mesmo em dry-run real do front; pula se sem config + sem tenant)
+  // Persiste o disparo (mantém o schema atual da tabela: template_name vira rotulo).
   if (!semConfig && body.tenant_id) {
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
     const { error } = await supabase.from('whatsapp_disparos').insert({
       tenant_id: body.tenant_id,
-      template_name: body.template_name,
-      template_lang: language,
+      template_name: body.rotulo,
+      template_lang: 'pt_BR',
       variables: body.variables || [],
       total: resultados.length,
       enviados,
       falhas,
       status: falhas === 0 ? 'concluido' : (enviados === 0 ? 'erro' : 'concluido'),
-      detalhes: { resultados },
+      detalhes: { mensagem: body.mensagem, resultados },
     })
     if (error) {
       return json({
@@ -133,40 +132,31 @@ Deno.serve(async (req) => {
   })
 })
 
-async function sendTemplate(
-  to: string,
-  name: string,
-  language: string,
-  params: string[],
-): Promise<string> {
-  const components = params.length > 0
-    ? [{
-        type: 'body',
-        parameters: params.map(text => ({ type: 'text', text })),
-      }]
-    : []
+function aplicarVars(template: string, params: string[]): string {
+  return template.replace(/\{\{(\d+)\}\}/g, (_, idx) => {
+    const i = Number(idx) - 1
+    return params[i] != null ? String(params[i]) : ''
+  })
+}
 
-  const payload = {
-    messaging_product: 'whatsapp',
-    to: to.replace(/\D/g, ''),
-    type: 'template',
-    template: { name, language: { code: language }, components },
-  }
-
-  const res = await fetch(`${GRAPH}/${WA_PHONE_ID}/messages`, {
+async function zapiSendText(phone: string, message: string): Promise<string> {
+  const url = `https://api.z-api.io/instances/${ZAPI_INSTANCE}/token/${ZAPI_TOKEN}/send-text`
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${WA_TOKEN}`,
       'Content-Type': 'application/json',
+      'Client-Token': ZAPI_CLIENT_TOKEN!,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      phone: phone.replace(/\D/g, ''),
+      message,
+    }),
   })
-
-  const out = await res.json()
+  const out = await res.json().catch(() => ({}))
   if (!res.ok || out.error) {
-    throw new Error(`Graph API ${res.status}: ${out.error?.message || JSON.stringify(out)}`)
+    throw new Error(`Z-API ${res.status}: ${out.error || out.message || JSON.stringify(out)}`)
   }
-  return out.messages?.[0]?.id || 'sent'
+  return out.messageId || out.zaapId || out.id || 'sent'
 }
 
 function json(obj: unknown, status = 200) {

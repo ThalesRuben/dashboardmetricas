@@ -1,15 +1,16 @@
 // Supabase Edge Function — inbox-reply
 //
-// Envia uma resposta de atendente em uma thread existente, via Cloud API.
-// - Valida janela de 24h (free-form só permitido nesse intervalo).
-// - Grava a mensagem no banco e retorna o id.
+// Envia uma resposta de atendente em uma thread existente, via Z-API.
+// Z-API roda via WhatsApp Web, então NÃO existe janela de 24h nem
+// restrição de free-form (mensagem é sempre texto livre).
 //
 // Variáveis de ambiente:
 //   SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY
-//   WHATSAPP_TOKEN
-//   WHATSAPP_PHONE_NUMBER_ID
-//   INTERNAL_API_KEY            opcional
+//   ZAPI_INSTANCE_ID
+//   ZAPI_TOKEN
+//   ZAPI_CLIENT_TOKEN        (Account Security Token — header Client-Token)
+//   INTERNAL_API_KEY          opcional
 //
 // Deploy:
 //   supabase functions deploy inbox-reply --no-verify-jwt
@@ -19,14 +20,12 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const SUPABASE_URL  = Deno.env.get('SUPABASE_URL')!
-const SERVICE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const WA_TOKEN      = Deno.env.get('WHATSAPP_TOKEN')
-const WA_PHONE_ID   = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')
-const INTERNAL_KEY  = Deno.env.get('INTERNAL_API_KEY')
-
-const GRAPH = 'https://graph.facebook.com/v19.0'
-const JANELA_MS = 24 * 60 * 60 * 1000
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const ZAPI_INSTANCE     = Deno.env.get('ZAPI_INSTANCE_ID')
+const ZAPI_TOKEN        = Deno.env.get('ZAPI_TOKEN')
+const ZAPI_CLIENT_TOKEN = Deno.env.get('ZAPI_CLIENT_TOKEN')
+const INTERNAL_KEY      = Deno.env.get('INTERNAL_API_KEY')
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -58,7 +57,7 @@ Deno.serve(async (req) => {
   // Buscar thread + telefone do contato
   const { data: thread, error: thErr } = await supabase
     .from('whatsapp_threads')
-    .select('id, tenant_id, contato_id, ultima_msg_cliente_em')
+    .select('id, tenant_id, contato_id')
     .eq('id', body.thread_id)
     .single()
   if (thErr || !thread) return json({ error: 'thread não encontrada' }, 404)
@@ -70,33 +69,20 @@ Deno.serve(async (req) => {
     .single()
   if (coErr || !contato) return json({ error: 'contato não encontrado' }, 404)
 
-  // Validar janela 24h
-  const janelaAberta = thread.ultima_msg_cliente_em
-    && (Date.now() - new Date(thread.ultima_msg_cliente_em).getTime()) < JANELA_MS
-
-  if (!janelaAberta) {
-    return json({
-      error: 'fora_da_janela_24h',
-      message:
-        'Janela de 24h fechada — Cloud API só permite texto livre dentro de 24h da última msg do cliente. '
-        + 'Use a aba "Disparo em massa" com um template HSM aprovado pra reabrir a conversa.',
-    }, 409)
-  }
-
-  const semConfig = !WA_TOKEN || !WA_PHONE_ID
+  const semConfig = !ZAPI_INSTANCE || !ZAPI_TOKEN || !ZAPI_CLIENT_TOKEN
 
   let externalId: string | null = null
   let erro: string | null = null
 
   if (!semConfig) {
     try {
-      externalId = await enviarTexto(contato.phone, body.texto)
+      externalId = await zapiSendText(contato.phone, body.texto)
     } catch (e) {
       erro = e instanceof Error ? e.message : String(e)
     }
   }
 
-  // Grava msg sempre (em simulação ou real). Se houve erro, marca status=erro.
+  // Grava msg sempre (mesmo em simulação ou erro).
   const { data: msg, error: msgErr } = await supabase
     .from('whatsapp_msgs')
     .insert({
@@ -115,7 +101,6 @@ Deno.serve(async (req) => {
     return json({ error: 'falha ao gravar msg: ' + (msgErr?.message || '') }, 500)
   }
 
-  // Atualizar ultima_atividade e zerar nao_lidas
   await supabase
     .from('whatsapp_threads')
     .update({ ultima_atividade: new Date().toISOString(), nao_lidas: 0 })
@@ -131,26 +116,24 @@ Deno.serve(async (req) => {
   })
 })
 
-async function enviarTexto(to: string, texto: string): Promise<string> {
-  const payload = {
-    messaging_product: 'whatsapp',
-    to: to.replace(/\D/g, ''),
-    type: 'text',
-    text: { body: texto, preview_url: false },
-  }
-  const res = await fetch(`${GRAPH}/${WA_PHONE_ID}/messages`, {
+async function zapiSendText(phone: string, message: string): Promise<string> {
+  const url = `https://api.z-api.io/instances/${ZAPI_INSTANCE}/token/${ZAPI_TOKEN}/send-text`
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${WA_TOKEN}`,
       'Content-Type': 'application/json',
+      'Client-Token': ZAPI_CLIENT_TOKEN!,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      phone: phone.replace(/\D/g, ''),
+      message,
+    }),
   })
-  const out = await res.json()
+  const out = await res.json().catch(() => ({}))
   if (!res.ok || out.error) {
-    throw new Error(`Graph API ${res.status}: ${out.error?.message || JSON.stringify(out)}`)
+    throw new Error(`Z-API ${res.status}: ${out.error || out.message || JSON.stringify(out)}`)
   }
-  return out.messages?.[0]?.id || 'sent'
+  return out.messageId || out.zaapId || out.id || 'sent'
 }
 
 function json(obj: unknown, status = 200) {

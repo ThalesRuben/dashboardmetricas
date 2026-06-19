@@ -58,11 +58,16 @@ Três edge functions trabalham juntas:
 | `inbox-reply`    | front (composer)  | envia resposta do atendente via Cloud API           |
 | `whatsapp-send`   | front (disparo)   | dispara template HSM em massa                       |
 
+A operação usa **Z-API** (WhatsApp Web via BSP) — não Cloud API da Meta.
+Por isso **não há janela de 24h** nem templates HSM: o envio é sempre texto
+livre, e o disparo em massa só precisa de mensagem + variáveis.
+
 ### Secrets necessários (Supabase → Functions → Secrets)
 
 ```
-WHATSAPP_TOKEN              # System User token (não expira)
-WHATSAPP_PHONE_NUMBER_ID    # id do número na Meta
+ZAPI_INSTANCE_ID            # id da instância Z-API
+ZAPI_TOKEN                  # token da instância (mesma tela)
+ZAPI_CLIENT_TOKEN           # Account Security Token (vai no header Client-Token)
 INTERNAL_API_KEY            # secret arbitrário; n8n manda no header
 DEFAULT_TENANT_SLUG         # opcional; default = 'the-blonde-concept'
 ```
@@ -100,9 +105,9 @@ No fluxo que recebe webhook do WhatsApp, adicione **um nó "HTTP Request"** no f
   Você continua gravando no Postgres da DigitalOcean normalmente — esse nó só
   espelha pro Supabase pra alimentar o ads-dash.
 
-### Janela de 24h
+### Disparo em massa
 
-A Cloud API só permite texto livre dentro de 24h da última msg do cliente.
-O `inbox-reply` valida isso e retorna `409` se a janela fechou.
-Pra reabrir conversa fora da janela, use a aba **Disparo em massa** com um
-template HSM aprovado.
+A função `whatsapp-send` aceita uma mensagem com placeholders `{{1}}`, `{{2}}`,
+e substitui por `recipient.params` (ou `variables` como fallback). Cada envio
+é uma chamada `send-text` da Z-API. O resultado consolidado é gravado em
+`whatsapp_disparos`.

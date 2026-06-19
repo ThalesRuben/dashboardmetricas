@@ -153,8 +153,8 @@ export const mockWhatsAppRepo: WhatsAppRepo = {
     }));
     DISPAROS_MEM.unshift({
       id: crypto.randomUUID(),
-      template_name: input.template_name,
-      template_lang: input.language || 'pt_BR',
+      template_name: input.rotulo,
+      template_lang: 'pt_BR',
       variables: input.variables || [],
       total,
       enviados: total,
