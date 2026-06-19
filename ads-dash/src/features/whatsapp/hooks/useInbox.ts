@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useId } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { whatsappRepo } from '../api/whatsappRepo'
 import { getDataSource } from '@/shared/lib/api/createRepo'
@@ -27,6 +27,7 @@ export function useInbox(): UseInboxReturn {
   const [enviando, setEnviando] = useState(false)
   const [erroEnvio, setErroEnvio] = useState<string | null>(null)
   const realtime = getDataSource() === 'supabase'
+  const channelId = useId()
   const activeIdRef = useRef<string | null>(null)
   activeIdRef.current = activeId
 
@@ -62,7 +63,7 @@ export function useInbox(): UseInboxReturn {
   useEffect(() => {
     if (!realtime) return
     const channel = supabase
-      .channel('inbox-rt')
+      .channel(`inbox-rt-${channelId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'whatsapp_msgs' },
@@ -82,7 +83,7 @@ export function useInbox(): UseInboxReturn {
       )
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [realtime, reloadThreads])
+  }, [realtime, reloadThreads, channelId])
 
   const enviar = useCallback(async (texto: string): Promise<ReplyResultado | null> => {
     if (!activeId || !texto.trim()) return null
