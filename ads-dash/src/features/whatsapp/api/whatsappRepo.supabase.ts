@@ -14,13 +14,10 @@ import { MOCK_WHATSAPP } from './whatsappRepo.mock';
 
 export const supabaseWhatsAppRepo: WhatsAppRepo = {
   async getSummary() {
-    const { data, error } = await supabase
-      .from('whatsapp_metrics')
-      .select('*')
-      .order('date', { ascending: false })
-      .limit(1);
-    if (error || !data?.length) return null;
-    return { ...MOCK_WHATSAPP, ...data[0].payload };
+    const { data, error } = await supabase.rpc('get_whatsapp_summary');
+    if (error || !data) return null;
+    // Mescla sobre o MOCK pra qualquer campo opcional faltando ficar com placeholder.
+    return { ...MOCK_WHATSAPP, ...(data as any) };
   },
 
   async enviarDisparo(input) {

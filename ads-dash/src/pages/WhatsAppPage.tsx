@@ -1,5 +1,16 @@
 import { useState, useMemo } from 'react'
-import { useWhatsAppMetrics, Inbox, DisparoMassa } from '@/features/whatsapp'
+import {
+  useWhatsAppMetrics,
+  useInbox,
+  Inbox,
+  DisparoMassa,
+} from '@/features/whatsapp'
+import type {
+  WhatsAppThreadReal,
+  WhatsAppThreadStatusReal,
+  WhatsAppConversa,
+  WhatsAppConversaStatus,
+} from '@/features/whatsapp'
 import { fmtNumber, fmtPct } from '@/shared/lib/format'
 import PageHeader from '@/components/ui/PageHeader'
 import Tabs from '@/components/ui/Tabs'
@@ -7,20 +18,27 @@ import KpiCard from '@/shared/ui/KpiCard'
 import SocialLineChart from '@/components/social/SocialLineChart'
 import styles from './WhatsAppPage.module.css'
 
-const STATUS = {
-  lead:     { label: 'Lead', tone: 'amber',   urgent: true  },
-  aberta:   { label: 'Aberta', tone: 'plain', urgent: true  },
-  agendado: { label: 'Agendado', tone: 'accent', urgent: false },
-  venda:    { label: 'Venda', tone: 'success', urgent: false },
+const STATUS: Record<WhatsAppThreadStatusReal, { label: string; tone: string; urgent: boolean }> = {
+  lead:      { label: 'Lead',      tone: 'amber',   urgent: true  },
+  aberta:    { label: 'Aberta',    tone: 'plain',   urgent: true  },
+  agendado:  { label: 'Agendado',  tone: 'accent',  urgent: false },
+  venda:     { label: 'Venda',     tone: 'success', urgent: false },
+  arquivada: { label: 'Arquivada', tone: 'subtle',  urgent: false },
 }
 
 export default function WhatsAppPage() {
   const { data, loading, usingMock } = useWhatsAppMetrics()
+  const { threads } = useInbox()
   const [tab, setTab] = useState('inbox')
 
   const urgentes = useMemo(
-    () => (data?.conversas_recentes || []).filter(c => STATUS[c.status]?.urgent),
-    [data?.conversas_recentes]
+    () => threads.filter(t => (t.nao_lidas || 0) > 0 || STATUS[t.status]?.urgent),
+    [threads],
+  )
+
+  const naoLidasTotal = useMemo(
+    () => threads.reduce((acc, t) => acc + (t.nao_lidas || 0), 0),
+    [threads],
   )
 
   if (loading || !data) {
@@ -28,27 +46,27 @@ export default function WhatsAppPage() {
   }
 
   const r = data.resumo
-
-  const naoLidasTotal = (data.conversas_recentes || []).reduce(
-    (acc, c) => acc + (c.nao_lidas || 0),
-    0,
-  )
+  // Só mostra o banner de "demo" se realmente não tem dado real chegando.
+  const semDadoReal = usingMock && threads.length === 0
 
   const tabs = [
     { id: 'inbox',    label: 'Inbox', badge: naoLidasTotal || undefined },
     { id: 'precisam', label: 'Precisam de você', badge: urgentes.length || undefined },
-    { id: 'todas',    label: 'Todas as conversas' },
+    { id: 'todas',    label: 'Todas as conversas', badge: threads.length || undefined },
     { id: 'disparo',  label: 'Disparo em massa' },
     { id: 'funil',    label: 'Funil' },
     { id: 'origem',   label: 'Origem & motivos' },
   ]
+
+  // DisparoMassa ainda fala o tipo legado WhatsAppConversa — adapta as threads.
+  const conversasLegado = threads.map(threadToConversa)
 
   return (
     <div className={styles.page}>
       <PageHeader
         section="whatsapp"
         title="WhatsApp"
-        subtitle={`${fmtNumber(r.conversas)} conversas no período · ticket médio R$ ${fmtNumber(r.ticket_medio)}`}
+        subtitle={`${fmtNumber(r.conversas)} conversas no período · tempo médio de resposta ${r.tempo_resposta_min} min`}
         actions={
           <span className={styles.connected}>
             <span className={styles.dot} />
@@ -57,7 +75,7 @@ export default function WhatsAppPage() {
         }
       />
 
-      {usingMock && <Banner>Dados de demonstração. Plugue a WhatsApp Cloud API em <strong>Integrações</strong>.</Banner>}
+      {semDadoReal && <Banner>Dados de demonstração. Aguardando primeira mensagem real.</Banner>}
 
       <section className={styles.kpis}>
         <KpiCard
@@ -99,19 +117,23 @@ export default function WhatsAppPage() {
             <p className={styles.queueHint}>
               {urgentes.length} conversa{urgentes.length > 1 ? 's' : ''} esperando você. Responda em até 10 min pra manter a meta de conversão.
             </p>
-            {urgentes.map((c, i) => <ConvRow key={i} c={c} />)}
+            {urgentes.map((t) => <ThreadRow key={t.id} t={t} onOpen={() => setTab('inbox')} />)}
           </div>
         )
       )}
 
       {tab === 'todas' && (
-        <div className={styles.queue}>
-          {(data.conversas_recentes || []).map((c, i) => <ConvRow key={i} c={c} />)}
-        </div>
+        threads.length === 0 ? (
+          <p className={styles.empty}>Nenhuma conversa ainda. Assim que chegar mensagem, ela aparece aqui.</p>
+        ) : (
+          <div className={styles.queue}>
+            {threads.map((t) => <ThreadRow key={t.id} t={t} onOpen={() => setTab('inbox')} />)}
+          </div>
+        )
       )}
 
       {tab === 'disparo' && (
-        <DisparoMassa conversas={data.conversas_recentes || []} />
+        <DisparoMassa conversas={conversasLegado} />
       )}
 
       {tab === 'funil' && (
@@ -153,21 +175,52 @@ function Banner({ children }) {
   return <div className={styles.banner}>ⓘ {children}</div>
 }
 
-function ConvRow({ c }) {
-  const s = STATUS[c.status] || STATUS.aberta
+function ThreadRow({ t, onOpen }: { t: WhatsAppThreadReal; onOpen: () => void }) {
+  const s = STATUS[t.status] || STATUS.aberta
+  const nome = t.contato_nome || t.contato_phone || '—'
+  const preview = t.ultima_msg_preview || 'Sem mensagens ainda.'
   return (
-    <div className={styles.convRow}>
-      <span className={styles.convAvatar}>{c.nome.slice(0,1)}</span>
+    <div className={styles.convRow} onClick={onOpen} role="button" tabIndex={0}>
+      <span className={styles.convAvatar}>{nome.slice(0, 1).toUpperCase()}</span>
       <div className={styles.convBody}>
         <div className={styles.convTop}>
-          <span className={styles.convNome}>{c.nome}</span>
+          <span className={styles.convNome}>{nome}</span>
           <span className={`${styles.convTag} ${styles['t_' + s.tone]}`}>{s.label}</span>
         </div>
-        <p className={styles.convResumo}>{c.resumo}</p>
-        <span className={styles.convMeta}>{c.hora} · via {c.origem}</span>
+        <p className={styles.convResumo}>{preview}</p>
+        <span className={styles.convMeta}>
+          {fmtHoraCurta(t.ultima_atividade)} · via {t.origem}
+          {(t.nao_lidas || 0) > 0 && ` · ${t.nao_lidas} não lida${t.nao_lidas > 1 ? 's' : ''}`}
+        </span>
       </div>
     </div>
   )
+}
+
+function fmtHoraCurta(iso: string): string {
+  try {
+    const d = new Date(iso)
+    const hoje = new Date()
+    if (d.toDateString() === hoje.toDateString()) {
+      return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    }
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  } catch { return iso }
+}
+
+function threadToConversa(t: WhatsAppThreadReal): WhatsAppConversa {
+  const statusLegado: WhatsAppConversaStatus =
+    t.status === 'arquivada' ? 'aberta' : (t.status as WhatsAppConversaStatus)
+  return {
+    id: t.id,
+    nome: t.contato_nome || t.contato_phone || '—',
+    resumo: t.ultima_msg_preview || '',
+    status: statusLegado,
+    hora: fmtHoraCurta(t.ultima_atividade),
+    origem: t.origem,
+    telefone: t.contato_phone,
+    nao_lidas: t.nao_lidas,
+  }
 }
 
 function Funnel({ funil }) {
