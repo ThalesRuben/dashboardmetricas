@@ -69,3 +69,45 @@ export interface WhatsAppSummary {
   origens: WhatsAppOrigem[];
   conversas_recentes: WhatsAppConversa[];
 }
+
+export interface WhatsAppDisparoRecipient {
+  phone: string;
+  params?: string[];
+}
+
+export interface WhatsAppDisparoInput {
+  template_name: string;
+  language?: string;
+  variables?: string[];
+  recipients: WhatsAppDisparoRecipient[];
+  dry_run?: boolean;
+}
+
+export interface WhatsAppDisparoResultadoItem {
+  phone: string;
+  ok: boolean;
+  id?: string;
+  error?: string;
+}
+
+export interface WhatsAppDisparoResultado {
+  message: string;
+  dry_run: boolean;
+  sem_config: boolean;
+  total: number;
+  enviados: number;
+  falhas: number;
+  resultados: WhatsAppDisparoResultadoItem[];
+}
+
+export interface WhatsAppDisparoHistorico {
+  id: string;
+  template_name: string;
+  template_lang: string;
+  variables: string[];
+  total: number;
+  enviados: number;
+  falhas: number;
+  status: 'em_andamento' | 'concluido' | 'erro';
+  criado_em: string;
+}

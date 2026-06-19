@@ -48,3 +48,6 @@ verify_jwt = false
 
 [functions.gemini-youtube-insights]
 verify_jwt = false
+
+[functions.whatsapp-send]
+verify_jwt = false

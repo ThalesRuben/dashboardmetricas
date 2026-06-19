@@ -137,9 +137,43 @@ const MOCK: WhatsAppSummary = {
   ],
 };
 
+// Histórico in-memory (perde no refresh; o que importa é validar o fluxo).
+const DISPAROS_MEM: import('./types').WhatsAppDisparoHistorico[] = [];
+
 export const mockWhatsAppRepo: WhatsAppRepo = {
   async getSummary() {
     return MOCK;
+  },
+  async enviarDisparo(input) {
+    const total = input.recipients.length;
+    const resultados = input.recipients.map(r => ({
+      phone: r.phone,
+      ok: true,
+      id: 'mock-' + Math.random().toString(36).slice(2, 9),
+    }));
+    DISPAROS_MEM.unshift({
+      id: crypto.randomUUID(),
+      template_name: input.template_name,
+      template_lang: input.language || 'pt_BR',
+      variables: input.variables || [],
+      total,
+      enviados: total,
+      falhas: 0,
+      status: 'concluido',
+      criado_em: new Date().toISOString(),
+    });
+    return {
+      message: 'Mock: disparo simulado (modo demonstração).',
+      dry_run: true,
+      sem_config: true,
+      total,
+      enviados: total,
+      falhas: 0,
+      resultados,
+    };
+  },
+  async listarDisparos(limit = 20) {
+    return DISPAROS_MEM.slice(0, limit);
   },
 };
 

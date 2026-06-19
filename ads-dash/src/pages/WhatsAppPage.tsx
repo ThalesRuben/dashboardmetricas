@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useWhatsAppMetrics, Inbox } from '@/features/whatsapp'
+import { useWhatsAppMetrics, Inbox, DisparoMassa } from '@/features/whatsapp'
 import { fmtNumber, fmtPct } from '@/shared/lib/format'
 import PageHeader from '@/components/ui/PageHeader'
 import Tabs from '@/components/ui/Tabs'
@@ -38,6 +38,7 @@ export default function WhatsAppPage() {
     { id: 'inbox',    label: 'Inbox', badge: naoLidasTotal || undefined },
     { id: 'precisam', label: 'Precisam de você', badge: urgentes.length || undefined },
     { id: 'todas',    label: 'Todas as conversas' },
+    { id: 'disparo',  label: 'Disparo em massa' },
     { id: 'funil',    label: 'Funil' },
     { id: 'origem',   label: 'Origem & motivos' },
   ]
@@ -109,6 +110,10 @@ export default function WhatsAppPage() {
         <div className={styles.queue}>
           {(data.conversas_recentes || []).map((c, i) => <ConvRow key={i} c={c} />)}
         </div>
+      )}
+
+      {tab === 'disparo' && (
+        <DisparoMassa conversas={data.conversas_recentes || []} />
       )}
 
       {tab === 'funil' && (
