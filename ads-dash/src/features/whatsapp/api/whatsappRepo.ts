@@ -21,8 +21,12 @@ export interface WhatsAppRepo {
   // Inbox em tempo real
   listarThreads(limit?: number): Promise<WhatsAppThreadReal[]>;
   listarMsgs(threadId: string, limit?: number): Promise<WhatsAppMsgReal[]>;
+  // Junta msgs de todas as threads de um mesmo contato — usado pra contornar
+  // casos em que cada mensagem nova cai numa thread separada.
+  listarMsgsPorContato(contatoId: string, limit?: number): Promise<WhatsAppMsgReal[]>;
   enviarResposta(threadId: string, texto: string): Promise<ReplyResultado>;
   marcarLido(threadId: string): Promise<void>;
+  marcarLidoContato(contatoId: string): Promise<void>;
 }
 
 export const whatsappRepo: WhatsAppRepo = createRepo<WhatsAppRepo>({

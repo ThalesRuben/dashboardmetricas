@@ -5,6 +5,7 @@ import type {
   WhatsAppMsgReal,
   WhatsAppThreadStatusReal,
 } from '../api/types'
+import InboxCoachPanel from './InboxCoachPanel'
 import styles from './Inbox.module.css'
 
 type Filter = 'todas' | 'nao_lidas' | 'leads' | 'agendados'
@@ -54,6 +55,10 @@ export default function Inbox() {
   }, [filtered, activeThread, setActiveId])
 
   const naoLidas = threads.reduce((acc, t) => acc + (t.nao_lidas || 0), 0)
+
+  // Estado do composer fica aqui pra a IA poder injetar sugestões no input.
+  const [texto, setTexto] = useState('')
+  const composerRef = useRef<HTMLInputElement | null>(null)
 
   return (
     <div className={styles.inbox}>
@@ -117,6 +122,9 @@ export default function Inbox() {
             enviando={enviando}
             erroEnvio={erroEnvio}
             onSend={enviar}
+            texto={texto}
+            setTexto={setTexto}
+            composerRef={composerRef}
           />
         ) : (
           <EmptyThread />
@@ -124,7 +132,20 @@ export default function Inbox() {
       </section>
 
       <aside className={styles.contactPane}>
-        {activeThread ? <ContactPanel thread={activeThread} totalMsgs={msgs.length} /> : null}
+        {activeThread ? (
+          <>
+            <ContactPanel thread={activeThread} totalMsgs={msgs.length} />
+            <InboxCoachPanel
+              thread={activeThread}
+              msgs={msgs}
+              onUseSuggestion={(t) => {
+                setTexto(t)
+                // foca o composer pra o usuário ajustar/enviar.
+                requestAnimationFrame(() => composerRef.current?.focus())
+              }}
+            />
+          </>
+        ) : null}
       </aside>
     </div>
   )
@@ -143,11 +164,13 @@ interface ThreadProps {
   enviando: boolean
   erroEnvio: string | null
   onSend: (texto: string) => Promise<unknown>
+  texto: string
+  setTexto: (t: string) => void
+  composerRef: React.MutableRefObject<HTMLInputElement | null>
 }
 
-function Thread({ thread, msgs, enviando, erroEnvio, onSend }: ThreadProps) {
+function Thread({ thread, msgs, enviando, erroEnvio, onSend, texto, setTexto, composerRef }: ThreadProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
-  const [texto, setTexto] = useState('')
 
   useEffect(() => {
     const el = scrollRef.current
@@ -188,6 +211,7 @@ function Thread({ thread, msgs, enviando, erroEnvio, onSend }: ThreadProps) {
 
       <footer className={styles.composer}>
         <input
+          ref={composerRef}
           className={styles.composerInput}
           placeholder="Escreva sua resposta…"
           value={texto}

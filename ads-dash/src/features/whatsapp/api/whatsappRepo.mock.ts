@@ -210,11 +210,20 @@ export const mockWhatsAppRepo: WhatsAppRepo = {
     }));
   },
 
+  // No mock contato_id === thread.id (1 thread por contato), então delega.
+  async listarMsgsPorContato(contatoId: string) {
+    return this.listarMsgs(contatoId);
+  },
+
   async enviarResposta() {
     return { ok: true, sem_config: true };
   },
 
   async marcarLido() {
+    /* noop no mock */
+  },
+
+  async marcarLidoContato() {
     /* noop no mock */
   },
 };
