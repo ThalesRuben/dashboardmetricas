@@ -215,6 +215,11 @@ export const mockWhatsAppRepo: WhatsAppRepo = {
     return this.listarMsgs(contatoId);
   },
 
+  async listarMsgsPorContatos(contatoIds: string[]) {
+    const all = await Promise.all(contatoIds.map((id) => this.listarMsgs(id)));
+    return all.flat().sort((a, b) => (a.hora < b.hora ? -1 : 1));
+  },
+
   async enviarResposta() {
     return { ok: true, sem_config: true };
   },
@@ -224,6 +229,10 @@ export const mockWhatsAppRepo: WhatsAppRepo = {
   },
 
   async marcarLidoContato() {
+    /* noop no mock */
+  },
+
+  async marcarLidoContatos() {
     /* noop no mock */
   },
 };

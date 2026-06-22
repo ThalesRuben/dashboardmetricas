@@ -86,23 +86,11 @@ export const supabaseWhatsAppRepo: WhatsAppRepo = {
   },
 
   async listarMsgsPorContato(contatoId: string, limit = 400) {
-    // 1. Pega todas as threads desse contato (inclui arquivadas — histórico completo).
-    const { data: threads, error: tErr } = await supabase
-      .from('whatsapp_threads')
-      .select('id')
-      .eq('contato_id', contatoId);
-    if (tErr || !threads || threads.length === 0) return [];
-    const threadIds = threads.map((t: { id: string }) => t.id);
+    return listarMsgsPorContatosImpl([contatoId], limit);
+  },
 
-    // 2. Todas as msgs dessas threads, ordenadas por hora.
-    const { data, error } = await supabase
-      .from('whatsapp_msgs')
-      .select('id, thread_id, autor, texto, status, hora, msg_id_externo')
-      .in('thread_id', threadIds)
-      .order('hora', { ascending: true })
-      .limit(limit);
-    if (error || !data) return [];
-    return data as WhatsAppMsgReal[];
+  async listarMsgsPorContatos(contatoIds: string[], limit = 400) {
+    return listarMsgsPorContatosImpl(contatoIds, limit);
   },
 
   async enviarResposta(threadId: string, texto: string): Promise<ReplyResultado> {
@@ -143,4 +131,34 @@ export const supabaseWhatsAppRepo: WhatsAppRepo = {
       .update({ nao_lidas: 0 })
       .eq('contato_id', contatoId);
   },
+
+  async marcarLidoContatos(contatoIds: string[]) {
+    if (!contatoIds.length) return;
+    await supabase
+      .from('whatsapp_threads')
+      .update({ nao_lidas: 0 })
+      .in('contato_id', contatoIds);
+  },
 };
+
+async function listarMsgsPorContatosImpl(
+  contatoIds: string[],
+  limit: number,
+): Promise<WhatsAppMsgReal[]> {
+  if (!contatoIds.length) return [];
+  const { data: threads, error: tErr } = await supabase
+    .from('whatsapp_threads')
+    .select('id')
+    .in('contato_id', contatoIds);
+  if (tErr || !threads || threads.length === 0) return [];
+  const threadIds = threads.map((t: { id: string }) => t.id);
+
+  const { data, error } = await supabase
+    .from('whatsapp_msgs')
+    .select('id, thread_id, autor, texto, status, hora, msg_id_externo')
+    .in('thread_id', threadIds)
+    .order('hora', { ascending: true })
+    .limit(limit);
+  if (error || !data) return [];
+  return data as WhatsAppMsgReal[];
+}

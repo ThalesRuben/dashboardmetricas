@@ -24,9 +24,13 @@ export interface WhatsAppRepo {
   // Junta msgs de todas as threads de um mesmo contato — usado pra contornar
   // casos em que cada mensagem nova cai numa thread separada.
   listarMsgsPorContato(contatoId: string, limit?: number): Promise<WhatsAppMsgReal[]>;
+  // Versão que aceita vários contatos — usada quando o mesmo phone existe
+  // como contatos duplicados no banco (normalização inconsistente).
+  listarMsgsPorContatos(contatoIds: string[], limit?: number): Promise<WhatsAppMsgReal[]>;
   enviarResposta(threadId: string, texto: string): Promise<ReplyResultado>;
   marcarLido(threadId: string): Promise<void>;
   marcarLidoContato(contatoId: string): Promise<void>;
+  marcarLidoContatos(contatoIds: string[]): Promise<void>;
 }
 
 export const whatsappRepo: WhatsAppRepo = createRepo<WhatsAppRepo>({

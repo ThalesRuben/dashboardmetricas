@@ -48,6 +48,22 @@ interface IngestBody {
   tenant_slug?: string
 }
 
+// Normaliza telefone BR pra formato canônico `55DDXXXXXXXXX` (13 dígitos).
+// Sem isso, o n8n entrega o mesmo cliente em variantes (com/sem o "9" do
+// celular, com/sem DDI, com formatação) e o upsert por (tenant_id, phone)
+// cria um contato novo a cada variação, espalhando as msgs por threads
+// que nunca se encontram. Espelha src/features/whatsapp/lib/phone.ts.
+function normalizarPhoneBR(raw: string): string {
+  let n = (raw || '').replace(/\D/g, '')
+  if (!n) return ''
+  if (n.length >= 11 && n[0] === '0') n = n.slice(1)
+  if (n.length === 10 || n.length === 11) n = '55' + n
+  if (n.length === 12 && n.startsWith('55')) {
+    n = n.slice(0, 4) + '9' + n.slice(4)
+  }
+  return n
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -62,7 +78,7 @@ Deno.serve(async (req) => {
     return json({ error: 'JSON inválido' }, 400)
   }
 
-  const phone = (body.phone || '').replace(/\D/g, '')
+  const phone = normalizarPhoneBR(body.phone || '')
   if (!phone) return json({ error: 'phone é obrigatório' }, 400)
   if (!body.texto) return json({ error: 'texto é obrigatório' }, 400)
 

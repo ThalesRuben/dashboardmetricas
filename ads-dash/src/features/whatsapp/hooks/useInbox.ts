@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useId, useMemo } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { whatsappRepo } from '../api/whatsappRepo'
 import { getDataSource } from '@/shared/lib/api/createRepo'
+import { normalizarPhoneBR } from '../lib/phone'
 import type {
   WhatsAppThreadReal,
   WhatsAppMsgReal,
@@ -20,11 +21,9 @@ export interface UseInboxReturn {
   realtime: boolean
 }
 
-// Consolida várias threads do mesmo contato numa única entrada "representativa".
-// Necessário porque o inbox-ingest cria thread nova sempre que a anterior está
-// arquivada e, na prática, a operação acaba com várias threads do mesmo número.
-// Mantemos a mais recente como capa, somamos nao_lidas e priorizamos status
-// "vivo" (lead > agendado > venda > aberta > arquivada).
+// Consolida várias threads do mesmo cliente (que vêm como contatos/threads
+// duplicados no banco por causa de normalização inconsistente do telefone
+// no n8n) numa única entrada "representativa".
 const STATUS_PESO: Record<WhatsAppThreadReal['status'], number> = {
   lead:      5,
   agendado:  4,
@@ -33,21 +32,28 @@ const STATUS_PESO: Record<WhatsAppThreadReal['status'], number> = {
   arquivada: 1,
 }
 
-function consolidarPorContato(raw: WhatsAppThreadReal[]): WhatsAppThreadReal[] {
-  const porContato = new Map<string, WhatsAppThreadReal>()
+interface ConsolidatedThread extends WhatsAppThreadReal {
+  // Todos os contato_ids que mapeiam pro mesmo phone normalizado.
+  _contatoIds: string[]
+  _phoneKey: string
+}
+
+function consolidarPorPhone(raw: WhatsAppThreadReal[]): ConsolidatedThread[] {
+  const porPhone = new Map<string, ConsolidatedThread>()
   for (const t of raw) {
-    const atual = porContato.get(t.contato_id)
+    const phoneKey = normalizarPhoneBR(t.contato_phone) || t.contato_id
+    const atual = porPhone.get(phoneKey)
     if (!atual) {
-      porContato.set(t.contato_id, { ...t })
+      porPhone.set(phoneKey, { ...t, _contatoIds: [t.contato_id], _phoneKey: phoneKey })
       continue
     }
-    // soma nao_lidas
+    if (!atual._contatoIds.includes(t.contato_id)) atual._contatoIds.push(t.contato_id)
     atual.nao_lidas = (atual.nao_lidas || 0) + (t.nao_lidas || 0)
-    // mantém última atividade mais recente + preview correspondente
     if (t.ultima_atividade > atual.ultima_atividade) {
       atual.ultima_atividade = t.ultima_atividade
       atual.ultima_msg_preview = t.ultima_msg_preview
       atual.id = t.id // id da thread mais recente vira a "capa"
+      atual.contato_id = t.contato_id
     }
     if (
       t.ultima_msg_cliente_em &&
@@ -55,14 +61,12 @@ function consolidarPorContato(raw: WhatsAppThreadReal[]): WhatsAppThreadReal[] {
     ) {
       atual.ultima_msg_cliente_em = t.ultima_msg_cliente_em
     }
-    // status mais "vivo" ganha
     if (STATUS_PESO[t.status] > STATUS_PESO[atual.status]) {
       atual.status = t.status
     }
-    // contato_nome / phone — prefere o que tem nome preenchido
     if (!atual.contato_nome && t.contato_nome) atual.contato_nome = t.contato_nome
   }
-  return Array.from(porContato.values()).sort(
+  return Array.from(porPhone.values()).sort(
     (a, b) => (a.ultima_atividade < b.ultima_atividade ? 1 : -1),
   )
 }
@@ -76,23 +80,25 @@ export function useInbox(): UseInboxReturn {
   const realtime = getDataSource() === 'supabase'
   const channelId = useId()
 
-  const threads = useMemo(() => consolidarPorContato(threadsRaw), [threadsRaw])
+  const threads = useMemo(() => consolidarPorPhone(threadsRaw), [threadsRaw])
 
-  // Mapa thread_id (qualquer uma) → contato_id, pra realtime decidir se a msg
-  // pertence à conversa ativa mesmo vindo de thread "irmã".
-  const threadToContato = useMemo(() => {
+  // Mapa thread_id (qualquer uma) → phoneKey, pra realtime decidir se a msg
+  // pertence à conversa ativa mesmo vindo de thread/contato "irmão".
+  const threadToPhoneKey = useMemo(() => {
     const m = new Map<string, string>()
-    for (const t of threadsRaw) m.set(t.id, t.contato_id)
+    for (const t of threadsRaw) {
+      m.set(t.id, normalizarPhoneBR(t.contato_phone) || t.contato_id)
+    }
     return m
   }, [threadsRaw])
 
   const activeThread = threads.find((t) => t.id === activeId) || null
-  const activeContatoIdRef = useRef<string | null>(null)
-  activeContatoIdRef.current = activeThread?.contato_id ?? null
+  const activePhoneKeyRef = useRef<string | null>(null)
+  activePhoneKeyRef.current = activeThread?._phoneKey ?? null
 
   const reloadThreads = useCallback(async () => {
     try {
-      const t = await whatsappRepo.listarThreads(200)
+      const t = await whatsappRepo.listarThreads(300)
       setThreadsRaw(t)
     } catch {
       setThreadsRaw([])
@@ -106,16 +112,17 @@ export function useInbox(): UseInboxReturn {
     if (!activeId && threads.length > 0) setActiveId(threads[0].id)
   }, [threads, activeId])
 
-  // Carrega mensagens do CONTATO ativo (junta todas as threads dele)
+  // Carrega mensagens de TODOS os contatos do phone ativo.
   useEffect(() => {
     if (!activeThread) { setMsgs([]); return }
     let cancelled = false
-    whatsappRepo.listarMsgsPorContato(activeThread.contato_id).then((m) => {
+    const ids = activeThread._contatoIds
+    whatsappRepo.listarMsgsPorContatos(ids).then((m) => {
       if (!cancelled) setMsgs(m)
     })
-    whatsappRepo.marcarLidoContato(activeThread.contato_id).catch(() => {})
+    whatsappRepo.marcarLidoContatos(ids).catch(() => {})
     return () => { cancelled = true }
-  }, [activeThread?.contato_id])
+  }, [activeThread?._phoneKey])
 
   // Realtime: assina inserts em whatsapp_msgs e whatsapp_threads
   useEffect(() => {
@@ -127,8 +134,8 @@ export function useInbox(): UseInboxReturn {
         { event: 'INSERT', schema: 'public', table: 'whatsapp_msgs' },
         (payload) => {
           const nova = payload.new as WhatsAppMsgReal
-          const contatoDaMsg = threadToContato.get(nova.thread_id)
-          if (contatoDaMsg && contatoDaMsg === activeContatoIdRef.current) {
+          const phoneKeyDaMsg = threadToPhoneKey.get(nova.thread_id)
+          if (phoneKeyDaMsg && phoneKeyDaMsg === activePhoneKeyRef.current) {
             setMsgs((prev) => (prev.find((m) => m.id === nova.id) ? prev : [...prev, nova]))
           }
           // Sempre recarrega lista de threads (atualiza preview/contador, descobre threads novas)
@@ -147,21 +154,19 @@ export function useInbox(): UseInboxReturn {
       )
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [realtime, reloadThreads, channelId, threadToContato])
+  }, [realtime, reloadThreads, channelId, threadToPhoneKey])
 
   const enviar = useCallback(async (texto: string): Promise<ReplyResultado | null> => {
     if (!activeThread || !texto.trim()) return null
     setEnviando(true)
     setErroEnvio(null)
     try {
-      // Envia pela thread "capa" (a mais recente).
       const r = await whatsappRepo.enviarResposta(activeThread.id, texto.trim())
       if (!r.ok) {
         setErroEnvio(r.erro || 'Falha ao enviar')
         return r
       }
-      // Recarrega msgs do contato (otimisticamente; realtime também vai chegar)
-      const m = await whatsappRepo.listarMsgsPorContato(activeThread.contato_id)
+      const m = await whatsappRepo.listarMsgsPorContatos(activeThread._contatoIds)
       setMsgs(m)
       return r
     } catch (e) {
