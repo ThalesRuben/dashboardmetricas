@@ -5,6 +5,7 @@ export { useWhatsAppInboxes } from './hooks/useWhatsAppInboxes';
 export { useInbox } from './hooks/useInbox';
 export { default as Inbox } from './components/Inbox';
 export { default as DisparoMassa } from './components/DisparoMassa';
+export { default as InboxReportCard } from './components/InboxReportCard';
 export { whatsappRepo } from './api/whatsappRepo';
 export type {
   WhatsAppResumo,

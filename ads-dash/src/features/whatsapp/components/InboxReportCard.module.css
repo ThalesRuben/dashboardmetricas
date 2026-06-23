@@ -1,0 +1,65 @@
+.card {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.card:hover, .card:focus-visible {
+  border-color: var(--section-whatsapp);
+  background: color-mix(in srgb, var(--section-whatsapp) 6%, var(--bg-elevated));
+  outline: none;
+}
+
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.headLeft { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.title  { font-family: var(--font-sans); font-size: 15px; font-weight: 600; color: var(--text-default); margin: 0; }
+.phone  { font-family: var(--font-sans); font-size: 11px; color: var(--text-subtle); }
+
+.statusTag {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.statusOk   { color: var(--color-success); background: var(--color-success-bg, rgba(46, 204, 113, 0.1)); }
+.statusWarn { color: var(--color-warning); background: var(--color-warning-bg, rgba(241, 196, 15, 0.12)); }
+
+.loading { font-family: var(--font-sans); font-size: 12px; color: var(--text-subtle); margin: 0; }
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding-top: 4px;
+}
+.kpi { display: flex; flex-direction: column; gap: 2px; }
+.kpiLabel { font-family: var(--font-sans); font-size: 10px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.04em; }
+.kpiValue {
+  font-family: var(--font-mono, var(--font-sans));
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-default);
+  font-variant-numeric: tabular-nums;
+}
+.kpiOk   { color: var(--color-success); }
+.kpiWarn { color: var(--color-warning); }
+
+@media (max-width: 500px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+}
+
+.funil { display: flex; flex-direction: column; gap: 5px; }
+.funilRow { display: grid; grid-template-columns: 80px 1fr 56px; gap: 8px; align-items: center; }
+.funilLabel { font-family: var(--font-sans); font-size: 11px; color: var(--text-muted); }
+.funilTrack { height: 7px; background: rgba(255, 255, 255, 0.05); border-radius: 4px; overflow: hidden; }
+.funilFill  { display: block; height: 100%; background: var(--section-whatsapp); border-radius: 4px; transition: width 0.3s ease; }
+.funilVal   { font-family: var(--font-mono, var(--font-sans)); font-size: 11px; color: var(--text-default); font-variant-numeric: tabular-nums; text-align: right; }
+
+.foot { display: flex; justify-content: flex-end; }
+.openCta { font-family: var(--font-sans); font-size: 12px; color: var(--section-whatsapp); }

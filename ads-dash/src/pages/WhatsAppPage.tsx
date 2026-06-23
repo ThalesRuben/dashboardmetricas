@@ -5,6 +5,7 @@ import {
   useWhatsAppInboxes,
   Inbox,
   DisparoMassa,
+  InboxReportCard,
   formatarPhoneBR,
 } from '@/features/whatsapp'
 import type {
@@ -97,33 +98,49 @@ export default function WhatsAppPage() {
         />
       )}
 
-      <section className={styles.kpis}>
-        <KpiCard
-          label="Conversas"
-          value={fmtNumber(r.conversas)}
-          delta={`${r.conversas_delta >= 0 ? '+' : ''}${r.conversas_delta}% vs ant.`}
-          up={r.conversas_delta > 0}
-          accentColor="var(--section-whatsapp)"
-        />
-        <KpiCard
-          label="Agendamentos"
-          value={fmtNumber(r.agendamentos)}
-          delta={`${r.agendamentos_delta >= 0 ? '+' : ''}${r.agendamentos_delta}% vs ant.`}
-          up={r.agendamentos_delta > 0}
-        />
-        <KpiCard
-          label="Conversão"
-          value={fmtPct(r.taxa_conversao)}
-          delta={null}
-          neutral
-        />
-        <KpiCard
-          label="Tempo de resposta"
-          value={`${r.tempo_resposta_min} min`}
-          delta={r.tempo_resposta_min <= 10 ? 'dentro da meta (10min)' : 'acima da meta'}
-          up={r.tempo_resposta_min <= 10}
-        />
-      </section>
+      {/* No modo "Todos" com 2+ inboxes, mostra relatório por número lado-a-lado
+          em vez de KPIs agregados misturando tudo. */}
+      {inboxPhone === null && inboxes.length > 1 ? (
+        <section className={styles.reportGrid} aria-label="Relatório por número WhatsApp">
+          {inboxes.map((i) => (
+            <InboxReportCard
+              key={i.inbox_phone}
+              inboxPhone={i.inbox_phone}
+              label={INBOX_LABELS[i.inbox_phone] || formatarPhoneBR(i.inbox_phone)}
+              threads={i.threads}
+              onOpen={setInboxPhone}
+            />
+          ))}
+        </section>
+      ) : (
+        <section className={styles.kpis}>
+          <KpiCard
+            label="Conversas"
+            value={fmtNumber(r.conversas)}
+            delta={`${r.conversas_delta >= 0 ? '+' : ''}${r.conversas_delta}% vs ant.`}
+            up={r.conversas_delta > 0}
+            accentColor="var(--section-whatsapp)"
+          />
+          <KpiCard
+            label="Agendamentos"
+            value={fmtNumber(r.agendamentos)}
+            delta={`${r.agendamentos_delta >= 0 ? '+' : ''}${r.agendamentos_delta}% vs ant.`}
+            up={r.agendamentos_delta > 0}
+          />
+          <KpiCard
+            label="Conversão"
+            value={fmtPct(r.taxa_conversao)}
+            delta={null}
+            neutral
+          />
+          <KpiCard
+            label="Tempo de resposta"
+            value={`${r.tempo_resposta_min} min`}
+            delta={r.tempo_resposta_min <= 10 ? 'dentro da meta (10min)' : 'acima da meta'}
+            up={r.tempo_resposta_min <= 10}
+          />
+        </section>
+      )}
 
       <Tabs items={tabs} activeId={tab} onChange={setTab} accentColor="var(--section-whatsapp)" />
 

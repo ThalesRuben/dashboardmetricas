@@ -84,6 +84,13 @@
   .kpis { grid-template-columns: repeat(2, 1fr); }
 }
 
+.reportGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
 .empty {
   font-size: 13px;
   color: var(--text-subtle);
