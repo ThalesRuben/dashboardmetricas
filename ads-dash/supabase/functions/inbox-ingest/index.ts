@@ -96,6 +96,21 @@ Deno.serve(async (req) => {
   const inboxRaw    = body.inbox_phone || body.connected_phone || body.connectedPhone || ''
   const inbox_phone = inboxRaw ? normalizarPhoneBR(inboxRaw) : null
 
+  // Log de diagnóstico — quais chaves o n8n mandou e como cada candidata
+  // a inbox_phone chegou. Aparece em Supabase Dashboard → Functions →
+  // inbox-ingest → Logs. Remover depois que estabilizar.
+  console.log(JSON.stringify({
+    tag: 'ingest-recv',
+    body_keys: Object.keys(body),
+    phone_cliente: phone,
+    inbox_phone_final: inbox_phone,
+    inbox_raw: {
+      inbox_phone: body.inbox_phone || null,
+      connected_phone: body.connected_phone || null,
+      connectedPhone: body.connectedPhone || null,
+    },
+  }))
+
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 
   // 1. Resolver tenant pelo slug
