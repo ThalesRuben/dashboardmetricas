@@ -28,6 +28,13 @@ const STATUS: Record<WhatsAppThreadStatusReal, { label: string; tone: string; ur
   arquivada: { label: 'Arquivada', tone: 'subtle',  urgent: false },
 }
 
+// Rótulos amigáveis dos números WhatsApp Business. Edite aqui pra renomear.
+// Sem entrada no mapa → chip mostra o telefone formatado "(31) 9XXXX-XXXX".
+const INBOX_LABELS: Record<string, string> = {
+  '5531990842381': 'Inbox Fabio',
+  '5531991340420': 'Inbox TBC',
+}
+
 export default function WhatsAppPage() {
   // null = "Todos os números" (agregado). String = filtra por aquele inbox_phone.
   const [inboxPhone, setInboxPhone] = useState<string | null>(null)
@@ -210,19 +217,23 @@ function InboxFilter({
         Todos
         <span className={styles.inboxChipCount}>{total}</span>
       </button>
-      {inboxes.map((i) => (
-        <button
-          type="button"
-          role="tab"
-          key={i.inbox_phone}
-          aria-selected={selected === i.inbox_phone}
-          className={`${styles.inboxChip} ${selected === i.inbox_phone ? styles.inboxChipActive : ''}`}
-          onClick={() => onSelect(i.inbox_phone)}
-        >
-          {formatarPhoneBR(i.inbox_phone)}
-          <span className={styles.inboxChipCount}>{i.threads}</span>
-        </button>
-      ))}
+      {inboxes.map((i) => {
+        const label = INBOX_LABELS[i.inbox_phone] || formatarPhoneBR(i.inbox_phone)
+        return (
+          <button
+            type="button"
+            role="tab"
+            key={i.inbox_phone}
+            aria-selected={selected === i.inbox_phone}
+            className={`${styles.inboxChip} ${selected === i.inbox_phone ? styles.inboxChipActive : ''}`}
+            onClick={() => onSelect(i.inbox_phone)}
+            title={formatarPhoneBR(i.inbox_phone)}
+          >
+            {label}
+            <span className={styles.inboxChipCount}>{i.threads}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
