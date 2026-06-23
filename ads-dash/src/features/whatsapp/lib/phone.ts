@@ -27,3 +27,15 @@ export function normalizarPhoneBR(raw: string | null | undefined): string {
   }
   return n
 }
+
+// Formata um phone canônico (`55DDXXXXXXXXX`) pra leitura humana:
+// `(DD) XXXXX-XXXX`. Aceita também variantes não-normalizadas (faz
+// normalize internamente). Retorna o input cru se não der pra formatar.
+export function formatarPhoneBR(raw: string | null | undefined): string {
+  const n = normalizarPhoneBR(raw)
+  if (n.length !== 13 || !n.startsWith('55')) return raw || ''
+  const ddd = n.slice(2, 4)
+  const meio = n.slice(4, 9)
+  const fim = n.slice(9)
+  return `(${ddd}) ${meio}-${fim}`
+}

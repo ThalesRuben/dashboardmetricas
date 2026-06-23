@@ -21,7 +21,11 @@
 //     "hora": "2026-06-19T14:32:00Z",  // ISO, opcional (default now)
 //     "direction": "in",                // "in" cliente / "out" atendente
 //     "origem": "whatsapp",            // opcional
-//     "tenant_slug": "the-blonde-concept"  // opcional (override do default)
+//     "tenant_slug": "the-blonde-concept",  // opcional (override do default)
+//     "inbox_phone": "5531990842381"   // opcional — número WhatsApp Business do salão
+//                                      //   que recebeu a msg. Aceita também os aliases
+//                                      //   `connected_phone` / `connectedPhone` (n8n
+//                                      //   pode mandar direto o campo do Z-API).
 //   }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -46,6 +50,9 @@ interface IngestBody {
   direction?: 'in' | 'out'
   origem?: string
   tenant_slug?: string
+  inbox_phone?: string
+  connected_phone?: string
+  connectedPhone?: string
 }
 
 // Normaliza telefone BR pra formato canônico `55DDXXXXXXXXX` (13 dígitos).
@@ -85,6 +92,9 @@ Deno.serve(async (req) => {
   const direction = body.direction === 'out' ? 'out' : 'in'
   const hora      = body.hora || new Date().toISOString()
   const origem    = body.origem || 'whatsapp'
+  // Aceita 3 nomes pra facilitar wire-up no n8n. Vazio → null (legacy).
+  const inboxRaw    = body.inbox_phone || body.connected_phone || body.connectedPhone || ''
+  const inbox_phone = inboxRaw ? normalizarPhoneBR(inboxRaw) : null
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 
@@ -129,16 +139,42 @@ Deno.serve(async (req) => {
     await supabase.from('whatsapp_contatos').update({ nome: body.nome }).eq('id', contato_id)
   }
 
-  // 4. Buscar ou criar thread (1 thread "aberta" por contato; se todas arquivadas, abre nova)
-  let { data: thread } = await supabase
+  // 4. Buscar ou criar thread.
+  //
+  // Regras:
+  //   - Se body trouxe inbox_phone X:
+  //       * acha thread existente com inbox_phone = X → usa.
+  //       * senão, acha thread legada com inbox_phone = NULL → backfilla
+  //         pra X e usa (cliente que já existia antes da feature).
+  //       * senão, cria nova com inbox_phone = X.
+  //   - Se body NÃO trouxe inbox_phone (modo legacy): pega qualquer
+  //     thread aberta do contato, ou cria nova com inbox_phone = NULL.
+  const { data: candidatas } = await supabase
     .from('whatsapp_threads')
-    .select('id, nao_lidas, status')
+    .select('id, nao_lidas, status, inbox_phone')
     .eq('tenant_id', tenant_id)
     .eq('contato_id', contato_id)
     .neq('status', 'arquivada')
     .order('ultima_atividade', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+
+  type ThreadRow = { id: string; nao_lidas: number; status: string; inbox_phone: string | null }
+  const lista = (candidatas || []) as ThreadRow[]
+
+  let thread: ThreadRow | null = null
+  let backfillInbox = false
+
+  if (inbox_phone) {
+    thread = lista.find((t) => t.inbox_phone === inbox_phone) || null
+    if (!thread) {
+      const legada = lista.find((t) => t.inbox_phone === null) || null
+      if (legada) {
+        thread = legada
+        backfillInbox = true
+      }
+    }
+  } else {
+    thread = lista[0] || null
+  }
 
   if (!thread) {
     const { data: novaThread, error: threadErr } = await supabase
@@ -146,22 +182,24 @@ Deno.serve(async (req) => {
       .insert({
         tenant_id, contato_id, origem,
         status: 'aberta',
+        inbox_phone,
         ultima_atividade: hora,
         ultima_msg_cliente_em: direction === 'in' ? hora : null,
         nao_lidas: direction === 'in' ? 1 : 0,
       })
-      .select('id, nao_lidas, status')
+      .select('id, nao_lidas, status, inbox_phone')
       .single()
     if (threadErr || !novaThread) {
       return json({ error: 'falha ao criar thread: ' + (threadErr?.message || '') }, 500)
     }
-    thread = novaThread
+    thread = novaThread as ThreadRow
   } else {
     const update: Record<string, unknown> = { ultima_atividade: hora }
     if (direction === 'in') {
       update.ultima_msg_cliente_em = hora
       update.nao_lidas = (thread.nao_lidas || 0) + 1
     }
+    if (backfillInbox) update.inbox_phone = inbox_phone
     await supabase.from('whatsapp_threads').update(update).eq('id', thread.id)
   }
 

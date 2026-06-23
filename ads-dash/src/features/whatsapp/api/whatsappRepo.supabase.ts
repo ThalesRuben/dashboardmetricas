@@ -8,16 +8,25 @@ import type {
   WhatsAppDisparoHistorico,
   WhatsAppThreadReal,
   WhatsAppMsgReal,
+  WhatsAppInbox,
   ReplyResultado,
 } from './types';
 import { MOCK_WHATSAPP } from './whatsappRepo.mock';
 
 export const supabaseWhatsAppRepo: WhatsAppRepo = {
-  async getSummary() {
-    const { data, error } = await supabase.rpc('get_whatsapp_summary');
+  async getSummary(inboxPhone?: string | null) {
+    const { data, error } = await supabase.rpc('get_whatsapp_summary', {
+      p_inbox_phone: inboxPhone ?? null,
+    });
     if (error || !data) return null;
     // Mescla sobre o MOCK pra qualquer campo opcional faltando ficar com placeholder.
     return { ...MOCK_WHATSAPP, ...(data as any) };
+  },
+
+  async listarInboxes(): Promise<WhatsAppInbox[]> {
+    const { data, error } = await supabase.rpc('list_whatsapp_inboxes');
+    if (error || !data) return [];
+    return data as WhatsAppInbox[];
   },
 
   async enviarDisparo(input) {
@@ -45,7 +54,7 @@ export const supabaseWhatsAppRepo: WhatsAppRepo = {
     const { data, error } = await supabase
       .from('whatsapp_threads')
       .select(`
-        id, contato_id, status, origem, nao_lidas,
+        id, contato_id, status, origem, nao_lidas, inbox_phone,
         ultima_atividade, ultima_msg_cliente_em,
         whatsapp_contatos!inner ( nome, phone ),
         whatsapp_msgs ( texto, hora )
@@ -70,6 +79,7 @@ export const supabaseWhatsAppRepo: WhatsAppRepo = {
         ultima_atividade: row.ultima_atividade,
         ultima_msg_cliente_em: row.ultima_msg_cliente_em,
         ultima_msg_preview: ultima?.texto ?? null,
+        inbox_phone: row.inbox_phone ?? null,
       };
     });
   },

@@ -21,6 +21,11 @@ export interface UseInboxReturn {
   realtime: boolean
 }
 
+export interface UseInboxOptions {
+  /** Filtra threads pelo número WhatsApp Business que recebeu a msg. */
+  inboxPhone?: string | null
+}
+
 // Consolida várias threads do mesmo cliente (que vêm como contatos/threads
 // duplicados no banco por causa de normalização inconsistente do telefone
 // no n8n) numa única entrada "representativa".
@@ -71,7 +76,8 @@ function consolidarPorPhone(raw: WhatsAppThreadReal[]): ConsolidatedThread[] {
   )
 }
 
-export function useInbox(): UseInboxReturn {
+export function useInbox(options: UseInboxOptions = {}): UseInboxReturn {
+  const { inboxPhone } = options
   const [threadsRaw, setThreadsRaw] = useState<WhatsAppThreadReal[]>([])
   const [msgs, setMsgs] = useState<WhatsAppMsgReal[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -80,17 +86,26 @@ export function useInbox(): UseInboxReturn {
   const realtime = getDataSource() === 'supabase'
   const channelId = useId()
 
-  const threads = useMemo(() => consolidarPorPhone(threadsRaw), [threadsRaw])
+  // Filtra ANTES de consolidar — mesmo cliente que mandou pros 2 números
+  // precisa virar 2 threads separados na UI, não uma fusão.
+  const threadsFiltradas = useMemo(() => {
+    if (!inboxPhone) return threadsRaw
+    return threadsRaw.filter((t) => t.inbox_phone === inboxPhone)
+  }, [threadsRaw, inboxPhone])
+
+  const threads = useMemo(() => consolidarPorPhone(threadsFiltradas), [threadsFiltradas])
 
   // Mapa thread_id (qualquer uma) → phoneKey, pra realtime decidir se a msg
   // pertence à conversa ativa mesmo vindo de thread/contato "irmão".
+  // Usa as threads JÁ FILTRADAS por inbox — assim, se o user está visualizando
+  // só o inbox A, mensagens novas no inbox B não pulam pra tela ativa.
   const threadToPhoneKey = useMemo(() => {
     const m = new Map<string, string>()
-    for (const t of threadsRaw) {
+    for (const t of threadsFiltradas) {
       m.set(t.id, normalizarPhoneBR(t.contato_phone) || t.contato_id)
     }
     return m
-  }, [threadsRaw])
+  }, [threadsFiltradas])
 
   const activeThread = threads.find((t) => t.id === activeId) || null
   const activePhoneKeyRef = useRef<string | null>(null)

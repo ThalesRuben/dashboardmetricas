@@ -10,7 +10,7 @@ export interface UseWhatsAppMetricsReturn {
   refresh: () => Promise<void>
 }
 
-export function useWhatsAppMetrics(): UseWhatsAppMetricsReturn {
+export function useWhatsAppMetrics(inboxPhone?: string | null): UseWhatsAppMetricsReturn {
   const [data, setData] = useState<WhatsAppSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [usingMock, setUsingMock] = useState(false)
@@ -18,7 +18,7 @@ export function useWhatsAppMetrics(): UseWhatsAppMetricsReturn {
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const summary = await whatsappRepo.getSummary()
+      const summary = await whatsappRepo.getSummary(inboxPhone ?? null)
       if (summary) {
         setData(summary); setUsingMock(false)
       } else {
@@ -29,7 +29,7 @@ export function useWhatsAppMetrics(): UseWhatsAppMetricsReturn {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [inboxPhone])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 

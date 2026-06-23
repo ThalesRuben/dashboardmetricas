@@ -10,11 +10,13 @@ import type {
   WhatsAppDisparoHistorico,
   WhatsAppThreadReal,
   WhatsAppMsgReal,
+  WhatsAppInbox,
   ReplyResultado,
 } from './types';
 
 export interface WhatsAppRepo {
-  getSummary(): Promise<WhatsAppSummary | null>;
+  getSummary(inboxPhone?: string | null): Promise<WhatsAppSummary | null>;
+  listarInboxes(): Promise<WhatsAppInbox[]>;
   enviarDisparo(input: WhatsAppDisparoInput): Promise<WhatsAppDisparoResultado>;
   listarDisparos(limit?: number): Promise<WhatsAppDisparoHistorico[]>;
 

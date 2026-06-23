@@ -1,6 +1,7 @@
 // API pública da feature `whatsapp`.
 export { useWhatsAppMetrics } from './hooks/useWhatsAppMetrics';
 export { useWhatsAppDisparos } from './hooks/useWhatsAppDisparos';
+export { useWhatsAppInboxes } from './hooks/useWhatsAppInboxes';
 export { useInbox } from './hooks/useInbox';
 export { default as Inbox } from './components/Inbox';
 export { default as DisparoMassa } from './components/DisparoMassa';
@@ -26,5 +27,7 @@ export type {
   WhatsAppThreadStatusReal,
   WhatsAppMsgReal,
   WhatsAppMsgStatus,
+  WhatsAppInbox,
   ReplyResultado,
 } from './api/types';
+export { formatarPhoneBR, normalizarPhoneBR } from './lib/phone';

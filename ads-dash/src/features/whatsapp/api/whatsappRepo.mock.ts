@@ -177,8 +177,11 @@ export const mockWhatsAppRepo: WhatsAppRepo = {
   },
 
   // Inbox real → no mock, derivamos das conversas_recentes do summary.
+  // inbox_phone alterna entre os 2 números canônicos do salão, pra UI
+  // ter chips reais no modo demonstração.
   async listarThreads(limit = 20) {
-    return MOCK.conversas_recentes.slice(0, limit).map((c) => ({
+    const MOCK_INBOXES = ['5531990842381', '5531991340420']
+    return MOCK.conversas_recentes.slice(0, limit).map((c, i) => ({
       id: c.id || crypto.randomUUID(),
       contato_id: c.id || crypto.randomUUID(),
       contato_nome: c.nome,
@@ -192,7 +195,15 @@ export const mockWhatsAppRepo: WhatsAppRepo = {
         c.mensagens && c.mensagens.length > 0
           ? c.mensagens[c.mensagens.length - 1].texto
           : c.resumo,
+      inbox_phone: MOCK_INBOXES[i % MOCK_INBOXES.length],
     }));
+  },
+
+  async listarInboxes() {
+    return [
+      { inbox_phone: '5531990842381', threads: 4, ultima_atividade: new Date().toISOString() },
+      { inbox_phone: '5531991340420', threads: 2, ultima_atividade: new Date().toISOString() },
+    ]
   },
 
   async listarMsgs(threadId: string) {

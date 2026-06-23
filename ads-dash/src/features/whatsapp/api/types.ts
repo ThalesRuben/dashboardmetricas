@@ -146,6 +146,13 @@ export interface WhatsAppThreadReal {
   ultima_atividade: string;            // ISO
   ultima_msg_cliente_em: string | null; // ISO
   ultima_msg_preview: string | null;
+  inbox_phone: string | null;          // canônico 55DDXXXXXXXXX. NULL = thread legada.
+}
+
+export interface WhatsAppInbox {
+  inbox_phone: string;
+  threads: number;
+  ultima_atividade: string;
 }
 
 export interface ReplyResultado {

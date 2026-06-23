@@ -2,8 +2,10 @@ import { useState, useMemo } from 'react'
 import {
   useWhatsAppMetrics,
   useInbox,
+  useWhatsAppInboxes,
   Inbox,
   DisparoMassa,
+  formatarPhoneBR,
 } from '@/features/whatsapp'
 import type {
   WhatsAppThreadReal,
@@ -27,8 +29,11 @@ const STATUS: Record<WhatsAppThreadStatusReal, { label: string; tone: string; ur
 }
 
 export default function WhatsAppPage() {
-  const { data, loading, usingMock } = useWhatsAppMetrics()
-  const { threads } = useInbox()
+  // null = "Todos os números" (agregado). String = filtra por aquele inbox_phone.
+  const [inboxPhone, setInboxPhone] = useState<string | null>(null)
+  const { data, loading, usingMock } = useWhatsAppMetrics(inboxPhone)
+  const { threads } = useInbox({ inboxPhone })
+  const { inboxes } = useWhatsAppInboxes()
   const [tab, setTab] = useState('inbox')
 
   const urgentes = useMemo(
@@ -76,6 +81,14 @@ export default function WhatsAppPage() {
       />
 
       {semDadoReal && <Banner>Dados de demonstração. Aguardando primeira mensagem real.</Banner>}
+
+      {inboxes.length > 1 && (
+        <InboxFilter
+          inboxes={inboxes}
+          selected={inboxPhone}
+          onSelect={setInboxPhone}
+        />
+      )}
 
       <section className={styles.kpis}>
         <KpiCard
@@ -173,6 +186,45 @@ export default function WhatsAppPage() {
 
 function Banner({ children }) {
   return <div className={styles.banner}>ⓘ {children}</div>
+}
+
+function InboxFilter({
+  inboxes,
+  selected,
+  onSelect,
+}: {
+  inboxes: { inbox_phone: string; threads: number }[]
+  selected: string | null
+  onSelect: (v: string | null) => void
+}) {
+  const total = inboxes.reduce((acc, i) => acc + i.threads, 0)
+  return (
+    <div className={styles.inboxFilter} role="tablist" aria-label="Filtrar por número WhatsApp">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={selected === null}
+        className={`${styles.inboxChip} ${selected === null ? styles.inboxChipActive : ''}`}
+        onClick={() => onSelect(null)}
+      >
+        Todos
+        <span className={styles.inboxChipCount}>{total}</span>
+      </button>
+      {inboxes.map((i) => (
+        <button
+          type="button"
+          role="tab"
+          key={i.inbox_phone}
+          aria-selected={selected === i.inbox_phone}
+          className={`${styles.inboxChip} ${selected === i.inbox_phone ? styles.inboxChipActive : ''}`}
+          onClick={() => onSelect(i.inbox_phone)}
+        >
+          {formatarPhoneBR(i.inbox_phone)}
+          <span className={styles.inboxChipCount}>{i.threads}</span>
+        </button>
+      ))}
+    </div>
+  )
 }
 
 function ThreadRow({ t, onOpen }: { t: WhatsAppThreadReal; onOpen: () => void }) {

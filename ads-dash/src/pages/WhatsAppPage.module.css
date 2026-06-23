@@ -28,6 +28,52 @@
   margin-bottom: var(--space-4);
 }
 
+.inboxFilter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: var(--space-4);
+}
+.inboxChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle, transparent);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.inboxChip:hover {
+  color: var(--text-default);
+  border-color: var(--section-whatsapp);
+}
+.inboxChipActive {
+  background: color-mix(in srgb, var(--section-whatsapp) 14%, var(--bg-elevated));
+  color: var(--section-whatsapp);
+  border-color: var(--section-whatsapp);
+}
+.inboxChipCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  color: var(--text-subtle);
+}
+.inboxChipActive .inboxChipCount {
+  background: color-mix(in srgb, var(--section-whatsapp) 22%, transparent);
+  color: var(--section-whatsapp);
+}
+
 .kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
