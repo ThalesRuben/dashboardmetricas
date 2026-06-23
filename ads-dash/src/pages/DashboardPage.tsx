@@ -3,6 +3,7 @@ import { useAuth } from '@/app/providers/AuthContext'
 import { useMetrics } from '@/features/ads/hooks/useMetrics'
 import { useInstagramMetrics } from '@/features/organic/instagram/hooks/useInstagramMetrics'
 import { useWhatsAppMetrics } from '@/features/whatsapp'
+import { MetasBanner } from '@/features/metas'
 import { useDailyMetrics, previousRange, deltaPct } from '@/features/ads/hooks/useDailyMetrics'
 import { detectHype, HYPE_LEVELS } from '@/features/organic/instagram/lib/hypeDetector'
 import { detectAnomalies } from '@/lib/anomalies'
@@ -90,6 +91,8 @@ export default function DashboardPage() {
           </>
         }
       />
+
+      <MetasBanner />
 
       <Tabs items={tabsWithBadges} activeId={tab} onChange={setTab} accentColor="var(--section-dashboard)" />
 

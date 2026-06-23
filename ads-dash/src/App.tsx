@@ -6,6 +6,7 @@ import LoadingScreen from '@/app/LoadingScreen'
 import LoginPage from '@/pages/LoginPage'
 
 const DashboardPage      = lazy(() => import('@/pages/DashboardPage'))
+const MetasPage          = lazy(() => import('@/pages/MetasPage'))
 const WhatsAppPage       = lazy(() => import('@/pages/WhatsAppPage'))
 const InstagramPage      = lazy(() => import('@/pages/InstagramPage'))
 const TikTokPage         = lazy(() => import('@/pages/TikTokPage'))
@@ -41,6 +42,7 @@ export default function App() {
           <PrivateRoute><Layout /></PrivateRoute>
         }>
           <Route index element={<DashboardPage />} />
+          <Route path="metas" element={<MetasPage />} />
           <Route path="whatsapp" element={<WhatsAppPage />} />
           <Route path="instagram" element={<InstagramPage />} />
           <Route path="tiktok" element={<TikTokPage />} />

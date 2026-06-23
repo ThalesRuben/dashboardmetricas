@@ -1,0 +1,67 @@
+.bannerLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: var(--space-5);
+}
+
+.banner {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 14px 16px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--section-metas);
+  transition: background 0.15s ease;
+}
+.banner:hover { background: color-mix(in srgb, var(--section-metas) 6%, var(--bg-elevated)); }
+
+@media (max-width: 900px) {
+  .banner { grid-template-columns: 1fr 1fr; }
+  .cta { grid-column: 1 / -1; text-align: right; }
+}
+
+.card { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+
+.head { display: flex; flex-direction: column; gap: 0; }
+.label  { font-family: var(--font-sans); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-subtle); }
+.subref { font-family: var(--font-sans); font-size: 11px; color: var(--text-subtle); opacity: 0.7; }
+
+.statRow { display: inline-flex; align-items: baseline; gap: 6px; }
+.pctBig {
+  font-family: var(--font-mono, var(--font-sans));
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-default);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.pctLabel { font-family: var(--font-sans); font-size: 11px; color: var(--text-muted); }
+
+.statusRow { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.tagOk { color: var(--color-success); background: var(--color-success-bg, rgba(46, 204, 113, 0.1)); }
+.tagWarn { color: var(--color-warning); background: var(--color-warning-bg, rgba(241, 196, 15, 0.12)); }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+.loading { font-family: var(--font-mono, var(--font-sans)); font-size: 22px; color: var(--text-subtle); }
+
+.cta {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--section-metas);
+  white-space: nowrap;
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+}

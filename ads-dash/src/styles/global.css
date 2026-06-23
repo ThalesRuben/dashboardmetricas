@@ -60,6 +60,7 @@
   --section-seo:         var(--accent-cyan);
   --section-ia:          var(--accent-purple);
   --section-alerts:      var(--accent-amber);
+  --section-metas:       var(--accent-cyan);
   --section-settings:    var(--text-subtle);
   --section-system:      var(--text-subtle);
 

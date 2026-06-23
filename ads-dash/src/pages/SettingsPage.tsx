@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/app/providers/AuthContext'
 import { useToast } from '@/app/providers/ToastContext'
+import { MetasSettings } from '@/features/metas'
 import PageHeader from '@/components/ui/PageHeader'
 import styles from './SettingsPage.module.css'
 
@@ -131,6 +132,11 @@ export default function SettingsPage() {
             Abrir painel Supabase ↗
           </a>
         </div>
+      </div>
+
+      {/* Metas — âncora pra deep-link de outras telas (/settings#metas) */}
+      <div id="metas" style={{ marginTop: 14 }}>
+        <MetasSettings />
       </div>
 
       {/* Usuários */}

@@ -11,6 +11,7 @@ import styles from './Layout.module.css'
 
 const ITEMS = {
   dashboard:    { n: '01', to: '/',             label: 'Dashboard',     hint: 'MÉTRICAS', icon: 'M3 3h7v7H3zm0 9h7v7H3zm9-9h7v7h-7zm0 9h7v7h-7z' },
+  metas:        { n: '15', to: '/metas',        label: 'Metas',         hint: 'KPI',      icon: 'M12 22a10 10 0 100-20 10 10 0 000 20zM12 18a6 6 0 100-12 6 6 0 000 12zM12 14a2 2 0 100-4 2 2 0 000 4z' },
   whatsapp:     { n: '07', to: '/whatsapp',     label: 'WhatsApp',      hint: 'CANAL',    icon: 'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z' },
   reports:      { n: '03', to: '/reports',      label: 'Relatórios',    hint: 'EXPORT',   icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
   instagram:    { n: '04', to: '/instagram',    label: 'Instagram',     hint: 'REDE',     icon: 'M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm5 5a5 5 0 100 10 5 5 0 000-10zm5.5-.5a1 1 0 100 2 1 1 0 000-2z' },
@@ -27,7 +28,7 @@ const ITEMS = {
 }
 
 const GROUPS = [
-  { key: 'performance',  label: 'PERFORMANCE',  keys: ['dashboard', 'whatsapp', 'reports'] },
+  { key: 'performance',  label: 'PERFORMANCE',  keys: ['dashboard', 'metas', 'whatsapp', 'reports'] },
   { key: 'redes',        label: 'REDES',        keys: ['instagram', 'tiktok', 'youtube'] },
   { key: 'inteligencia', label: 'INTELIGÊNCIA', keys: ['competitors', 'ambassadors', 'seo', 'ia', 'bible'] },
   { key: 'sistema',      label: 'SISTEMA',      keys: ['integrations', 'alerts', 'settings'] },

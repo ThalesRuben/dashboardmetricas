@@ -10,7 +10,7 @@ export interface SectionInfo {
 export type SectionKey =
   | 'dashboard' | 'integrations' | 'reports' | 'instagram'
   | 'tiktok' | 'youtube' | 'whatsapp' | 'competitors'
-  | 'ambassadors' | 'seo' | 'ia' | 'alerts' | 'settings' | 'bible'
+  | 'ambassadors' | 'seo' | 'ia' | 'alerts' | 'metas' | 'settings' | 'bible'
 
 export const SECTION_COLORS: Record<SectionKey, SectionInfo> = {
   dashboard:    { color: 'var(--section-dashboard)',    number: '01', label: 'DASHBOARD' },
@@ -25,6 +25,7 @@ export const SECTION_COLORS: Record<SectionKey, SectionInfo> = {
   seo:          { color: 'var(--section-seo)',          number: '10', label: 'SEO' },
   ia:           { color: 'var(--section-ia)',           number: '11', label: 'CENTRAL DE IA' },
   alerts:       { color: 'var(--section-alerts)',       number: '12', label: 'METAS E ALERTAS' },
+  metas:        { color: 'var(--section-metas)',        number: '15', label: 'METAS' },
   settings:     { color: 'var(--section-settings)',     number: '13', label: 'CONFIGURAÇÕES' },
   bible:        { color: 'var(--accent-amber)',         number: '14', label: 'BÍBLIA DO MARKETING' },
 }
