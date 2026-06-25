@@ -10,7 +10,7 @@ export interface SectionInfo {
 export type SectionKey =
   | 'dashboard' | 'integrations' | 'reports' | 'instagram'
   | 'tiktok' | 'youtube' | 'whatsapp' | 'competitors'
-  | 'ambassadors' | 'seo' | 'ia' | 'alerts' | 'metas' | 'settings' | 'bible'
+  | 'ambassadors' | 'seo' | 'ia' | 'alerts' | 'metas' | 'settings' | 'bible' | 'cultura'
 
 export const SECTION_COLORS: Record<SectionKey, SectionInfo> = {
   dashboard:    { color: 'var(--section-dashboard)',    number: '01', label: 'DASHBOARD' },
@@ -28,6 +28,7 @@ export const SECTION_COLORS: Record<SectionKey, SectionInfo> = {
   metas:        { color: 'var(--section-metas)',        number: '15', label: 'METAS' },
   settings:     { color: 'var(--section-settings)',     number: '13', label: 'CONFIGURAÇÕES' },
   bible:        { color: 'var(--accent-amber)',         number: '14', label: 'BÍBLIA DO MARKETING' },
+  cultura:      { color: 'var(--section-cultura)',      number: '16', label: 'CULTURA' },
 }
 
 export function sectionInfo(key: string | undefined): SectionInfo {

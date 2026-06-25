@@ -22,6 +22,7 @@ const ITEMS = {
   seo:          { n: '10', to: '/seo',          label: 'SEO',           hint: 'ORGÂNICO', icon: 'M3 3v18h18 M7 14l4-4 3 3 6-7' },
   ia:           { n: '11', to: '/ia',           label: 'Central de IA', hint: 'IA',       icon: 'M9 3h6 M9 21h6 M3 9v6 M21 9v6 M7 7h10v10H7z M10 10h4v4h-4z M9 3v4 M15 3v4 M9 17v4 M15 17v4 M3 9h4 M3 15h4 M17 9h4 M17 15h4' },
   bible:        { n: '14', to: '/bible',        label: 'Bíblia do Mkt', hint: 'MARCA',    icon: 'M4 19.5A2.5 2.5 0 016.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z' },
+  cultura:      { n: '16', to: '/manual-de-cultura', label: 'Manual de Cultura', hint: 'TIME',  icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M9 11a4 4 0 100-8 4 4 0 000 8 M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75' },
   integrations: { n: '02', to: '/integrations', label: 'Integrações',   hint: 'DADOS',    icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
   alerts:       { n: '12', to: '/alerts',       label: 'Metas e alertas', hint: 'MONITOR', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
   settings:     { n: '13', to: '/settings',     label: 'Configurações', hint: 'SISTEMA',  icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
@@ -31,6 +32,7 @@ const GROUPS = [
   { key: 'performance',  label: 'PERFORMANCE',  keys: ['dashboard', 'metas', 'whatsapp', 'reports'] },
   { key: 'redes',        label: 'REDES',        keys: ['instagram', 'tiktok', 'youtube'] },
   { key: 'inteligencia', label: 'INTELIGÊNCIA', keys: ['competitors', 'ambassadors', 'seo', 'ia', 'bible'] },
+  { key: 'cultura',      label: 'CULTURA',      keys: ['cultura'] },
   { key: 'sistema',      label: 'SISTEMA',      keys: ['integrations', 'alerts', 'settings'] },
 ]
 

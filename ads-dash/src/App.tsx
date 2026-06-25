@@ -16,6 +16,7 @@ const AmbassadorsPage    = lazy(() => import('@/pages/AmbassadorsPage'))
 const AiHubPage          = lazy(() => import('@/pages/AiHubPage'))
 const SeoPage            = lazy(() => import('@/pages/SeoPage'))
 const MarketingBiblePage = lazy(() => import('@/pages/MarketingBiblePage'))
+const ManualCulturaPage  = lazy(() => import('@/pages/ManualCulturaPage'))
 const IntegrationPage    = lazy(() => import('@/pages/IntegrationPage'))
 const ReportsPage        = lazy(() => import('@/pages/ReportsPage'))
 const AlertsPage         = lazy(() => import('@/pages/AlertsPage'))
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="ia" element={<AiHubPage />} />
           <Route path="seo" element={<SeoPage />} />
           <Route path="bible" element={<MarketingBiblePage />} />
+          <Route path="manual-de-cultura" element={<ManualCulturaPage />} />
           <Route path="integrations" element={<IntegrationPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="alerts" element={<AlertsPage />} />
