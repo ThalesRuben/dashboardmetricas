@@ -6,10 +6,14 @@ import {
   diasRestantes,
   rotuloPeriodo,
   veredito,
+  trimestreRef as currentTrimestreRef,
+  anoRef as currentAnoRef,
   type MetaPeriodo,
   type MetaKpi,
   type Veredito,
 } from '@/features/metas'
+import MetasTrimestreView from '@/features/metas/components/MetasTrimestreView'
+import MetasAnoView from '@/features/metas/components/MetasAnoView'
 import { fmtNumber, fmtBRL, fmtRoas, fmtPct } from '@/shared/lib/format'
 import PageHeader from '@/components/ui/PageHeader'
 import Tabs from '@/components/ui/Tabs'
@@ -30,20 +34,20 @@ const VEREDITO_LABEL: Record<Veredito, { tone: string; text: string }> = {
 }
 
 export default function MetasPage() {
-  const [periodo, setPeriodo] = useState<MetaPeriodo>('semana')
-  const { metas, loading, periodoRef } = useMetas({ periodo })
+  const [periodo, setPeriodo] = useState<MetaPeriodo>('trimestre')
+  const [trimestreSelecionado, setTrimestreSelecionado] = useState<string>(() => currentTrimestreRef())
 
-  const tempoFracao = useMemo(() => progressoTempo(periodo), [periodo])
-  const restante = useMemo(() => diasRestantes(periodo), [periodo])
-
-  const resumo = useMemo(() => calcularResumo(metas, tempoFracao), [metas, tempoFracao])
+  function handleAbrirTrimestre(qRef: string) {
+    setTrimestreSelecionado(qRef)
+    setPeriodo('trimestre')
+  }
 
   return (
     <div className={styles.page}>
       <PageHeader
         section="metas"
         title="Metas"
-        subtitle={`Acompanhe metas semanais, trimestrais e anuais por KPI. Ajuste em `}
+        subtitle="Cenários mín / base / máx por trimestre, com quebra mensal de faturamento e tráfego."
         actions={
           <Link to="/settings#metas" className="btn">⚙ Configurar metas</Link>
         }
@@ -51,6 +55,55 @@ export default function MetasPage() {
 
       <Tabs items={TABS} activeId={periodo} onChange={(id) => setPeriodo(id as MetaPeriodo)} accentColor="var(--section-metas)" />
 
+      {periodo === 'semana' && <SemanaView />}
+      {periodo === 'trimestre' && (
+        <TrimestreContexto
+          trimestreRef={trimestreSelecionado}
+          onAlterarRef={setTrimestreSelecionado}
+        />
+      )}
+      {periodo === 'ano' && (
+        <MetasAnoView anoRef={currentAnoRef()} onAbrirTrimestre={handleAbrirTrimestre} />
+      )}
+    </div>
+  )
+}
+
+// ---------- Trimestre (header com selector + view rica) ----------
+
+function TrimestreContexto({ trimestreRef, onAlterarRef }: { trimestreRef: string; onAlterarRef: (r: string) => void }) {
+  const ano = currentAnoRef()
+  const qs = [1, 2, 3, 4].map(q => `${ano}-Q${q}`)
+  return (
+    <>
+      <section className={styles.qSelector}>
+        {qs.map(r => (
+          <button
+            key={r}
+            type="button"
+            onClick={() => onAlterarRef(r)}
+            className={`${styles.qBtn} ${r === trimestreRef ? styles.qBtnActive : ''}`}
+          >
+            {r.split('-Q')[1]}º trim
+          </button>
+        ))}
+      </section>
+      <MetasTrimestreView trimestreRef={trimestreRef} />
+    </>
+  )
+}
+
+// ---------- Semana (visão original, mantida) ----------
+
+function SemanaView() {
+  const periodo: MetaPeriodo = 'semana'
+  const { metas, loading, periodoRef } = useMetas({ periodo })
+  const tempoFracao = useMemo(() => progressoTempo(periodo), [periodo])
+  const restante = useMemo(() => diasRestantes(periodo), [periodo])
+  const resumo = useMemo(() => calcularResumo(metas, tempoFracao), [metas, tempoFracao])
+
+  return (
+    <>
       <section className={styles.contextBar}>
         <div className={styles.contextLeft}>
           <span className={styles.contextLabel}>{rotuloPeriodo(periodo, periodoRef)}</span>
@@ -79,7 +132,7 @@ export default function MetasPage() {
           ))}
         </section>
       )}
-    </div>
+    </>
   )
 }
 
@@ -150,3 +203,4 @@ function MetaCard({ meta, tempoFracao }: { meta: MetaKpi; tempoFracao: number })
     </article>
   )
 }
+

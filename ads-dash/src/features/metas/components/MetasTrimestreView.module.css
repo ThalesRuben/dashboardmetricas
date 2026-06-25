@@ -1,0 +1,148 @@
+.wrap { display: flex; flex-direction: column; gap: var(--space-5); }
+.loading { color: var(--text-subtle); font-size: 13px; padding: 2rem 0; }
+
+/* ---- KPI principal ---- */
+.principal {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-left: 3px solid var(--section-metas);
+}
+.tone_success { border-left-color: var(--color-success); }
+.tone_info    { border-left-color: var(--accent); }
+.tone_danger  { border-left-color: var(--color-danger, #ef4444); }
+.tone_subtle  { border-left-color: var(--text-subtle); }
+
+.pHead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.pTitle { font-family: var(--font-sans); font-size: 16px; font-weight: 700; color: var(--text-default); margin: 0; }
+.pSubtitle { font-family: var(--font-sans); font-size: 12px; color: var(--text-subtle); margin: 2px 0 0 0; }
+
+.tag {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.tag_success { color: var(--color-success); background: var(--color-success-bg, rgba(46, 204, 113, 0.12)); }
+.tag_info    { color: var(--accent); background: var(--accent-tint, rgba(0, 200, 255, 0.10)); }
+.tag_danger  { color: var(--color-danger, #ef4444); background: rgba(239, 68, 68, 0.12); }
+.tag_subtle  { color: var(--text-subtle); background: rgba(255, 255, 255, 0.04); }
+
+.pStats {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 700px) {
+  .pStats { grid-template-columns: 1fr 1fr; }
+}
+
+.stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.statLabel { font-family: var(--font-sans); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-subtle); }
+.statValue { font-family: var(--font-mono, var(--font-sans)); font-size: 16px; font-weight: 600; color: var(--text-default); font-variant-numeric: tabular-nums; }
+.statBig .statValue { font-size: 22px; font-weight: 700; }
+.statValue[data-tone="success"] { color: var(--color-success); }
+.statValue[data-tone="danger"]  { color: var(--color-danger, #ef4444); }
+.statValue[data-tone="info"]    { color: var(--accent); }
+.statHint { font-family: var(--font-sans); font-size: 11px; color: var(--text-muted); }
+
+/* ---- Barra com cenários ---- */
+.barraWrap { display: flex; flex-direction: column; gap: 6px; }
+.barraTrack {
+  position: relative;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  overflow: visible;
+}
+.barraReal {
+  position: absolute; inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--accent), var(--section-metas));
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+.marca {
+  position: absolute;
+  top: -3px; bottom: -3px;
+  width: 2px;
+  transform: translateX(-1px);
+}
+.marca[data-kind="min"]  { background: rgba(241, 196, 15, 0.7); }
+.marca[data-kind="base"] { background: rgba(255, 255, 255, 0.85); }
+.marca[data-kind="max"]  { background: rgba(46, 204, 113, 0.7); }
+.barraFoot { display: flex; justify-content: space-between; font-family: var(--font-sans); font-size: 11px; color: var(--text-subtle); }
+
+/* ---- Linha mensal ---- */
+.mesesRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 600px) {
+  .mesesRow { grid-template-columns: 1fr; }
+}
+
+.mes {
+  background: var(--bg-base, rgba(0, 0, 0, 0.15));
+  border-radius: var(--radius-sm, 6px);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.04));
+  border-left-width: 3px;
+}
+.mesTone_success { border-left-color: var(--color-success); }
+.mesTone_info    { border-left-color: var(--accent); }
+.mesTone_danger  { border-left-color: var(--color-danger, #ef4444); }
+.mesTone_subtle  { border-left-color: var(--text-subtle); }
+
+.mesHead { display: flex; justify-content: space-between; align-items: center; }
+.mesLabel { font-family: var(--font-sans); font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.mesTag { font-size: 14px; }
+
+.mesReal { font-family: var(--font-mono, var(--font-sans)); font-size: 18px; font-weight: 700; color: var(--text-default); font-variant-numeric: tabular-nums; }
+.mesCenarios { display: flex; gap: 10px; font-family: var(--font-sans); font-size: 11px; color: var(--text-muted); flex-wrap: wrap; }
+.mesCenLabel { color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.04em; margin-right: 2px; font-size: 10px; }
+
+/* ---- Secundários ---- */
+.secundarios {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.secTitle { font-family: var(--font-sans); font-size: 12px; font-weight: 600; color: var(--text-subtle); margin: 0; text-transform: uppercase; letter-spacing: 0.06em; }
+.secGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+.chip {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 6px;
+  align-items: baseline;
+  padding: 8px 12px;
+  background: var(--bg-base, rgba(0, 0, 0, 0.12));
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.04));
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease;
+}
+.chip:hover { border-color: var(--section-metas); }
+.chipTone_success { border-left: 2px solid var(--color-success); }
+.chipTone_info    { border-left: 2px solid var(--accent); }
+.chipTone_danger  { border-left: 2px solid var(--color-danger, #ef4444); }
+.chipTone_subtle  { border-left: 2px solid var(--text-subtle); }
+.chipLabel { font-family: var(--font-sans); font-size: 12px; color: var(--text-muted); }
+.chipValue { font-family: var(--font-mono, var(--font-sans)); font-size: 13px; font-weight: 700; color: var(--text-default); font-variant-numeric: tabular-nums; }
+.chipMeta  { font-family: var(--font-mono, var(--font-sans)); font-size: 12px; color: var(--text-subtle); font-variant-numeric: tabular-nums; }
+.chipPct   { font-family: var(--font-sans); font-size: 11px; color: var(--text-subtle); }
