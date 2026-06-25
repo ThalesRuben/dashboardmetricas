@@ -16,6 +16,8 @@ export const supabaseMetasRepo: MetasRepo = {
       unidade: r.unidade,
       ordem: r.ordem ?? 0,
       valor_meta: Number(r.valor_meta) || 0,
+      valor_meta_min: r.valor_meta_min == null ? null : Number(r.valor_meta_min),
+      valor_meta_max: r.valor_meta_max == null ? null : Number(r.valor_meta_max),
       valor_realizado: Number(r.valor_realizado) || 0,
     }));
   },
@@ -30,6 +32,8 @@ export const supabaseMetasRepo: MetasRepo = {
       p_unidade: input.unidade,
       p_label: input.label,
       p_ordem: input.ordem,
+      p_valor_meta_min: input.valor_meta_min ?? null,
+      p_valor_meta_max: input.valor_meta_max ?? null,
     });
     if (error) throw new Error(error.message);
     return (data as string) || '';

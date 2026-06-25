@@ -1,6 +1,6 @@
 // Tipos públicos da feature `metas` — metas por KPI × período.
 
-export type MetaPeriodo = 'semana' | 'trimestre' | 'ano';
+export type MetaPeriodo = 'semana' | 'mes' | 'trimestre' | 'ano';
 export type MetaUnidade = 'BRL' | 'num' | 'x' | '%';
 
 export interface MetaKpi {
@@ -9,7 +9,9 @@ export interface MetaKpi {
   label: string | null;
   unidade: MetaUnidade;
   ordem: number;
-  valor_meta: number;
+  valor_meta: number;            // cenário base
+  valor_meta_min: number | null; // cenário pessimista (mínimo)
+  valor_meta_max: number | null; // cenário otimista
   valor_realizado: number;
 }
 
@@ -39,6 +41,8 @@ export interface MetaUpsertInput {
   periodo: MetaPeriodo;
   periodo_ref: string;
   valor_meta: number;
+  valor_meta_min?: number | null;
+  valor_meta_max?: number | null;
   valor_realizado?: number;
   unidade: MetaUnidade;
   label: string;

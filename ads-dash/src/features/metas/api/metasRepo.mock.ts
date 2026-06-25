@@ -7,8 +7,15 @@ import { KPIS_PADRAO } from './types';
 
 const STORAGE_KEY = 'ads-dash:metas_kpi'
 
+interface StoredSlot {
+  valor_meta: number
+  valor_realizado: number
+  valor_meta_min?: number | null
+  valor_meta_max?: number | null
+}
+
 interface Stored {
-  [chave: string]: Record<string, { valor_meta: number; valor_realizado: number }>
+  [chave: string]: Record<string, StoredSlot>
 }
 
 function chave(periodo: MetaPeriodo, periodoRef: string) {
@@ -24,7 +31,7 @@ function escrever(s: Stored) {
 }
 
 // Defaults razoáveis pra cada período começar populado.
-function defaultsPorPeriodo(periodo: MetaPeriodo): Record<string, { valor_meta: number; valor_realizado: number }> {
+function defaultsPorPeriodo(periodo: MetaPeriodo): Record<string, StoredSlot> {
   if (periodo === 'semana') {
     return {
       faturamento:        { valor_meta: 12000,  valor_realizado: 8400 },
@@ -36,38 +43,25 @@ function defaultsPorPeriodo(periodo: MetaPeriodo): Record<string, { valor_meta: 
       roas_medio:         { valor_meta: 4.0,    valor_realizado: 3.6 },
     }
   }
-  if (periodo === 'trimestre') {
-    return {
-      faturamento:        { valor_meta: 160000, valor_realizado: 92000 },
-      conversas_whatsapp: { valor_meta: 1000,   valor_realizado: 620 },
-      leads:              { valor_meta: 400,    valor_realizado: 245 },
-      agendamentos:       { valor_meta: 240,    valor_realizado: 138 },
-      vendas:             { valor_meta: 160,    valor_realizado: 88 },
-      investimento_ads:   { valor_meta: 16000,  valor_realizado: 9800 },
-      roas_medio:         { valor_meta: 4.2,    valor_realizado: 3.7 },
-    }
+  if (periodo === 'trimestre' || periodo === 'mes') {
+    return {}
   }
-  return {
-    faturamento:        { valor_meta: 720000, valor_realizado: 145000 },
-    conversas_whatsapp: { valor_meta: 4500,   valor_realizado: 980 },
-    leads:              { valor_meta: 1800,   valor_realizado: 380 },
-    agendamentos:       { valor_meta: 1080,   valor_realizado: 215 },
-    vendas:             { valor_meta: 720,    valor_realizado: 138 },
-    investimento_ads:   { valor_meta: 72000,  valor_realizado: 15400 },
-    roas_medio:         { valor_meta: 4.5,    valor_realizado: 3.8 },
-  }
+  // ano
+  return {}
 }
 
 function montar(periodo: MetaPeriodo, periodoRef: string): MetaKpi[] {
   const store = ler()
   const slot = store[chave(periodo, periodoRef)] || defaultsPorPeriodo(periodo)
-  return KPIS_PADRAO.map((def, i) => ({
+  return KPIS_PADRAO.map((def) => ({
     id: `${periodoRef}-${def.kpi}`,
     kpi: def.kpi,
     label: def.label,
     unidade: def.unidade,
     ordem: def.ordem,
     valor_meta: slot[def.kpi]?.valor_meta ?? 0,
+    valor_meta_min: slot[def.kpi]?.valor_meta_min ?? null,
+    valor_meta_max: slot[def.kpi]?.valor_meta_max ?? null,
     valor_realizado: slot[def.kpi]?.valor_realizado ?? 0,
   }))
 }
@@ -81,9 +75,12 @@ export const mockMetasRepo: MetasRepo = {
     const store = ler()
     const k = chave(input.periodo, input.periodo_ref)
     const slot = store[k] || {}
+    const prev = slot[input.kpi] || { valor_meta: 0, valor_realizado: 0 }
     slot[input.kpi] = {
       valor_meta: input.valor_meta,
-      valor_realizado: input.valor_realizado ?? slot[input.kpi]?.valor_realizado ?? 0,
+      valor_realizado: input.valor_realizado ?? prev.valor_realizado ?? 0,
+      valor_meta_min: input.valor_meta_min !== undefined ? input.valor_meta_min : prev.valor_meta_min ?? null,
+      valor_meta_max: input.valor_meta_max !== undefined ? input.valor_meta_max : prev.valor_meta_max ?? null,
     }
     store[k] = slot
     escrever(store)

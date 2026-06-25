@@ -45,6 +45,8 @@ export function useMetas({ periodo, periodoRef }: UseMetasOptions): UseMetasRetu
           unidade: def.unidade,
           ordem: def.ordem,
           valor_meta: 0,
+          valor_meta_min: null,
+          valor_meta_max: null,
           valor_realizado: 0,
         }
       })
