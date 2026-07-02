@@ -9,12 +9,13 @@ import { metasRepo } from '../api/metasRepo'
 import type { MetaUpsertInput } from '../api/types'
 
 interface Cenarios { min: number; base: number; max: number }
-interface MetaMensal { ref: string; faturamento: Cenarios; trafego: Cenarios; faturamentoReal?: number }
+interface MetaMensal { ref: string; faturamento: Cenarios; trafego: Cenarios; faturamentoReal?: number; trafegoReal?: number }
 interface MetaTrim {
   ref: string
   faturamento: Cenarios
   trafego: Cenarios
   faturamentoReal?: number
+  trafegoReal?: number
   meses: MetaMensal[]
 }
 
@@ -24,12 +25,13 @@ const Q1: MetaTrim = {
   ref: '2026-Q1',
   // Q1 fechado: usa o real como meta também pra contagem do "no plano"
   faturamento: { min: 980926.05, base: 980926.05, max: 980926.05 },
-  trafego:     { min: 0, base: 0, max: 0 },
+  trafego:     { min: 31_163.15, base: 31_163.15, max: 31_163.15 },
   faturamentoReal: 980926.05,
+  trafegoReal: 31_163.15,
   meses: [
-    { ref: '2026-01', faturamento: { min: 315559.55, base: 315559.55, max: 315559.55 }, trafego: { min: 0, base: 0, max: 0 }, faturamentoReal: 315559.55 },
-    { ref: '2026-02', faturamento: { min: 294542.23, base: 294542.23, max: 294542.23 }, trafego: { min: 0, base: 0, max: 0 }, faturamentoReal: 294542.23 },
-    { ref: '2026-03', faturamento: { min: 370824.27, base: 370824.27, max: 370824.27 }, trafego: { min: 0, base: 0, max: 0 }, faturamentoReal: 370824.27 },
+    { ref: '2026-01', faturamento: { min: 315559.55, base: 315559.55, max: 315559.55 }, trafego: { min:  8_300.00, base:  8_300.00, max:  8_300.00 }, faturamentoReal: 315559.55, trafegoReal:  8_300.00 },
+    { ref: '2026-02', faturamento: { min: 294542.23, base: 294542.23, max: 294542.23 }, trafego: { min:  5_844.54, base:  5_844.54, max:  5_844.54 }, faturamentoReal: 294542.23, trafegoReal:  5_844.54 },
+    { ref: '2026-03', faturamento: { min: 370824.27, base: 370824.27, max: 370824.27 }, trafego: { min: 17_018.61, base: 17_018.61, max: 17_018.61 }, faturamentoReal: 370824.27, trafegoReal: 17_018.61 },
   ],
 }
 
@@ -37,10 +39,11 @@ const Q2: MetaTrim = {
   ref: '2026-Q2',
   faturamento: { min: 1_300_000, base: 1_380_000, max: 1_440_000 },
   trafego:     { min: 82_000,    base: 90_000,    max: 98_000 },
+  trafegoReal: 63_535.12,
   meses: [
-    { ref: '2026-04', faturamento: { min: 400_000, base: 420_000, max: 430_000 }, trafego: { min: 25_000, base: 27_000, max: 30_000 }, faturamentoReal: 372_926.64 },
-    { ref: '2026-05', faturamento: { min: 430_000, base: 460_000, max: 480_000 }, trafego: { min: 27_000, base: 30_000, max: 33_000 }, faturamentoReal: 428_256.98 },
-    { ref: '2026-06', faturamento: { min: 470_000, base: 500_000, max: 530_000 }, trafego: { min: 30_000, base: 33_000, max: 35_000 } },
+    { ref: '2026-04', faturamento: { min: 400_000, base: 420_000, max: 430_000 }, trafego: { min: 25_000, base: 27_000, max: 30_000 }, faturamentoReal: 372_926.64, trafegoReal: 18_854.49 },
+    { ref: '2026-05', faturamento: { min: 430_000, base: 460_000, max: 480_000 }, trafego: { min: 27_000, base: 30_000, max: 33_000 }, faturamentoReal: 428_256.98, trafegoReal: 21_130.88 },
+    { ref: '2026-06', faturamento: { min: 470_000, base: 500_000, max: 530_000 }, trafego: { min: 30_000, base: 33_000, max: 35_000 }, trafegoReal: 23_549.75 },
   ],
 }
 
@@ -77,10 +80,12 @@ const ANO_2026 = {
     max:  Q1.faturamento.max  + Q2.faturamento.max  + Q3.faturamento.max  + Q4.faturamento.max,
   },
   trafego: {
-    min:  Q2.trafego.min  + Q3.trafego.min  + Q4.trafego.min,
-    base: Q2.trafego.base + Q3.trafego.base + Q4.trafego.base,
-    max:  Q2.trafego.max  + Q3.trafego.max  + Q4.trafego.max,
+    min:  Q1.trafego.min  + Q2.trafego.min  + Q3.trafego.min  + Q4.trafego.min,
+    base: Q1.trafego.base + Q2.trafego.base + Q3.trafego.base + Q4.trafego.base,
+    max:  Q1.trafego.max  + Q2.trafego.max  + Q3.trafego.max  + Q4.trafego.max,
   },
+  // Realizado tráfego = Q1 fechado + Q2 fechado (Jun já entrou 2026-07-02).
+  trafegoReal: (Q1.trafegoReal ?? 0) + (Q2.trafegoReal ?? 0),
 }
 
 // ---------- Upserts ----------
@@ -100,7 +105,7 @@ function inputFaturamento(periodo: MetaUpsertInput['periodo'], ref: string, c: C
   }
 }
 
-function inputTrafego(periodo: MetaUpsertInput['periodo'], ref: string, c: Cenarios): MetaUpsertInput {
+function inputTrafego(periodo: MetaUpsertInput['periodo'], ref: string, c: Cenarios, real?: number): MetaUpsertInput {
   return {
     kpi: 'investimento_ads',
     periodo,
@@ -108,6 +113,7 @@ function inputTrafego(periodo: MetaUpsertInput['periodo'], ref: string, c: Cenar
     valor_meta: c.base,
     valor_meta_min: c.min,
     valor_meta_max: c.max,
+    valor_realizado: real,
     unidade: 'BRL',
     label: 'Investimento em Ads',
     ordem: 6,
@@ -125,18 +131,18 @@ export async function seedMetas2026(): Promise<SeedSummary> {
 
   for (const t of TRIMESTRES) {
     await metasRepo.upsert(inputFaturamento('trimestre', t.ref, t.faturamento, t.faturamentoReal))
-    await metasRepo.upsert(inputTrafego('trimestre', t.ref, t.trafego))
+    await metasRepo.upsert(inputTrafego('trimestre', t.ref, t.trafego, t.trafegoReal))
     out.trimestres++
 
     for (const m of t.meses) {
       await metasRepo.upsert(inputFaturamento('mes', m.ref, m.faturamento, m.faturamentoReal))
-      await metasRepo.upsert(inputTrafego('mes', m.ref, m.trafego))
+      await metasRepo.upsert(inputTrafego('mes', m.ref, m.trafego, m.trafegoReal))
       out.meses++
     }
   }
 
   await metasRepo.upsert(inputFaturamento('ano', ANO_2026.ref, ANO_2026.faturamento))
-  await metasRepo.upsert(inputTrafego('ano', ANO_2026.ref, ANO_2026.trafego))
+  await metasRepo.upsert(inputTrafego('ano', ANO_2026.ref, ANO_2026.trafego, ANO_2026.trafegoReal))
   out.ano++
 
   return out
