@@ -39,11 +39,12 @@ const Q2: MetaTrim = {
   ref: '2026-Q2',
   faturamento: { min: 1_300_000, base: 1_380_000, max: 1_440_000 },
   trafego:     { min: 82_000,    base: 90_000,    max: 98_000 },
+  faturamentoReal: 1_208_573.20,
   trafegoReal: 63_535.12,
   meses: [
     { ref: '2026-04', faturamento: { min: 400_000, base: 420_000, max: 430_000 }, trafego: { min: 25_000, base: 27_000, max: 30_000 }, faturamentoReal: 372_926.64, trafegoReal: 18_854.49 },
     { ref: '2026-05', faturamento: { min: 430_000, base: 460_000, max: 480_000 }, trafego: { min: 27_000, base: 30_000, max: 33_000 }, faturamentoReal: 428_256.98, trafegoReal: 21_130.88 },
-    { ref: '2026-06', faturamento: { min: 470_000, base: 500_000, max: 530_000 }, trafego: { min: 30_000, base: 33_000, max: 35_000 }, trafegoReal: 23_549.75 },
+    { ref: '2026-06', faturamento: { min: 470_000, base: 500_000, max: 530_000 }, trafego: { min: 30_000, base: 33_000, max: 35_000 }, faturamentoReal: 407_389.58, trafegoReal: 23_549.75 },
   ],
 }
 
@@ -84,6 +85,8 @@ const ANO_2026 = {
     base: Q1.trafego.base + Q2.trafego.base + Q3.trafego.base + Q4.trafego.base,
     max:  Q1.trafego.max  + Q2.trafego.max  + Q3.trafego.max  + Q4.trafego.max,
   },
+  // Realizado faturamento = Q1 fechado + Q2 fechado (Jun 407.389,58).
+  faturamentoReal: (Q1.faturamentoReal ?? 0) + (Q2.faturamentoReal ?? 0),
   // Realizado tráfego = Q1 fechado + Q2 fechado (Jun já entrou 2026-07-02).
   trafegoReal: (Q1.trafegoReal ?? 0) + (Q2.trafegoReal ?? 0),
 }
@@ -141,7 +144,7 @@ export async function seedMetas2026(): Promise<SeedSummary> {
     }
   }
 
-  await metasRepo.upsert(inputFaturamento('ano', ANO_2026.ref, ANO_2026.faturamento))
+  await metasRepo.upsert(inputFaturamento('ano', ANO_2026.ref, ANO_2026.faturamento, ANO_2026.faturamentoReal))
   await metasRepo.upsert(inputTrafego('ano', ANO_2026.ref, ANO_2026.trafego, ANO_2026.trafegoReal))
   out.ano++
 
