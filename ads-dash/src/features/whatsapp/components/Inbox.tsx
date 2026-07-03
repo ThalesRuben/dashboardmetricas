@@ -3,6 +3,7 @@ import { useInbox } from '../hooks/useInbox'
 import type {
   WhatsAppThreadReal,
   WhatsAppMsgReal,
+  WhatsAppMsgStatus,
   WhatsAppThreadStatusReal,
 } from '../api/types'
 import InboxCoachPanel from './InboxCoachPanel'
@@ -58,7 +59,7 @@ export default function Inbox() {
 
   // Estado do composer fica aqui pra a IA poder injetar sugestões no input.
   const [texto, setTexto] = useState('')
-  const composerRef = useRef<HTMLInputElement | null>(null)
+  const composerRef = useRef<HTMLTextAreaElement | null>(null)
 
   return (
     <div className={styles.inbox}>
@@ -166,7 +167,32 @@ interface ThreadProps {
   onSend: (texto: string) => Promise<unknown>
   texto: string
   setTexto: (t: string) => void
-  composerRef: React.MutableRefObject<HTMLInputElement | null>
+  composerRef: React.MutableRefObject<HTMLTextAreaElement | null>
+}
+
+// Agrupa mensagens do mesmo autor em intervalo curto pra visualmente
+// ficar mais próximo do WhatsApp (menos "cauda" e menos espaçamento).
+const GROUP_WINDOW_MS = 2 * 60 * 1000
+
+type ChatItem =
+  | { kind: 'divider'; id: string; dateISO: string }
+  | { kind: 'msg'; id: string; msg: WhatsAppMsgReal; grouped: boolean }
+
+function buildChatItems(msgs: WhatsAppMsgReal[]): ChatItem[] {
+  const items: ChatItem[] = []
+  let prev: WhatsAppMsgReal | undefined
+  for (const m of msgs) {
+    const newDay = !prev || !mesmoDia(prev.hora, m.hora)
+    if (newDay) items.push({ kind: 'divider', id: 'd-' + m.id, dateISO: m.hora })
+    const grouped =
+      !!prev &&
+      !newDay &&
+      prev.autor === m.autor &&
+      (new Date(m.hora).getTime() - new Date(prev.hora).getTime()) < GROUP_WINDOW_MS
+    items.push({ kind: 'msg', id: m.id, msg: m, grouped })
+    prev = m
+  }
+  return items
 }
 
 function Thread({ thread, msgs, enviando, erroEnvio, onSend, texto, setTexto, composerRef }: ThreadProps) {
@@ -177,11 +203,22 @@ function Thread({ thread, msgs, enviando, erroEnvio, onSend, texto, setTexto, co
     if (el) el.scrollTop = el.scrollHeight
   }, [thread.id, msgs.length])
 
+  // Auto-resize do textarea (até ~5 linhas). Roda sempre que texto muda,
+  // incluindo quando a IA injeta uma sugestão via setTexto externo.
+  useEffect(() => {
+    const el = composerRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px'
+  }, [texto, composerRef])
+
   async function submit() {
     if (!texto.trim() || enviando) return
     const r = await onSend(texto)
     if (r) setTexto('')
   }
+
+  const items = useMemo(() => buildChatItems(msgs), [msgs])
 
   return (
     <>
@@ -199,25 +236,38 @@ function Thread({ thread, msgs, enviando, erroEnvio, onSend, texto, setTexto, co
       </header>
 
       <div className={styles.threadBody} ref={scrollRef}>
-        <div className={styles.dateDivider}><span>{fmtData(thread.ultima_atividade)}</span></div>
-        {msgs.length === 0 ? (
+        {items.length === 0 ? (
           <p className={styles.threadEmpty}>Sem mensagens ainda.</p>
         ) : (
-          msgs.map((m) => <Bubble key={m.id} m={m} />)
+          items.map((it) =>
+            it.kind === 'divider' ? (
+              <div key={it.id} className={styles.dateDivider}>
+                <span>{fmtDivisor(it.dateISO)}</span>
+              </div>
+            ) : (
+              <Bubble key={it.id} m={it.msg} grouped={it.grouped} />
+            ),
+          )
         )}
       </div>
 
       {erroEnvio && <div className={styles.janelaAviso}>Erro: {erroEnvio}</div>}
 
       <footer className={styles.composer}>
-        <input
+        <textarea
           ref={composerRef}
           className={styles.composerInput}
-          placeholder="Escreva sua resposta…"
+          placeholder="Escreva sua resposta…  (Shift+Enter pra quebrar linha)"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              submit()
+            }
+          }}
           disabled={enviando}
+          rows={1}
         />
         <button
           className={styles.composerBtn}
@@ -232,16 +282,30 @@ function Thread({ thread, msgs, enviando, erroEnvio, onSend, texto, setTexto, co
   )
 }
 
-function Bubble({ m }: { m: WhatsAppMsgReal }) {
+function Bubble({ m, grouped }: { m: WhatsAppMsgReal; grouped: boolean }) {
   const isMe = m.autor === 'atendente'
   return (
-    <div className={`${styles.bubbleRow} ${isMe ? styles.bubbleRowMe : ''}`}>
-      <div className={`${styles.bubble} ${isMe ? styles.bubbleMe : styles.bubbleThem}`}>
+    <div className={`${styles.bubbleRow} ${isMe ? styles.bubbleRowMe : ''} ${grouped ? styles.bubbleRowGrouped : ''}`}>
+      <div
+        className={
+          `${styles.bubble} ${isMe ? styles.bubbleMe : styles.bubbleThem} ${grouped ? styles.bubbleGrouped : ''}`
+        }
+      >
         <p className={styles.bubbleText}>{m.texto}</p>
-        <span className={styles.bubbleTime}>{fmtHora(m.hora)}</span>
+        <span className={styles.bubbleMeta}>
+          <span className={styles.bubbleTime}>{fmtHora(m.hora)}</span>
+          {isMe && <Tick status={m.status} />}
+        </span>
       </div>
     </div>
   )
+}
+
+function Tick({ status }: { status: WhatsAppMsgStatus }) {
+  if (status === 'erro') return <span className={styles.tickErro} title="Erro no envio">!</span>
+  if (status === 'lida') return <span className={`${styles.tick} ${styles.tickLida}`} title="Lida">✓✓</span>
+  if (status === 'entregue') return <span className={styles.tick} title="Entregue">✓✓</span>
+  return <span className={styles.tick} title="Enviada">✓</span>
 }
 
 function EmptyThread() {
@@ -291,8 +355,39 @@ function fmtHora(iso: string): string {
     return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   } catch { return iso }
 }
+
 function fmtData(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  } catch { return iso }
+}
+
+function mesmoDia(a: string, b: string): boolean {
+  const da = new Date(a); const db = new Date(b)
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  )
+}
+
+function fmtDivisor(iso: string): string {
+  try {
+    const d = new Date(iso)
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+    const alvo = new Date(d);  alvo.setHours(0, 0, 0, 0)
+    const diffDias = Math.round((hoje.getTime() - alvo.getTime()) / 86400000)
+    if (diffDias === 0) return 'HOJE'
+    if (diffDias === 1) return 'ONTEM'
+    if (diffDias > 1 && diffDias < 7) {
+      return d.toLocaleDateString('pt-BR', { weekday: 'long' })
+        .replace(/-feira$/, '')
+        .toUpperCase()
+    }
+    const mesmoAno = d.getFullYear() === hoje.getFullYear()
+    return d.toLocaleDateString('pt-BR', mesmoAno
+      ? { day: '2-digit', month: 'long' }
+      : { day: '2-digit', month: 'long', year: 'numeric' },
+    )
   } catch { return iso }
 }
