@@ -96,7 +96,7 @@ export default function WhatsAppPage() {
       <PageHeader
         section="whatsapp"
         title="WhatsApp"
-        subtitle={`${fmtNumber(r.conversas)} conversas no período · tempo médio de resposta ${r.tempo_resposta_min} min`}
+        subtitle={`${fmtNumber(r.conversas)} conversas no período · tempo mediano de resposta ${r.tempo_resposta_min} min`}
         actions={
           <div className={styles.headerActions}>
             <DateRangePicker value={range} onChange={setRange} presets={WHATSAPP_PRESETS} />
@@ -157,7 +157,7 @@ export default function WhatsAppPage() {
           <KpiCard
             label="Tempo de resposta"
             value={`${r.tempo_resposta_min} min`}
-            delta={r.tempo_resposta_min <= 10 ? 'dentro da meta (10min)' : 'acima da meta'}
+            delta={`${fmtPct(r.pct_sla_resposta)} em ≤10min`}
             up={r.tempo_resposta_min <= 10}
           />
         </section>

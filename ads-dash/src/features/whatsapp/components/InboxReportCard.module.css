@@ -49,6 +49,12 @@
 }
 .kpiOk   { color: var(--color-success); }
 .kpiWarn { color: var(--color-warning); }
+.kpiSub {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
 
 @media (max-width: 500px) {
   .kpis { grid-template-columns: repeat(2, 1fr); }

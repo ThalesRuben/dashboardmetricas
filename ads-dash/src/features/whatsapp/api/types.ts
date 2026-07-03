@@ -9,6 +9,7 @@ export interface WhatsAppResumo {
   agendamentos_delta: number;
   taxa_resposta: number;
   tempo_resposta_min: number;
+  pct_sla_resposta: number;
   taxa_conversao: number;
   ticket_medio: number;
 }

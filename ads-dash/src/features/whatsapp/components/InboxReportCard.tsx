@@ -60,7 +60,12 @@ export default function InboxReportCard({ inboxPhone, label, threads, onOpen, ra
         <Kpi label="Conversas"     value={fmtNumber(r.conversas)} />
         <Kpi label="Agendamentos"  value={fmtNumber(r.agendamentos)} />
         <Kpi label="Conversão"     value={fmtPct(r.taxa_conversao)} />
-        <Kpi label="T. resposta"   value={`${r.tempo_resposta_min}m`} tone={dentroMeta ? 'ok' : 'warn'} />
+        <Kpi
+          label="T. resposta"
+          value={`${r.tempo_resposta_min}m`}
+          sub={`${fmtPct(r.pct_sla_resposta)} ≤10m`}
+          tone={dentroMeta ? 'ok' : 'warn'}
+        />
       </div>
 
       <div className={styles.funil}>
@@ -85,11 +90,12 @@ export default function InboxReportCard({ inboxPhone, label, threads, onOpen, ra
   )
 }
 
-function Kpi({ label, value, tone }: { label: string; value: string; tone?: 'ok' | 'warn' }) {
+function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'ok' | 'warn' }) {
   return (
     <div className={styles.kpi}>
       <span className={styles.kpiLabel}>{label}</span>
       <span className={`${styles.kpiValue} ${tone === 'warn' ? styles.kpiWarn : ''} ${tone === 'ok' ? styles.kpiOk : ''}`}>{value}</span>
+      {sub && <span className={styles.kpiSub}>{sub}</span>}
     </div>
   )
 }
