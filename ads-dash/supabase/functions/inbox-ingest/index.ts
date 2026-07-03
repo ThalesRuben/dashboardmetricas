@@ -89,12 +89,42 @@ Deno.serve(async (req) => {
   if (!phone) return json({ error: 'phone é obrigatório' }, 400)
   if (!body.texto) return json({ error: 'texto é obrigatório' }, 400)
 
+  // Blindagem contra payloads com `phone` fora do formato BR válido:
+  //   - JID de grupo WhatsApp (18+ dígitos)
+  //   - IDs sintéticos de automação n8n (14-15 dígitos com prefixo não-DDI)
+  //   - qualquer outro padrão que não seja telefone BR real
+  // Telefone BR válido tem 12 dígitos (fixo: 55+DDD+8) ou 13 (celular: 55+DDD+9).
+  // Salão TBC é local (BH), não atende internacional → filtro não perde real.
+  if (phone.length !== 12 && phone.length !== 13) {
+    console.log(JSON.stringify({
+      tag: 'ingest-reject',
+      reason: 'phone_length_invalido',
+      phone_length: phone.length,
+      phone_raw: body.phone,
+      phone_normalized: phone,
+      body_keys: Object.keys(body),
+    }))
+    return json({ error: `phone com ${phone.length} dígitos rejeitado (esperado 12 ou 13)`, ignored: true }, 400)
+  }
+
   const direction = body.direction === 'out' ? 'out' : 'in'
   const hora      = body.hora || new Date().toISOString()
   const origem    = body.origem || 'whatsapp'
   // Aceita 3 nomes pra facilitar wire-up no n8n. Vazio → null (legacy).
   const inboxRaw    = body.inbox_phone || body.connected_phone || body.connectedPhone || ''
   const inbox_phone = inboxRaw ? normalizarPhoneBR(inboxRaw) : null
+
+  // Mesmo filtro pro inbox_phone quando presente. Null (legacy) continua ok.
+  if (inbox_phone !== null && inbox_phone.length !== 12 && inbox_phone.length !== 13) {
+    console.log(JSON.stringify({
+      tag: 'ingest-reject',
+      reason: 'inbox_phone_length_invalido',
+      inbox_phone_length: inbox_phone.length,
+      inbox_raw: inboxRaw,
+      inbox_normalized: inbox_phone,
+    }))
+    return json({ error: `inbox_phone com ${inbox_phone.length} dígitos rejeitado (esperado 12 ou 13)`, ignored: true }, 400)
+  }
 
   // Log de diagnóstico — quais chaves o n8n mandou e como cada candidata
   // a inbox_phone chegou. Aparece em Supabase Dashboard → Functions →
