@@ -1,4 +1,4 @@
-import { useWhatsAppMetrics } from '../hooks/useWhatsAppMetrics'
+import { useWhatsAppMetrics, type DateRange } from '../hooks/useWhatsAppMetrics'
 import { formatarPhoneBR } from '../lib/phone'
 import { fmtNumber, fmtPct } from '@/shared/lib/format'
 import styles from './InboxReportCard.module.css'
@@ -8,10 +8,11 @@ export interface InboxReportCardProps {
   label: string
   threads: number
   onOpen: (phone: string) => void
+  range?: DateRange | null
 }
 
-export default function InboxReportCard({ inboxPhone, label, threads, onOpen }: InboxReportCardProps) {
-  const { data, loading } = useWhatsAppMetrics(inboxPhone)
+export default function InboxReportCard({ inboxPhone, label, threads, onOpen, range }: InboxReportCardProps) {
+  const { data, loading } = useWhatsAppMetrics(inboxPhone, range)
 
   if (loading || !data) {
     return (

@@ -129,6 +129,7 @@ export default function WhatsAppPage() {
               label={INBOX_LABELS[i.inbox_phone] || formatarPhoneBR(i.inbox_phone)}
               threads={i.threads}
               onOpen={setInboxPhone}
+              range={range}
             />
           ))}
         </section>
