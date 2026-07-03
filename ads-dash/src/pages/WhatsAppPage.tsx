@@ -19,7 +19,23 @@ import PageHeader from '@/components/ui/PageHeader'
 import Tabs from '@/components/ui/Tabs'
 import KpiCard from '@/shared/ui/KpiCard'
 import SocialLineChart from '@/components/social/SocialLineChart'
+import DateRangePicker from '@/shared/ui/DateRangePicker'
 import styles from './WhatsAppPage.module.css'
+
+const WHATSAPP_PRESETS = [
+  { key: 'hoje',   label: 'Hoje',          days: 1 },
+  { key: 'ontem',  label: 'Ontem',         days: 1, offset: 1 },
+  { key: '7',      label: 'Últimos 7d',    days: 7 },
+  { key: '15',     label: 'Últimos 15d',   days: 15 },
+  { key: '30',     label: 'Últimos 30d',   days: 30 },
+  { key: 'custom', label: 'Personalizado', days: null },
+]
+
+function defaultRange() {
+  const to = new Date(); to.setHours(23, 59, 59, 999)
+  const from = new Date(to); from.setDate(from.getDate() - 29); from.setHours(0, 0, 0, 0)
+  return { from, to, presetKey: '30' }
+}
 
 const STATUS: Record<WhatsAppThreadStatusReal, { label: string; tone: string; urgent: boolean }> = {
   lead:      { label: 'Lead',      tone: 'amber',   urgent: true  },
@@ -39,7 +55,8 @@ const INBOX_LABELS: Record<string, string> = {
 export default function WhatsAppPage() {
   // null = "Todos os números" (agregado). String = filtra por aquele inbox_phone.
   const [inboxPhone, setInboxPhone] = useState<string | null>(null)
-  const { data, loading, usingMock } = useWhatsAppMetrics(inboxPhone)
+  const [range, setRange] = useState<{ from: Date; to: Date; presetKey?: string } | null>(defaultRange)
+  const { data, loading, usingMock } = useWhatsAppMetrics(inboxPhone, range)
   const { threads } = useInbox({ inboxPhone })
   const { inboxes } = useWhatsAppInboxes()
   const [tab, setTab] = useState('inbox')
@@ -81,10 +98,13 @@ export default function WhatsAppPage() {
         title="WhatsApp"
         subtitle={`${fmtNumber(r.conversas)} conversas no período · tempo médio de resposta ${r.tempo_resposta_min} min`}
         actions={
-          <span className={styles.connected}>
-            <span className={styles.dot} />
-            Conectado
-          </span>
+          <div className={styles.headerActions}>
+            <DateRangePicker value={range} onChange={setRange} presets={WHATSAPP_PRESETS} />
+            <span className={styles.connected}>
+              <span className={styles.dot} />
+              Conectado
+            </span>
+          </div>
         }
       />
 
@@ -124,8 +144,8 @@ export default function WhatsAppPage() {
           <KpiCard
             label="Agendamentos"
             value={fmtNumber(r.agendamentos)}
-            delta={`${r.agendamentos_delta >= 0 ? '+' : ''}${r.agendamentos_delta}% vs ant.`}
-            up={r.agendamentos_delta > 0}
+            delta="total existente hoje"
+            neutral
           />
           <KpiCard
             label="Conversão"

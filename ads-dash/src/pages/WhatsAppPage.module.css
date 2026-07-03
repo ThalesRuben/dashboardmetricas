@@ -1,6 +1,13 @@
 .page { max-width: 1200px; }
 .loading { color: var(--text-subtle); font-size: 13px; padding: 2rem 0; }
 
+.headerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .connected {
   display: inline-flex;
   align-items: center;

@@ -14,8 +14,16 @@ import type {
   ReplyResultado,
 } from './types';
 
+export interface DateRangeInput {
+  from: Date;
+  to: Date;
+}
+
 export interface WhatsAppRepo {
-  getSummary(inboxPhone?: string | null): Promise<WhatsAppSummary | null>;
+  getSummary(
+    inboxPhone?: string | null,
+    range?: DateRangeInput | null,
+  ): Promise<WhatsAppSummary | null>;
   listarInboxes(): Promise<WhatsAppInbox[]>;
   enviarDisparo(input: WhatsAppDisparoInput): Promise<WhatsAppDisparoResultado>;
   listarDisparos(limit?: number): Promise<WhatsAppDisparoHistorico[]>;

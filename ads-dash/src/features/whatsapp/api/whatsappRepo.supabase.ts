@@ -14,12 +14,13 @@ import type {
 import { MOCK_WHATSAPP } from './whatsappRepo.mock';
 
 export const supabaseWhatsAppRepo: WhatsAppRepo = {
-  async getSummary(inboxPhone?: string | null) {
+  async getSummary(inboxPhone?: string | null, range?: { from: Date; to: Date } | null) {
     const { data, error } = await supabase.rpc('get_whatsapp_summary', {
       p_inbox_phone: inboxPhone ?? null,
+      p_from: range?.from ? range.from.toISOString() : null,
+      p_to:   range?.to   ? range.to.toISOString()   : null,
     });
     if (error || !data) return null;
-    // Mescla sobre o MOCK pra qualquer campo opcional faltando ficar com placeholder.
     return { ...MOCK_WHATSAPP, ...(data as any) };
   },
 
