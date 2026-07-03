@@ -145,8 +145,8 @@ export default function WhatsAppPage() {
           <KpiCard
             label="Agendamentos"
             value={fmtNumber(r.agendamentos)}
-            delta="total existente hoje"
-            neutral
+            delta={`${r.agendamentos_delta >= 0 ? '+' : ''}${r.agendamentos_delta}% vs ant.`}
+            up={r.agendamentos_delta > 0}
           />
           <KpiCard
             label="Conversão"
