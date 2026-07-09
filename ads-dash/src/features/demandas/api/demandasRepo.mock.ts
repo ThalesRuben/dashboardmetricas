@@ -1,0 +1,71 @@
+import type { DemandasRepo } from './demandasRepo';
+import type { Demanda } from './types';
+
+const STORAGE_KEY = 'ads-dash:demandas';
+
+function ler(): Demanda[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  const agora = new Date().toISOString();
+  const seed: Demanda[] = [
+    { id: 'seed-1', titulo: 'Configurar envio de relatório semanal',
+      descricao: 'Definir dia/hora e formato do PDF.',
+      status: 'backlog', prioridade: 'alta',  ordem: 1, criado_em: agora, atualizado_em: agora },
+    { id: 'seed-2', titulo: 'Revisar copy dos anúncios de junho',
+      descricao: null,
+      status: 'fazendo', prioridade: 'media', ordem: 1, criado_em: agora, atualizado_em: agora },
+    { id: 'seed-3', titulo: 'Conectar segunda linha do WhatsApp',
+      descricao: 'Linha 5531991340420 falta autenticar no n8n.',
+      status: 'feito',   prioridade: 'alta',  ordem: 1, criado_em: agora, atualizado_em: agora },
+  ];
+  escrever(seed);
+  return seed;
+}
+
+function escrever(list: Demanda[]) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+}
+
+export const mockDemandasRepo: DemandasRepo = {
+  async listar() { return ler(); },
+
+  async criar(input) {
+    const list = ler();
+    const agora = new Date().toISOString();
+    const nova: Demanda = {
+      id: crypto.randomUUID(),
+      titulo: input.titulo,
+      descricao: input.descricao ?? null,
+      status: input.status ?? 'backlog',
+      prioridade: input.prioridade ?? 'media',
+      ordem: Date.now(),
+      criado_em: agora,
+      atualizado_em: agora,
+    };
+    escrever([...list, nova]);
+    return nova;
+  },
+
+  async atualizar(input) {
+    const list = ler();
+    const agora = new Date().toISOString();
+    const next = list.map(d => d.id === input.id
+      ? {
+          ...d,
+          titulo:     input.titulo     ?? d.titulo,
+          descricao:  input.descricao  !== undefined ? input.descricao  : d.descricao,
+          status:     input.status     ?? d.status,
+          prioridade: input.prioridade ?? d.prioridade,
+          ordem:      input.ordem      ?? d.ordem,
+          atualizado_em: agora,
+        }
+      : d);
+    escrever(next);
+  },
+
+  async remover(id) {
+    escrever(ler().filter(d => d.id !== id));
+  },
+};

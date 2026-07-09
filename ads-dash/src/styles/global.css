@@ -64,6 +64,7 @@
   --section-cultura:     var(--accent-purple);
   --section-settings:    var(--text-subtle);
   --section-system:      var(--text-subtle);
+  --section-demandas:    var(--accent-cyan);
 
   /* ---- brand (aliases — código existente) ---- */
   --color-brand:        var(--accent);

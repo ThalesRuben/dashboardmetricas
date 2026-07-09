@@ -1,0 +1,80 @@
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: var(--radius-md);
+  padding: 14px;
+  min-height: 320px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.columnHover {
+  border-color: var(--accent-cyan);
+  background: color-mix(in srgb, var(--accent-cyan) 8%, var(--bg-elevated));
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-subtle);
+}
+.column[data-status='backlog'] .dot { background: var(--text-subtle); }
+.column[data-status='fazendo'] .dot { background: var(--accent-cyan); }
+.column[data-status='feito']   .dot { background: var(--accent, #5dcaa5); }
+
+.label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.count {
+  font-size: 11px;
+  color: var(--text-subtle);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.addBtn {
+  background: transparent;
+  border: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.14));
+  color: var(--text-muted);
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.addBtn:hover {
+  color: var(--text-default);
+  border-color: var(--accent-cyan);
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.empty {
+  color: var(--text-subtle);
+  font-size: 12px;
+  padding: 12px 0;
+  text-align: center;
+  margin: 0;
+}

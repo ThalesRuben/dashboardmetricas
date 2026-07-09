@@ -21,6 +21,7 @@ const IntegrationPage    = lazy(() => import('@/pages/IntegrationPage'))
 const ReportsPage        = lazy(() => import('@/pages/ReportsPage'))
 const AlertsPage         = lazy(() => import('@/pages/AlertsPage'))
 const SettingsPage       = lazy(() => import('@/pages/SettingsPage'))
+const DemandasPage       = lazy(() => import('@/pages/DemandasPage'))
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="integrations" element={<IntegrationPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="alerts" element={<AlertsPage />} />
+          <Route path="demandas" element={<DemandasPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 
