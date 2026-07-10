@@ -1,114 +1,431 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { saveDailyMetrics } from '@/features/ads/hooks/useMetrics'
 import { useMetricsContext } from '@/app/providers/MetricsContext'
 import { useToast } from '@/app/providers/ToastContext'
+import { supabase, invokeFunction } from '@/shared/lib/supabase'
 import PageHeader from '@/components/ui/PageHeader'
 import styles from './IntegrationPage.module.css'
 
-const STORAGE_KEY = 'ads-dash:connections'
+// ─────────────────────────────────────────────────────────────
+// Central de sincronização.
+// Mostra o estado real de cada origem de dados que abastece o dashboard.
+// Nenhum OAuth simulado — cada origem tem seu próprio caminho de ingestão.
+// ─────────────────────────────────────────────────────────────
 
-const CONNECTORS = [
-  { key: 'instagram', nome: 'Instagram', cor: '#d4537e', conta: '@theblondeconcept',     desc: 'Seguidores, alcance, posts e Reels',
-    icon: 'M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm5 5a5 5 0 100 10 5 5 0 000-10zm5.5-.5a1 1 0 100 2 1 1 0 000-2z' },
-  { key: 'tiktok', nome: 'TikTok', cor: '#cfcfcf', conta: '@theblondeconcept',           desc: 'Visualizações, seguidores e vídeos',
-    icon: 'M16 8.5a5 5 0 005 5v-3a2 2 0 01-2-2h-3zM9 12a4 4 0 104 4V8h3V5h-6v11a1 1 0 11-1-1v-3z' },
-  { key: 'youtube', nome: 'YouTube', cor: '#FF4444', conta: 'The Blonde Concept',        desc: 'Inscritos, visualizações e retenção',
-    icon: 'M22 12s0-3.5-.5-5a3 3 0 00-2-2C17.5 4.5 12 4.5 12 4.5s-5.5 0-7.5.5a3 3 0 00-2 2C2 8.5 2 12 2 12s0 3.5.5 5a3 3 0 002 2c2 .5 7.5.5 7.5.5s5.5 0 7.5-.5a3 3 0 002-2c.5-1.5.5-5 .5-5zM10 15.5v-7l6 3.5-6 3.5z' },
-  { key: 'whatsapp', nome: 'WhatsApp', cor: '#5dcaa5', conta: '+55 31 9 9999-0000',      desc: 'Conversas, leads e atendimento (CTWA)',
-    icon: 'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z' },
-  { key: 'meta', nome: 'Meta Ads', cor: '#85b7eb', conta: 'Conta de anúncios',           desc: 'Campanhas do Facebook e Instagram',
-    icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-  { key: 'google', nome: 'Google Ads', cor: '#5dcaa5', conta: 'Conta de anúncios',       desc: 'Campanhas de busca e display',
-    icon: 'M21 12a9 9 0 11-6.2-8.5 M21 5v4h-4' },
-]
+type OriginKey = 'instagram' | 'whatsapp' | 'meta' | 'google' | 'tiktok' | 'youtube'
+type Freshness = 'fresh' | 'stale' | 'empty' | 'error'
 
-function loadConnections() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {} } catch { return {} }
+interface OriginStatus {
+  key: string                      // ex: "instagram" ou "whatsapp:5531990842381"
+  origin: OriginKey
+  label: string
+  sub: string                      // linha secundária (última data / contato)
+  metric: string | null            // KPI resumo (seguidores, threads, etc.)
+  metricLabel: string | null
+  freshness: Freshness
+}
+
+interface OriginConfig {
+  origin: OriginKey
+  label: string
+  ingressao: string                // como o dado chega
+  ver?: string                     // rota interna pra ver os dados
+}
+
+const CONFIG: Record<OriginKey, OriginConfig> = {
+  instagram: {
+    origin: 'instagram',
+    label: 'Instagram',
+    ingressao: 'Edge Function `instagram-sync` chama a Meta Graph API.',
+    ver: '/instagram',
+  },
+  whatsapp: {
+    origin: 'whatsapp',
+    label: 'WhatsApp Business',
+    ingressao: 'n8n recebe da Cloud API e posta em `inbox-ingest`.',
+    ver: '/whatsapp',
+  },
+  meta: {
+    origin: 'meta',
+    label: 'Meta Ads',
+    ingressao: 'Entrada manual dos números do Ads Manager.',
+    ver: '/',
+  },
+  google: {
+    origin: 'google',
+    label: 'Google Ads',
+    ingressao: 'Entrada manual dos números do Google Ads.',
+    ver: '/',
+  },
+  tiktok: {
+    origin: 'tiktok',
+    label: 'TikTok',
+    ingressao: 'Seed / entrada manual — sem sincronização automática.',
+    ver: '/tiktok',
+  },
+  youtube: {
+    origin: 'youtube',
+    label: 'YouTube',
+    ingressao: 'Seed / entrada manual — sem sincronização automática.',
+    ver: '/youtube',
+  },
+}
+
+function timeAgo(iso: string | null | undefined): string {
+  if (!iso) return 'sem dados'
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return 'sem dados'
+  const diff = Date.now() - t
+  const mins = Math.round(diff / 60000)
+  if (mins < 1) return 'agora mesmo'
+  if (mins < 60) return `há ${mins} min`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `há ${hours}h`
+  const days = Math.round(hours / 24)
+  if (days < 30) return `há ${days} dia${days > 1 ? 's' : ''}`
+  const months = Math.round(days / 30)
+  return `há ${months} mês${months > 1 ? 'es' : ''}`
+}
+
+function ageFreshness(iso: string | null | undefined, staleAfterHours: number): Freshness {
+  if (!iso) return 'empty'
+  const diffH = (Date.now() - new Date(iso).getTime()) / 3_600_000
+  if (Number.isNaN(diffH)) return 'empty'
+  return diffH <= staleAfterHours ? 'fresh' : 'stale'
+}
+
+function formatNumber(n: number | null | undefined): string {
+  if (n == null) return '—'
+  return n.toLocaleString('pt-BR')
+}
+
+// ─────────────────────────────────────────────────────────────
+// Consulta ao vivo de todas as origens em paralelo.
+// Tolerante a erro: cada origem falha isolada.
+// ─────────────────────────────────────────────────────────────
+async function fetchAllOrigins(): Promise<OriginStatus[]> {
+  const out: OriginStatus[] = []
+
+  // Instagram
+  try {
+    const { data, error } = await supabase
+      .from('instagram_account_metrics')
+      .select('date, seguidores, username')
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) throw error
+    out.push({
+      key: 'instagram',
+      origin: 'instagram',
+      label: CONFIG.instagram.label,
+      sub: data?.username ? `${data.username} · ${timeAgo(data.date)}` : timeAgo(data?.date),
+      metric: data?.seguidores != null ? formatNumber(data.seguidores) : null,
+      metricLabel: 'seguidores',
+      freshness: ageFreshness(data?.date, 30),
+    })
+  } catch {
+    out.push({
+      key: 'instagram',
+      origin: 'instagram',
+      label: CONFIG.instagram.label,
+      sub: 'não foi possível ler os dados',
+      metric: null,
+      metricLabel: null,
+      freshness: 'error',
+    })
+  }
+
+  // WhatsApp — uma linha por inbox
+  try {
+    const { data, error } = await supabase.rpc('list_whatsapp_inboxes')
+    if (error) throw error
+    const inboxes = (data ?? []) as Array<{ inbox_phone: string; threads: number; ultima_atividade: string }>
+    if (inboxes.length === 0) {
+      out.push({
+        key: 'whatsapp:empty',
+        origin: 'whatsapp',
+        label: CONFIG.whatsapp.label,
+        sub: 'nenhuma inbox recebeu mensagens ainda',
+        metric: null,
+        metricLabel: null,
+        freshness: 'empty',
+      })
+    } else {
+      for (const ib of inboxes) {
+        out.push({
+          key: `whatsapp:${ib.inbox_phone}`,
+          origin: 'whatsapp',
+          label: `${CONFIG.whatsapp.label} · +${ib.inbox_phone}`,
+          sub: `última atividade ${timeAgo(ib.ultima_atividade)}`,
+          metric: formatNumber(ib.threads),
+          metricLabel: 'conversas',
+          freshness: ageFreshness(ib.ultima_atividade, 24),
+        })
+      }
+    }
+  } catch {
+    out.push({
+      key: 'whatsapp:error',
+      origin: 'whatsapp',
+      label: CONFIG.whatsapp.label,
+      sub: 'não foi possível ler as inboxes',
+      metric: null,
+      metricLabel: null,
+      freshness: 'error',
+    })
+  }
+
+  // Meta / Google Ads — última linha em daily_metrics
+  try {
+    const { data, error } = await supabase
+      .from('daily_metrics')
+      .select('date, period, payload, source, created_at')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) throw error
+    const ref = data?.date || data?.created_at
+    const investido = (data?.payload as { investimento?: number } | null)?.investimento
+    const receita = (data?.payload as { receita?: number } | null)?.receita
+    const kpi = investido != null && receita != null
+      ? `R$ ${formatNumber(receita)} / ${formatNumber(investido)}`
+      : null
+
+    for (const key of ['meta', 'google'] as const) {
+      out.push({
+        key,
+        origin: key,
+        label: CONFIG[key].label,
+        sub: ref ? `último registro ${timeAgo(ref)}` : 'sem registros',
+        metric: kpi,
+        metricLabel: kpi ? 'receita / invest.' : null,
+        freshness: ageFreshness(ref, 48),
+      })
+    }
+  } catch {
+    for (const key of ['meta', 'google'] as const) {
+      out.push({
+        key,
+        origin: key,
+        label: CONFIG[key].label,
+        sub: 'não foi possível ler daily_metrics',
+        metric: null,
+        metricLabel: null,
+        freshness: 'error',
+      })
+    }
+  }
+
+  // TikTok
+  try {
+    const { data, error } = await supabase
+      .from('tiktok_account_metrics')
+      .select('date, seguidores')
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) throw error
+    out.push({
+      key: 'tiktok',
+      origin: 'tiktok',
+      label: CONFIG.tiktok.label,
+      sub: data ? `snapshot ${timeAgo(data.date)}` : 'sem snapshots',
+      metric: data?.seguidores != null ? formatNumber(data.seguidores) : null,
+      metricLabel: 'seguidores',
+      freshness: ageFreshness(data?.date, 30 * 24),
+    })
+  } catch {
+    out.push({
+      key: 'tiktok',
+      origin: 'tiktok',
+      label: CONFIG.tiktok.label,
+      sub: 'tabela não disponível',
+      metric: null,
+      metricLabel: null,
+      freshness: 'error',
+    })
+  }
+
+  // YouTube
+  try {
+    const { data, error } = await supabase
+      .from('youtube_channel_metrics')
+      .select('date, inscritos')
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) throw error
+    out.push({
+      key: 'youtube',
+      origin: 'youtube',
+      label: CONFIG.youtube.label,
+      sub: data ? `snapshot ${timeAgo(data.date)}` : 'sem snapshots',
+      metric: data?.inscritos != null ? formatNumber(data.inscritos) : null,
+      metricLabel: 'inscritos',
+      freshness: ageFreshness(data?.date, 30 * 24),
+    })
+  } catch {
+    out.push({
+      key: 'youtube',
+      origin: 'youtube',
+      label: CONFIG.youtube.label,
+      sub: 'tabela não disponível',
+      metric: null,
+      metricLabel: null,
+      freshness: 'error',
+    })
+  }
+
+  return out
 }
 
 export default function IntegrationPage() {
   const toast = useToast()
-  const [conns, setConns] = useState(loadConnections)
-  const [connecting, setConnecting] = useState(null)
-  const [showManual, setShowManual] = useState(false)
+  const [origins, setOrigins] = useState<OriginStatus[]>([])
+  const [loading, setLoading] = useState(true)
+  const [syncingIg, setSyncingIg] = useState(false)
+  const manualRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(conns)) } catch { /* ignore */ }
-  }, [conns])
+  const load = useCallback(async () => {
+    setLoading(true)
+    const data = await fetchAllOrigins()
+    setOrigins(data)
+    setLoading(false)
+  }, [])
 
-  function connect(c) {
-    setConnecting(c.key)
-    // simula o login/OAuth da conta (abriria o popup do provedor numa integração real)
-    setTimeout(() => {
-      setConns(prev => ({ ...prev, [c.key]: { conta: c.conta, em: Date.now() } }))
-      setConnecting(null)
-      toast.success(`${c.nome} conectado como ${c.conta}.`, { title: 'Conta conectada' })
-    }, 1100)
+  useEffect(() => { load() }, [load])
+
+  async function syncInstagram() {
+    setSyncingIg(true)
+    try {
+      const { data, error } = await invokeFunction<{ message?: string; posts_saved?: number; error?: string }>(
+        'instagram-sync',
+      )
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+      toast.success(
+        data?.message
+          ? `${data.message}${data.posts_saved != null ? ` ${data.posts_saved} posts atualizados.` : ''}`
+          : 'Sincronização iniciada.',
+      )
+      await load()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'erro desconhecido'
+      toast.error(`Falha na sincronização: ${msg}`, {
+        title: 'Instagram',
+      })
+    } finally {
+      setSyncingIg(false)
+    }
   }
 
-  function disconnect(c) {
-    setConns(prev => { const n = { ...prev }; delete n[c.key]; return n })
-    toast.info(`${c.nome} desconectado.`)
+  function scrollToManual() {
+    manualRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const conectados = Object.keys(conns).length
+  const withData = origins.filter(o => o.freshness === 'fresh' || o.freshness === 'stale').length
+  const total = origins.length
 
   return (
     <div className={styles.page}>
       <PageHeader
         section="integrations"
-        title="Conecte suas contas"
-        subtitle={conectados ? `${conectados} de ${CONNECTORS.length} contas conectadas` : 'Entre com cada conta para sincronizar os dados automaticamente'}
+        title="Central de sincronização"
+        subtitle={
+          loading
+            ? 'Lendo o estado real de cada origem…'
+            : `${withData} de ${total} origens com dados recentes. Cada origem tem seu próprio caminho de ingestão — nada aqui pede senha de rede.`
+        }
       />
 
       <div className={styles.grid}>
-        {CONNECTORS.map(c => {
-          const conn = conns[c.key]
-          const loading = connecting === c.key
-          return (
-            <div key={c.key} className={`${styles.conn} ${conn ? styles.connOn : ''}`}>
-              <div className={styles.connHead}>
-                <div className={styles.connIcon} style={{ background: c.cor }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0a0d12" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d={c.icon} />
-                  </svg>
-                </div>
-                <div className={styles.connId}>
-                  <span className={styles.connNome}>{c.nome}</span>
-                  <span className={styles.connDesc}>{c.desc}</span>
-                </div>
-              </div>
-
-              {conn ? (
-                <div className={styles.connStatus}>
-                  <span className={styles.connDot} />
-                  Conectado como <strong>{conn.conta}</strong>
-                </div>
-              ) : (
-                <div className={styles.connStatusOff}>Não conectado</div>
-              )}
-
-              {conn ? (
-                <button className={styles.disconnectBtn} onClick={() => disconnect(c)}>Desconectar</button>
-              ) : (
-                <button className="btn btn--primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => connect(c)} disabled={loading}>
-                  {loading ? 'Conectando…' : `Entrar com ${c.nome}`}
-                </button>
-              )}
-            </div>
-          )
-        })}
+        {origins.map(o => (
+          <OriginCard
+            key={o.key}
+            status={o}
+            syncing={o.origin === 'instagram' && syncingIg}
+            onSync={o.origin === 'instagram' ? syncInstagram : undefined}
+            onManual={o.origin === 'meta' || o.origin === 'google' ? scrollToManual : undefined}
+          />
+        ))}
       </div>
 
       <p className={styles.privacy}>
-        🔒 O login abre a tela oficial de cada plataforma. Não guardamos sua senha — só o acesso autorizado para ler as métricas.
+        Sem OAuth simulado. Tokens de API (Meta Graph, WhatsApp Cloud) ficam no Supabase → Edge Functions → Secrets.
+        Os números de Ads são registrados manualmente (Meta / Google não expõem OAuth simples para leitura de conta).
       </p>
 
-      <button className={styles.manualToggle} onClick={() => setShowManual(s => !s)}>
-        {showManual ? '− Ocultar entrada manual' : '+ Prefere inserir os números manualmente?'}
-      </button>
+      <div ref={manualRef} />
+      <ManualEntry toast={toast} />
+    </div>
+  )
+}
 
-      {showManual && <ManualEntry toast={toast} />}
+interface OriginCardProps {
+  status: OriginStatus
+  syncing: boolean
+  onSync?: () => void
+  onManual?: () => void
+}
+
+function OriginCard({ status, syncing, onSync, onManual }: OriginCardProps) {
+  const cfg = CONFIG[status.origin]
+  const dotClass =
+    status.freshness === 'fresh'  ? styles.dotFresh  :
+    status.freshness === 'stale'  ? styles.dotStale  :
+    status.freshness === 'error'  ? styles.dotError  :
+                                    styles.dotEmpty
+  const freshLabel =
+    status.freshness === 'fresh'  ? 'ao vivo' :
+    status.freshness === 'stale'  ? 'defasado' :
+    status.freshness === 'error'  ? 'erro'    :
+                                    'sem dados'
+
+  return (
+    <div className={styles.originCard}>
+      <div className={styles.originHead}>
+        <span className={`${styles.originDot} ${dotClass}`} />
+        <div className={styles.originId}>
+          <div className={styles.originLabel}>{status.label}</div>
+          <div className={styles.originFresh}>{freshLabel}</div>
+        </div>
+      </div>
+
+      <div className={styles.originMetric}>
+        <div className={styles.originValue}>{status.metric ?? '—'}</div>
+        {status.metricLabel && <div className={styles.originValueLbl}>{status.metricLabel}</div>}
+      </div>
+
+      <div className={styles.originSub}>{status.sub}</div>
+      <div className={styles.originIngress}>{cfg.ingressao}</div>
+
+      <div className={styles.originActions}>
+        {onSync && (
+          <button
+            className="btn btn--primary"
+            onClick={onSync}
+            disabled={syncing}
+            style={{ flex: 1, justifyContent: 'center' }}
+          >
+            {syncing ? 'Sincronizando…' : 'Sincronizar agora'}
+          </button>
+        )}
+        {onManual && (
+          <button
+            className="btn btn--primary"
+            onClick={onManual}
+            style={{ flex: 1, justifyContent: 'center' }}
+          >
+            Registrar dia
+          </button>
+        )}
+        {!onSync && !onManual && cfg.ver && (
+          <a href={cfg.ver} className={styles.originLink}>
+            Ver dados →
+          </a>
+        )}
+      </div>
     </div>
   )
 }
@@ -157,7 +474,7 @@ function ManualEntry({ toast }) {
   }
 
   return (
-    <div className={styles.card}>
+    <div className={styles.card} style={{ marginTop: 24 }}>
       <h2 className={styles.cardTitle}>Entrada manual — dados de hoje</h2>
       <div className={styles.infoBox}>Cole os números do Meta Ads Manager e do Google Ads. ROAS, ROI e CTR são calculados automaticamente.</div>
 
