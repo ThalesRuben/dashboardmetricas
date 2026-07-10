@@ -20,17 +20,17 @@ function ler(): Demanda[] {
       descricao: 'Definir dia/hora e formato do PDF.',
       status: 'backlog', prioridade: 'alta',  ordem: 1,
       criado_por: MOCK_ME, responsavel_id: MOCK_ME,
-      criado_em: agora, atualizado_em: agora },
+      criado_em: agora, atualizado_em: agora, concluido_em: null },
     { id: 'seed-2', titulo: 'Revisar copy dos anúncios de junho',
       descricao: null,
       status: 'fazendo', prioridade: 'media', ordem: 1,
       criado_por: MOCK_ME, responsavel_id: 'mock-outra',
-      criado_em: agora, atualizado_em: agora },
+      criado_em: agora, atualizado_em: agora, concluido_em: null },
     { id: 'seed-3', titulo: 'Conectar segunda linha do WhatsApp',
       descricao: 'Linha 5531991340420 falta autenticar no n8n.',
       status: 'feito',   prioridade: 'alta',  ordem: 1,
       criado_por: MOCK_ME, responsavel_id: null,
-      criado_em: agora, atualizado_em: agora },
+      criado_em: agora, atualizado_em: agora, concluido_em: agora },
   ];
   escrever(seed);
   return seed;
@@ -46,17 +46,19 @@ export const mockDemandasRepo: DemandasRepo = {
   async criar(input) {
     const list = ler();
     const agora = new Date().toISOString();
+    const status = input.status ?? 'backlog';
     const nova: Demanda = {
       id: crypto.randomUUID(),
       titulo: input.titulo,
       descricao: input.descricao ?? null,
-      status: input.status ?? 'backlog',
+      status,
       prioridade: input.prioridade ?? 'media',
       ordem: Date.now(),
       criado_por: MOCK_ME,
       responsavel_id: input.responsavel_id ?? null,
       criado_em: agora,
       atualizado_em: agora,
+      concluido_em: status === 'feito' ? agora : null,
     };
     escrever([...list, nova]);
     return nova;
@@ -65,18 +67,24 @@ export const mockDemandasRepo: DemandasRepo = {
   async atualizar(input) {
     const list = ler();
     const agora = new Date().toISOString();
-    const next = list.map(d => d.id === input.id
-      ? {
-          ...d,
-          titulo:         input.titulo         ?? d.titulo,
-          descricao:      input.descricao      !== undefined ? input.descricao      : d.descricao,
-          status:         input.status         ?? d.status,
-          prioridade:     input.prioridade     ?? d.prioridade,
-          ordem:          input.ordem          ?? d.ordem,
-          responsavel_id: input.responsavel_id !== undefined ? input.responsavel_id : d.responsavel_id,
-          atualizado_em:  agora,
-        }
-      : d);
+    const next = list.map(d => {
+      if (d.id !== input.id) return d;
+      const proximoStatus = input.status ?? d.status;
+      let concluidoEm = d.concluido_em;
+      if (d.status !== 'feito' && proximoStatus === 'feito') concluidoEm = agora;
+      else if (d.status === 'feito' && proximoStatus !== 'feito') concluidoEm = null;
+      return {
+        ...d,
+        titulo:         input.titulo         ?? d.titulo,
+        descricao:      input.descricao      !== undefined ? input.descricao      : d.descricao,
+        status:         proximoStatus,
+        prioridade:     input.prioridade     ?? d.prioridade,
+        ordem:          input.ordem          ?? d.ordem,
+        responsavel_id: input.responsavel_id !== undefined ? input.responsavel_id : d.responsavel_id,
+        atualizado_em:  agora,
+        concluido_em:   concluidoEm,
+      };
+    });
     escrever(next);
   },
 

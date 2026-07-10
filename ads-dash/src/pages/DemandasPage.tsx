@@ -1,10 +1,11 @@
 import { useDemandas } from '@/features/demandas';
 import KanbanBoard from '@/features/demandas/components/KanbanBoard';
+import EquipeRendimento from '@/features/demandas/components/EquipeRendimento';
 import PageHeader from '@/components/ui/PageHeader';
 import styles from './DemandasPage.module.css';
 
 export default function DemandasPage() {
-  const { porStatus, equipe, loading, criar, atualizar, remover, moverPara } = useDemandas();
+  const { demandas, porStatus, equipe, loading, criar, atualizar, remover, moverPara } = useDemandas();
 
   return (
     <div className={styles.page}>
@@ -17,14 +18,17 @@ export default function DemandasPage() {
       {loading ? (
         <p className={styles.loading}>Carregando…</p>
       ) : (
-        <KanbanBoard
-          porStatus={porStatus}
-          equipe={equipe}
-          onCriar={criar}
-          onAtualizar={atualizar}
-          onRemover={remover}
-          onMover={moverPara}
-        />
+        <>
+          <EquipeRendimento demandas={demandas} equipe={equipe} />
+          <KanbanBoard
+            porStatus={porStatus}
+            equipe={equipe}
+            onCriar={criar}
+            onAtualizar={atualizar}
+            onRemover={remover}
+            onMover={moverPara}
+          />
+        </>
       )}
     </div>
   );

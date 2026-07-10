@@ -1,0 +1,136 @@
+.wrapper {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 14px;
+  margin-top: var(--space-4);
+}
+
+.chartCard,
+.tableCard {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chartHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.chartTitle,
+.tableTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.chartSub {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  margin: 2px 0 0;
+}
+
+.chartTotal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+}
+.chartTotalValue {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+.chartTotalLbl {
+  font-size: 10.5px;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+.chartBox {
+  position: relative;
+  height: 220px;
+}
+
+.tabela {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tabelaHead,
+.tabelaRow {
+  display: grid;
+  grid-template-columns: 1.5fr 0.6fr 0.5fr 0.9fr 0.6fr;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.tabelaHead {
+  color: var(--text-subtle);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+}
+.tabelaRow {
+  border-radius: var(--radius-sm);
+  transition: background 0.12s ease;
+}
+.tabelaRow:hover { background: rgba(255, 255, 255, 0.02); }
+
+.pessoa {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #0a0d12;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+.pessoaNome {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.numero {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  text-align: right;
+}
+.numeroBom { color: var(--accent, #5dcaa5); }
+
+.empty {
+  color: var(--text-subtle);
+  font-size: 12px;
+  margin: 0;
+  padding: 12px 0;
+}
+
+@media (max-width: 1080px) {
+  .wrapper { grid-template-columns: 1fr; }
+  .chartBox { height: 200px; }
+}

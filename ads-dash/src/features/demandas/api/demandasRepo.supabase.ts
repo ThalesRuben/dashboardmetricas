@@ -5,7 +5,7 @@ import type { Demanda, TeamMember } from './types';
 // `tenant_id` e `criado_por` vêm dos defaults do banco (0025):
 // `current_user_first_tenant()` e `auth.uid()`. Front nunca envia esses campos.
 
-const COLS = 'id, titulo, descricao, status, prioridade, ordem, criado_por, responsavel_id, criado_em, atualizado_em';
+const COLS = 'id, titulo, descricao, status, prioridade, ordem, criado_por, responsavel_id, criado_em, atualizado_em, concluido_em';
 
 export const supabaseDemandasRepo: DemandasRepo = {
   async listar() {

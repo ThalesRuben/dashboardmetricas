@@ -12,6 +12,7 @@ export interface Demanda {
   responsavel_id: string | null;
   criado_em: string;
   atualizado_em: string;
+  concluido_em: string | null;
 }
 
 export interface DemandaCreateInput {
