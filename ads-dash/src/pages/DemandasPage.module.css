@@ -1,2 +1,9 @@
 .page { max-width: 1300px; }
 .loading { color: var(--text-subtle); font-size: 13px; padding: 2rem 0; }
+
+@media (max-width: 639px) {
+  .page {
+    /* deixa o board respirar até a borda; KanbanBoard já compensa com padding lateral */
+    max-width: 100%;
+  }
+}

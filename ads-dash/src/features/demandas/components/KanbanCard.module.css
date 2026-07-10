@@ -122,3 +122,15 @@
   color: var(--text-subtle);
   font-style: italic;
 }
+
+/* Touch: garante área de toque confortável em cards que viram botão */
+@media (hover: none) and (pointer: coarse) {
+  .card { padding: 14px 14px; }
+  .card:active { transform: scale(0.98); }
+  .titulo { font-size: 15px; }
+}
+
+/* iPhone: reduz maxWidth do nome do responsável (coluna menor) */
+@media (max-width: 639px) {
+  .respNome { max-width: 130px; }
+}

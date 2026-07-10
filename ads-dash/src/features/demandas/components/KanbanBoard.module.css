@@ -3,6 +3,7 @@
   align-items: center;
   gap: 12px;
   margin-top: var(--space-4);
+  flex-wrap: wrap;
 }
 
 .filtroGrupo {
@@ -21,7 +22,7 @@
   color: var(--text-muted);
   font: inherit;
   font-size: 12px;
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: 4px;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
@@ -41,7 +42,7 @@
   color: var(--text-muted);
   font: inherit;
   font-size: 12px;
-  padding: 4px 8px;
+  padding: 6px 10px;
   border-left: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
   cursor: pointer;
 }
@@ -54,6 +55,47 @@
   margin-top: var(--space-3);
 }
 
-@media (max-width: 900px) {
-  .board { grid-template-columns: 1fr; }
+/* iPad portrait / iPad mini: compactar sem quebrar as 3 colunas */
+@media (max-width: 1023px) {
+  .board { gap: 10px; }
+}
+
+/* iPhone: scroll horizontal com snap; cada coluna ocupa ~86vw */
+@media (max-width: 639px) {
+  .toolbar {
+    gap: 8px;
+    margin-top: var(--space-3);
+  }
+  .filtroGrupo {
+    flex: 1;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+  .filtroBtn {
+    padding: 8px 14px;
+    font-size: 12.5px;
+  }
+  .filtroSelect {
+    padding: 8px 10px;
+    font-size: 12.5px;
+  }
+
+  .board {
+    grid-auto-flow: column;
+    grid-auto-columns: 86vw;
+    grid-template-columns: none;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-snap-type: x mandatory;
+    scroll-padding: 12px;
+    padding: 2px 4px 8px;
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    gap: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .board::-webkit-scrollbar { display: none; }
+  .board { scrollbar-width: none; }
 }

@@ -120,3 +120,31 @@
   border-color: transparent;
 }
 .remove:hover { text-decoration: underline; }
+
+/* iPhone: modal encosta nas bordas laterais e tap targets ficam ≥ 40px */
+@media (max-width: 639px) {
+  .overlay { padding: 10px; align-items: flex-end; }
+  .modal {
+    max-width: 100%;
+    padding: 18px 16px 20px;
+    border-radius: 14px 14px 0 0;
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+  .head h2 { font-size: 16px; }
+  .close { font-size: 26px; padding: 6px 10px; }
+  .field input,
+  .field textarea,
+  .field select {
+    font-size: 15px; /* evita zoom automático do Safari em focus */
+    padding: 10px 12px;
+  }
+  .row { grid-template-columns: 1fr; gap: 10px; }
+  .footer { flex-wrap: wrap; gap: 10px; }
+  .footerRight { flex: 1; justify-content: flex-end; }
+  .cancel, .save, .remove {
+    font-size: 14px;
+    padding: 10px 16px;
+    min-height: 40px;
+  }
+}
