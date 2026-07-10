@@ -20,17 +20,17 @@ function ler(): Demanda[] {
       descricao: 'Definir dia/hora e formato do PDF.',
       status: 'backlog', prioridade: 'alta',  ordem: 1,
       criado_por: MOCK_ME, responsavel_id: MOCK_ME,
-      criado_em: agora, atualizado_em: agora, concluido_em: null },
+      criado_em: agora, atualizado_em: agora, concluido_em: null, prazo: null },
     { id: 'seed-2', titulo: 'Revisar copy dos anúncios de junho',
       descricao: null,
       status: 'fazendo', prioridade: 'media', ordem: 1,
       criado_por: MOCK_ME, responsavel_id: 'mock-outra',
-      criado_em: agora, atualizado_em: agora, concluido_em: null },
+      criado_em: agora, atualizado_em: agora, concluido_em: null, prazo: null },
     { id: 'seed-3', titulo: 'Conectar segunda linha do WhatsApp',
       descricao: 'Linha 5531991340420 falta autenticar no n8n.',
       status: 'feito',   prioridade: 'alta',  ordem: 1,
       criado_por: MOCK_ME, responsavel_id: null,
-      criado_em: agora, atualizado_em: agora, concluido_em: agora },
+      criado_em: agora, atualizado_em: agora, concluido_em: agora, prazo: null },
   ];
   escrever(seed);
   return seed;
@@ -59,6 +59,7 @@ export const mockDemandasRepo: DemandasRepo = {
       criado_em: agora,
       atualizado_em: agora,
       concluido_em: status === 'feito' ? agora : null,
+      prazo: input.prazo ?? null,
     };
     escrever([...list, nova]);
     return nova;
@@ -81,6 +82,7 @@ export const mockDemandasRepo: DemandasRepo = {
         prioridade:     input.prioridade     ?? d.prioridade,
         ordem:          input.ordem          ?? d.ordem,
         responsavel_id: input.responsavel_id !== undefined ? input.responsavel_id : d.responsavel_id,
+        prazo:          input.prazo          !== undefined ? input.prazo          : d.prazo,
         atualizado_em:  agora,
         concluido_em:   concluidoEm,
       };

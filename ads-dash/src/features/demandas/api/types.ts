@@ -13,6 +13,7 @@ export interface Demanda {
   criado_em: string;
   atualizado_em: string;
   concluido_em: string | null;
+  prazo: string | null;  // ISO date (YYYY-MM-DD), sem hora
 }
 
 export interface DemandaCreateInput {
@@ -21,6 +22,7 @@ export interface DemandaCreateInput {
   status?: DemandaStatus;
   prioridade?: DemandaPrioridade;
   responsavel_id?: string | null;
+  prazo?: string | null;
 }
 
 export interface DemandaUpdateInput {
@@ -31,6 +33,7 @@ export interface DemandaUpdateInput {
   prioridade?: DemandaPrioridade;
   ordem?: number;
   responsavel_id?: string | null;
+  prazo?: string | null;
 }
 
 export interface TeamMember {

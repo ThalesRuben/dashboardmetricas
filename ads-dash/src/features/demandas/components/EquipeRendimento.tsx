@@ -88,12 +88,21 @@ export default function EquipeRendimento({ demandas, equipe }: Props) {
     const agora = Date.now();
     const seteDiasAtras = agora - 7 * DIA_MS;
 
+    const hojeMeia = new Date();
+    hojeMeia.setHours(0, 0, 0, 0);
+    const hojeMeiaMs = hojeMeia.getTime();
+
     return membros.map(m => {
       const minhas = demandas.filter(d => (d.responsavel_id ?? '__sem__') === m.id);
       const wip = minhas.filter(d => d.status === 'fazendo').length;
       const feitas7d = minhas.filter(d => {
         if (!d.concluido_em) return false;
         return new Date(d.concluido_em).getTime() >= seteDiasAtras;
+      }).length;
+      const atrasadas = minhas.filter(d => {
+        if (!d.prazo || d.status === 'feito') return false;
+        const [y, mo, dd] = d.prazo.split('-').map(Number);
+        return new Date(y, (mo ?? 1) - 1, dd ?? 1).getTime() < hojeMeiaMs;
       }).length;
       const backlog = minhas.filter(d => d.status === 'backlog');
       const idadeMediaBacklog = backlog.length === 0
@@ -114,12 +123,13 @@ export default function EquipeRendimento({ demandas, equipe }: Props) {
         total,
         wip,
         feitas7d,
+        atrasadas,
         idadeMediaBacklog,
         taxa,
       };
     })
     .filter(row => row.total > 0)
-    .sort((a, b) => b.feitas7d - a.feitas7d || b.total - a.total);
+    .sort((a, b) => b.atrasadas - a.atrasadas || b.feitas7d - a.feitas7d || b.total - a.total);
   }, [demandas, membros]);
 
   return (
@@ -191,6 +201,7 @@ export default function EquipeRendimento({ demandas, equipe }: Props) {
               <span>Pessoa</span>
               <span title="Em execução agora">Fazendo</span>
               <span title="Concluídas nos últimos 7 dias">7d</span>
+              <span title="Com prazo vencido (fora de 'feito')">Atrasadas</span>
               <span title="Idade média das tarefas em backlog">Idade backlog</span>
               <span title="% de tarefas concluídas do total atribuído">%</span>
             </div>
@@ -202,6 +213,7 @@ export default function EquipeRendimento({ demandas, equipe }: Props) {
                 </span>
                 <span className={styles.numero}>{row.wip}</span>
                 <span className={`${styles.numero} ${row.feitas7d > 0 ? styles.numeroBom : ''}`}>{row.feitas7d}</span>
+                <span className={`${styles.numero} ${row.atrasadas > 0 ? styles.numeroRuim : ''}`}>{row.atrasadas}</span>
                 <span className={styles.numero}>
                   {row.idadeMediaBacklog == null ? '—' : `${row.idadeMediaBacklog}d`}
                 </span>

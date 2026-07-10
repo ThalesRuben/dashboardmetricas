@@ -23,7 +23,41 @@ function idade(iso: string): string {
   return `há ${Math.round(dias / 30)}m`;
 }
 
-function ehParada(demanda: Demanda): boolean {
+// Retorna a diferença em dias entre hoje (local, 00:00) e a data ISO YYYY-MM-DD.
+// Positivo = futuro, negativo = passado, 0 = hoje.
+function diasAtePrazo(prazoIso: string): number {
+  const [y, m, d] = prazoIso.split('-').map(Number);
+  const prazo = new Date(y, (m ?? 1) - 1, d ?? 1);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  return Math.round((prazo.getTime() - hoje.getTime()) / DIA_MS);
+}
+
+type PrazoTom = 'atrasado' | 'hoje' | 'proximo' | 'futuro';
+
+interface BadgePrazo {
+  tom: PrazoTom;
+  texto: string;
+}
+
+function badgePrazo(demanda: Demanda): BadgePrazo | null {
+  if (!demanda.prazo) return null;
+  if (demanda.status === 'feito') return null;  // não polui feitos
+  const dias = diasAtePrazo(demanda.prazo);
+  if (dias < 0) {
+    const abs = Math.abs(dias);
+    return { tom: 'atrasado', texto: abs === 1 ? 'atrasada 1d' : `atrasada ${abs}d` };
+  }
+  if (dias === 0) return { tom: 'hoje', texto: 'vence hoje' };
+  if (dias <= 3) return { tom: 'proximo', texto: dias === 1 ? 'vence amanhã' : `em ${dias}d` };
+  const [, m, d] = demanda.prazo.split('-');
+  return { tom: 'futuro', texto: `${d}/${m}` };
+}
+
+// Fallback: se não há prazo mas o card está travado no backlog com prioridade,
+// mostra "parada" (lógica de antes).
+function paradaSemPrazo(demanda: Demanda): boolean {
+  if (demanda.prazo) return false;
   if (demanda.status !== 'backlog') return false;
   if (demanda.prioridade === 'baixa') return false;
   const dias = (Date.now() - new Date(demanda.criado_em).getTime()) / DIA_MS;
@@ -35,7 +69,8 @@ export default function KanbanCard({ demanda, equipe, onClick }: Props) {
   const responsavel = demanda.responsavel_id
     ? equipe.find(m => m.id === demanda.responsavel_id)
     : null;
-  const parada = ehParada(demanda);
+  const badge = badgePrazo(demanda);
+  const parada = paradaSemPrazo(demanda);
 
   function handleDragStart(e: DragEvent<HTMLButtonElement>) {
     e.dataTransfer.setData('text/plain', demanda.id);
@@ -63,8 +98,13 @@ export default function KanbanCard({ demanda, equipe, onClick }: Props) {
           </svg>
         </span>
         <span className={styles.idade}>{idade(demanda.criado_em)}</span>
-        {parada && (
-          <span className={styles.parada} title="Parada há muito tempo com prioridade">
+        {badge && (
+          <span className={`${styles.badge} ${styles[`badge_${badge.tom}`]}`} title={`Prazo: ${demanda.prazo}`}>
+            {badge.texto}
+          </span>
+        )}
+        {!badge && parada && (
+          <span className={`${styles.badge} ${styles.badge_atrasado}`} title="Parada há muito tempo com prioridade">
             parada
           </span>
         )}

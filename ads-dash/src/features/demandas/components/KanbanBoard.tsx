@@ -15,8 +15,8 @@ import styles from './KanbanBoard.module.css';
 interface Props {
   porStatus: Record<DemandaStatus, Demanda[]>;
   equipe: TeamMember[];
-  onCriar: (input: { titulo: string; descricao?: string | null; status?: DemandaStatus; prioridade?: DemandaPrioridade; responsavel_id?: string | null }) => Promise<void>;
-  onAtualizar: (input: { id: string; titulo?: string; descricao?: string | null; prioridade?: DemandaPrioridade; responsavel_id?: string | null }) => Promise<void>;
+  onCriar: (input: { titulo: string; descricao?: string | null; status?: DemandaStatus; prioridade?: DemandaPrioridade; responsavel_id?: string | null; prazo?: string | null }) => Promise<void>;
+  onAtualizar: (input: { id: string; titulo?: string; descricao?: string | null; prioridade?: DemandaPrioridade; responsavel_id?: string | null; prazo?: string | null }) => Promise<void>;
   onRemover: (id: string) => Promise<void>;
   onMover: (id: string, status: DemandaStatus) => Promise<void>;
 }
@@ -55,7 +55,7 @@ export default function KanbanBoard({ porStatus, equipe, onCriar, onAtualizar, o
     setModalOpen(true);
   }
 
-  async function handleSalvar(dados: { titulo: string; descricao: string | null; prioridade: DemandaPrioridade; status: DemandaStatus; responsavel_id: string | null }) {
+  async function handleSalvar(dados: { titulo: string; descricao: string | null; prioridade: DemandaPrioridade; status: DemandaStatus; responsavel_id: string | null; prazo: string | null }) {
     if (editando) {
       await onAtualizar({
         id: editando.id,
@@ -63,6 +63,7 @@ export default function KanbanBoard({ porStatus, equipe, onCriar, onAtualizar, o
         descricao: dados.descricao,
         prioridade: dados.prioridade,
         responsavel_id: dados.responsavel_id,
+        prazo: dados.prazo,
       });
       if (dados.status !== editando.status) await onMover(editando.id, dados.status);
     } else {

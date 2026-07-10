@@ -16,6 +16,7 @@ interface Props {
     prioridade: DemandaPrioridade;
     status: DemandaStatus;
     responsavel_id: string | null;
+    prazo: string | null;
   }) => Promise<void>;
   onRemover?: () => Promise<void>;
 }
@@ -29,6 +30,7 @@ export default function DemandaModal({ demanda, statusPadrao, equipe, onClose, o
   const [prioridade, setPrioridade] = useState<DemandaPrioridade>(demanda?.prioridade ?? 'media');
   const [status, setStatus] = useState<DemandaStatus>(demanda?.status ?? statusPadrao);
   const [responsavelId, setResponsavelId] = useState<string>(demanda?.responsavel_id ?? '');
+  const [prazo, setPrazo] = useState<string>(demanda?.prazo ?? '');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -48,6 +50,7 @@ export default function DemandaModal({ demanda, statusPadrao, equipe, onClose, o
         prioridade,
         status,
         responsavel_id: responsavelId || null,
+        prazo: prazo || null,
       });
     } finally {
       setSaving(false);
@@ -104,15 +107,25 @@ export default function DemandaModal({ demanda, statusPadrao, equipe, onClose, o
             </label>
           </div>
 
-          <label className={styles.field}>
-            <span>Responsável</span>
-            <select value={responsavelId} onChange={e => setResponsavelId(e.target.value)}>
-              <option value="">— sem responsável —</option>
-              {equipe.map(m => (
-                <option key={m.id} value={m.id}>{m.full_name}</option>
-              ))}
-            </select>
-          </label>
+          <div className={styles.row}>
+            <label className={styles.field}>
+              <span>Responsável</span>
+              <select value={responsavelId} onChange={e => setResponsavelId(e.target.value)}>
+                <option value="">— sem responsável —</option>
+                {equipe.map(m => (
+                  <option key={m.id} value={m.id}>{m.full_name}</option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.field}>
+              <span>Prazo</span>
+              <input
+                type="date"
+                value={prazo}
+                onChange={e => setPrazo(e.target.value)}
+              />
+            </label>
+          </div>
 
           <footer className={styles.footer}>
             {onRemover && (

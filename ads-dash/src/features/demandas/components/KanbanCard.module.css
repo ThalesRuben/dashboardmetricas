@@ -51,17 +51,20 @@
   letter-spacing: 0.02em;
 }
 
-.parada {
+.badge {
   margin-left: auto;
   font-size: 10px;
-  color: #ef4d6c;
-  background: rgba(239, 77, 108, 0.12);
   border-radius: 999px;
   padding: 2px 8px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 600;
+  white-space: nowrap;
 }
+.badge_atrasado { color: #ef4d6c; background: rgba(239, 77, 108, 0.14); }
+.badge_hoje     { color: #ef9f27; background: rgba(239, 159, 39, 0.16); }
+.badge_proximo  { color: #d4a24a; background: rgba(212, 162, 74, 0.10); }
+.badge_futuro   { color: var(--text-subtle); background: rgba(255, 255, 255, 0.04); text-transform: none; letter-spacing: 0.02em; font-weight: 500; font-family: var(--font-mono); }
 
 .titulo {
   font-size: 14px;
