@@ -41,6 +41,14 @@ export interface TeamMember {
   full_name: string;
 }
 
+export interface DemandaComentario {
+  id: string;
+  demanda_id: string;
+  autor_id: string | null;
+  texto: string;
+  criado_em: string;
+}
+
 export type DemandaFiltro =
   | { tipo: 'todas' }
   | { tipo: 'minhas' }

@@ -3,6 +3,7 @@ import type {
   Demanda, DemandaPrioridade, DemandaStatus, TeamMember,
 } from '../api/types';
 import { PRIORIDADE_LABELS, STATUS_LABELS } from '../api/types';
+import Comentarios from './Comentarios';
 import styles from './DemandaModal.module.css';
 
 interface Props {
@@ -126,6 +127,8 @@ export default function DemandaModal({ demanda, statusPadrao, equipe, onClose, o
               />
             </label>
           </div>
+
+          {demanda && <Comentarios demandaId={demanda.id} equipe={equipe} />}
 
           <footer className={styles.footer}>
             {onRemover && (

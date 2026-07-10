@@ -3,6 +3,7 @@ import { mockDemandasRepo } from './demandasRepo.mock';
 import { supabaseDemandasRepo } from './demandasRepo.supabase';
 import type {
   Demanda,
+  DemandaComentario,
   DemandaCreateInput,
   DemandaUpdateInput,
   TeamMember,
@@ -14,6 +15,9 @@ export interface DemandasRepo {
   atualizar(input: DemandaUpdateInput): Promise<void>;
   remover(id: string): Promise<void>;
   listarEquipe(): Promise<TeamMember[]>;
+  listarComentarios(demandaId: string): Promise<DemandaComentario[]>;
+  criarComentario(input: { demanda_id: string; texto: string }): Promise<DemandaComentario>;
+  removerComentario(id: string): Promise<void>;
 }
 
 export const demandasRepo: DemandasRepo = createRepo<DemandasRepo>({

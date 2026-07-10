@@ -15,7 +15,9 @@
   border-radius: var(--radius-md);
   padding: 20px;
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
+  max-height: 92vh;
+  overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 

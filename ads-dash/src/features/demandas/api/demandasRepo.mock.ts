@@ -1,7 +1,8 @@
 import type { DemandasRepo } from './demandasRepo';
-import type { Demanda, TeamMember } from './types';
+import type { Demanda, DemandaComentario, TeamMember } from './types';
 
 const STORAGE_KEY = 'ads-dash:demandas';
+const COMENTARIOS_KEY = 'ads-dash:demanda_comentarios';
 
 const MOCK_ME = 'mock-me';
 const MOCK_TEAM: TeamMember[] = [
@@ -97,4 +98,39 @@ export const mockDemandasRepo: DemandasRepo = {
   async listarEquipe() {
     return MOCK_TEAM;
   },
+
+  async listarComentarios(demandaId) {
+    return lerComentarios()
+      .filter(c => c.demanda_id === demandaId)
+      .sort((a, b) => (a.criado_em < b.criado_em ? -1 : 1));
+  },
+
+  async criarComentario(input) {
+    const novo: DemandaComentario = {
+      id: crypto.randomUUID(),
+      demanda_id: input.demanda_id,
+      autor_id: MOCK_ME,
+      texto: input.texto,
+      criado_em: new Date().toISOString(),
+    };
+    const lista = lerComentarios();
+    escreverComentarios([...lista, novo]);
+    return novo;
+  },
+
+  async removerComentario(id) {
+    escreverComentarios(lerComentarios().filter(c => c.id !== id));
+  },
 };
+
+function lerComentarios(): DemandaComentario[] {
+  try {
+    const raw = localStorage.getItem(COMENTARIOS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return [];
+}
+
+function escreverComentarios(list: DemandaComentario[]) {
+  try { localStorage.setItem(COMENTARIOS_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+}
