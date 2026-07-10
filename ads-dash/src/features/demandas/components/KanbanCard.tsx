@@ -8,6 +8,9 @@ interface Props {
   demanda: Demanda;
   equipe: TeamMember[];
   onClick: () => void;
+  onDragOverCard?: (id: string, position: 'before' | 'after') => void;
+  onDragLeaveCard?: () => void;
+  dropIndicator?: 'before' | 'after' | null;
 }
 
 const DIA_MS = 86_400_000;
@@ -64,7 +67,14 @@ function paradaSemPrazo(demanda: Demanda): boolean {
   return demanda.prioridade === 'alta' ? dias >= 3 : dias >= 7;
 }
 
-export default function KanbanCard({ demanda, equipe, onClick }: Props) {
+export default function KanbanCard({
+  demanda,
+  equipe,
+  onClick,
+  onDragOverCard,
+  onDragLeaveCard,
+  dropIndicator = null,
+}: Props) {
   const [dragging, setDragging] = useState(false);
   const responsavel = demanda.responsavel_id
     ? equipe.find(m => m.id === demanda.responsavel_id)
@@ -80,15 +90,30 @@ export default function KanbanCard({ demanda, equipe, onClick }: Props) {
 
   function handleDragEnd() { setDragging(false); }
 
+  function positionFrom(e: DragEvent<HTMLButtonElement>): 'before' | 'after' {
+    const rect = e.currentTarget.getBoundingClientRect();
+    return e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+  }
+
+  function handleDragOver(e: DragEvent<HTMLButtonElement>) {
+    if (!onDragOverCard) return;
+    e.preventDefault();  // permite drop no card; NÃO chama stopPropagation:
+                         // a coluna precisa ver o drop pra ler o dataTransfer.
+    e.dataTransfer.dropEffect = 'move';
+    onDragOverCard(demanda.id, positionFrom(e));
+  }
+
   return (
     <button
       type="button"
-      className={`${styles.card} ${dragging ? styles.dragging : ''}`}
+      className={`${styles.card} ${dragging ? styles.dragging : ''} ${dropIndicator === 'before' ? styles.dropBefore : ''} ${dropIndicator === 'after' ? styles.dropAfter : ''}`}
       data-prioridade={demanda.prioridade}
       data-status={demanda.status}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+      onDragLeave={onDragLeaveCard}
       onClick={onClick}
     >
       <div className={styles.topo}>

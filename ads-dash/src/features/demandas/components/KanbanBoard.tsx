@@ -18,7 +18,7 @@ interface Props {
   onCriar: (input: { titulo: string; descricao?: string | null; status?: DemandaStatus; prioridade?: DemandaPrioridade; responsavel_id?: string | null; prazo?: string | null }) => Promise<void>;
   onAtualizar: (input: { id: string; titulo?: string; descricao?: string | null; prioridade?: DemandaPrioridade; responsavel_id?: string | null; prazo?: string | null }) => Promise<void>;
   onRemover: (id: string) => Promise<void>;
-  onMover: (id: string, status: DemandaStatus) => Promise<void>;
+  onMover: (id: string, status: DemandaStatus, ordem?: number) => Promise<void>;
 }
 
 const COLUNAS: DemandaStatus[] = ['backlog', 'fazendo', 'feito'];
@@ -146,9 +146,13 @@ export default function KanbanBoard({ porStatus, equipe, onCriar, onAtualizar, o
             label={STATUS_LABELS[status]}
             demandas={porStatusFiltrado[status]}
             equipe={equipe}
+            // Reordenar manualmente só faz sentido em backlog/fazendo (feito
+            // é ordenado por concluído desc). E só quando o filtro está aberto:
+            // reordenar com filtro ativo pode confundir vizinhos escondidos.
+            reordenavel={status !== 'feito' && filtro.tipo === 'todas'}
             onAdicionar={() => abrirNova(status)}
             onCardClick={abrirEditar}
-            onDrop={(id) => onMover(id, status)}
+            onDrop={(id, targetOrdem) => onMover(id, status, targetOrdem)}
           />
         ))}
       </div>

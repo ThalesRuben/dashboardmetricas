@@ -22,6 +22,11 @@
 .card:active { cursor: grabbing; }
 .dragging { opacity: 0.45; }
 
+/* Indicadores de drop entre cards */
+.dropBefore { box-shadow: 0 -2px 0 0 var(--accent-cyan) inset, 0 -3px 8px -2px var(--accent-cyan); }
+.dropAfter  { box-shadow: 0  2px 0 0 var(--accent-cyan) inset, 0  3px 8px -2px var(--accent-cyan); }
+.dropBefore, .dropAfter { border-color: var(--accent-cyan); }
+
 /* Coluna "feito" ganha visual de arquivado */
 .card[data-status='feito'] { opacity: 0.72; }
 .card[data-status='feito']:hover { opacity: 1; }
