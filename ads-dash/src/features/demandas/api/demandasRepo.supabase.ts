@@ -2,12 +2,9 @@ import { supabase } from '@/shared/lib/supabase';
 import type { DemandasRepo } from './demandasRepo';
 import type { Demanda } from './types';
 
-async function currentTenantId(): Promise<string | null> {
-  const { data, error } = await supabase.rpc('current_user_tenants');
-  if (error || !data) return null;
-  const first = Array.isArray(data) ? data[0] : data;
-  return typeof first === 'string' ? first : first?.id ?? null;
-}
+// tenant_id é preenchido server-side pelo default `paciente_1_tenant_id()`
+// (ver migration 0023). Sob login estático o front não tem auth.uid(), então
+// não dá pra resolver o tenant do lado do cliente.
 
 export const supabaseDemandasRepo: DemandasRepo = {
   async listar() {
@@ -21,12 +18,9 @@ export const supabaseDemandasRepo: DemandasRepo = {
   },
 
   async criar(input) {
-    const tenantId = await currentTenantId();
-    if (!tenantId) throw new Error('Tenant não encontrado.');
     const { data, error } = await supabase
       .from('demandas')
       .insert({
-        tenant_id: tenantId,
         titulo: input.titulo,
         descricao: input.descricao ?? null,
         status: input.status ?? 'backlog',
