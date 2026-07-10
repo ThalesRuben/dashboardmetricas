@@ -23,6 +23,17 @@ interface Props {
 
 const COLUNAS: DemandaStatus[] = ['backlog', 'fazendo', 'feito'];
 
+const DIA_MS = 86_400_000;
+
+function demandaAtrasada(d: Demanda): boolean {
+  if (!d.prazo || d.status === 'feito') return false;
+  const [y, m, dd] = d.prazo.split('-').map(Number);
+  const prazoTs = new Date(y, (m ?? 1) - 1, dd ?? 1).getTime();
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  return prazoTs < hoje.getTime();
+}
+
 export default function KanbanBoard({ porStatus, equipe, onCriar, onAtualizar, onRemover, onMover }: Props) {
   const { user } = useAuth() as { user: { id: string } | null };
   const [modalOpen, setModalOpen] = useState(false);
@@ -33,8 +44,15 @@ export default function KanbanBoard({ porStatus, equipe, onCriar, onAtualizar, o
   function passaFiltro(d: Demanda): boolean {
     if (filtro.tipo === 'todas') return true;
     if (filtro.tipo === 'minhas') return !!user && d.responsavel_id === user.id;
+    if (filtro.tipo === 'atrasadas') return demandaAtrasada(d);
     return d.responsavel_id === filtro.pessoaId;
   }
+
+  const totalAtrasadas = useMemo(() => {
+    let n = 0;
+    for (const s of COLUNAS) for (const d of porStatus[s]) if (demandaAtrasada(d)) n++;
+    return n;
+  }, [porStatus]);
 
   const porStatusFiltrado = useMemo(() => {
     const buckets: Record<DemandaStatus, Demanda[]> = { backlog: [], fazendo: [], feito: [] };
@@ -92,6 +110,16 @@ export default function KanbanBoard({ porStatus, equipe, onCriar, onAtualizar, o
             disabled={!user}
           >
             Minhas
+          </button>
+          <button
+            type="button"
+            className={`${styles.filtroBtn} ${styles.filtroBtnAlerta} ${filtro.tipo === 'atrasadas' ? styles.filtroBtnAtrasadasAtivo : ''}`}
+            onClick={() => setFiltro({ tipo: 'atrasadas' })}
+            disabled={totalAtrasadas === 0}
+            title={totalAtrasadas === 0 ? 'Nenhuma tarefa atrasada' : `${totalAtrasadas} tarefa(s) atrasada(s)`}
+          >
+            Atrasadas
+            {totalAtrasadas > 0 && <span className={styles.filtroBadge}>{totalAtrasadas}</span>}
           </button>
           <select
             className={styles.filtroSelect}

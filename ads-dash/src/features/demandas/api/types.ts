@@ -44,6 +44,7 @@ export interface TeamMember {
 export type DemandaFiltro =
   | { tipo: 'todas' }
   | { tipo: 'minhas' }
+  | { tipo: 'atrasadas' }
   | { tipo: 'pessoa'; pessoaId: string };
 
 export const STATUS_LABELS: Record<DemandaStatus, string> = {

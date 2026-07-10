@@ -36,6 +36,39 @@
 }
 .filtroBtnAtivo:hover { color: var(--bg-base, #0e1013); background: var(--accent-cyan); }
 
+.filtroBtnAlerta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #ef4d6c;
+}
+.filtroBtnAlerta:hover:not(:disabled) {
+  color: #ef4d6c;
+  background: rgba(239, 77, 108, 0.08);
+}
+.filtroBtnAlerta:disabled { color: var(--text-subtle); }
+
+.filtroBtnAtrasadasAtivo,
+.filtroBtnAtrasadasAtivo:hover {
+  color: #0e1013;
+  background: #ef4d6c;
+}
+.filtroBtnAtrasadasAtivo .filtroBadge {
+  background: rgba(14, 16, 19, 0.28);
+  color: #0e1013;
+}
+
+.filtroBadge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(239, 77, 108, 0.16);
+  color: #ef4d6c;
+  line-height: 1.4;
+}
+
 .filtroSelect {
   background: transparent;
   border: none;

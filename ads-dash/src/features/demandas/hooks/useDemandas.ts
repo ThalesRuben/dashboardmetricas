@@ -72,9 +72,27 @@ export function useDemandas(): UseDemandasReturn {
       backlog: [], fazendo: [], feito: [],
     };
     for (const d of demandas) buckets[d.status].push(d);
-    for (const k of Object.keys(buckets) as DemandaStatus[]) {
-      buckets[k].sort((a, b) => a.ordem - b.ordem);
-    }
+
+    // Backlog + fazendo: prazo asc (mais urgente no topo), sem prazo cai pro fim
+    // e desempata por ordem manual. Feito: concluido_em desc (mais recente primeiro).
+    const porPrazo = (a: Demanda, b: Demanda) => {
+      if (a.prazo && b.prazo) {
+        if (a.prazo !== b.prazo) return a.prazo < b.prazo ? -1 : 1;
+        return a.ordem - b.ordem;
+      }
+      if (a.prazo) return -1;
+      if (b.prazo) return 1;
+      return a.ordem - b.ordem;
+    };
+    const porConclusao = (a: Demanda, b: Demanda) => {
+      const ax = a.concluido_em ?? a.atualizado_em;
+      const bx = b.concluido_em ?? b.atualizado_em;
+      return ax < bx ? 1 : ax > bx ? -1 : 0;
+    };
+
+    buckets.backlog.sort(porPrazo);
+    buckets.fazendo.sort(porPrazo);
+    buckets.feito.sort(porConclusao);
     return buckets;
   }, [demandas]);
 
