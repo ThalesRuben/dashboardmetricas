@@ -4,7 +4,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import styles from './DemandasPage.module.css';
 
 export default function DemandasPage() {
-  const { porStatus, loading, criar, atualizar, remover, moverPara } = useDemandas();
+  const { porStatus, equipe, loading, criar, atualizar, remover, moverPara } = useDemandas();
 
   return (
     <div className={styles.page}>
@@ -19,6 +19,7 @@ export default function DemandasPage() {
       ) : (
         <KanbanBoard
           porStatus={porStatus}
+          equipe={equipe}
           onCriar={criar}
           onAtualizar={atualizar}
           onRemover={remover}

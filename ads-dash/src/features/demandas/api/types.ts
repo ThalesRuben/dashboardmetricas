@@ -8,6 +8,8 @@ export interface Demanda {
   status: DemandaStatus;
   prioridade: DemandaPrioridade;
   ordem: number;
+  criado_por: string | null;
+  responsavel_id: string | null;
   criado_em: string;
   atualizado_em: string;
 }
@@ -17,6 +19,7 @@ export interface DemandaCreateInput {
   descricao?: string | null;
   status?: DemandaStatus;
   prioridade?: DemandaPrioridade;
+  responsavel_id?: string | null;
 }
 
 export interface DemandaUpdateInput {
@@ -26,7 +29,18 @@ export interface DemandaUpdateInput {
   status?: DemandaStatus;
   prioridade?: DemandaPrioridade;
   ordem?: number;
+  responsavel_id?: string | null;
 }
+
+export interface TeamMember {
+  id: string;
+  full_name: string;
+}
+
+export type DemandaFiltro =
+  | { tipo: 'todas' }
+  | { tipo: 'minhas' }
+  | { tipo: 'pessoa'; pessoaId: string };
 
 export const STATUS_LABELS: Record<DemandaStatus, string> = {
   backlog: 'Backlog',

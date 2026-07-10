@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
-import type { Demanda, DemandaPrioridade, DemandaStatus } from '../api/types';
+import type {
+  Demanda, DemandaPrioridade, DemandaStatus, TeamMember,
+} from '../api/types';
 import { PRIORIDADE_LABELS, STATUS_LABELS } from '../api/types';
 import styles from './DemandaModal.module.css';
 
 interface Props {
   demanda: Demanda | null;
   statusPadrao: DemandaStatus;
+  equipe: TeamMember[];
   onClose: () => void;
   onSalvar: (dados: {
     titulo: string;
     descricao: string | null;
     prioridade: DemandaPrioridade;
     status: DemandaStatus;
+    responsavel_id: string | null;
   }) => Promise<void>;
   onRemover?: () => Promise<void>;
 }
@@ -19,11 +23,12 @@ interface Props {
 const STATUS_OPTS: DemandaStatus[] = ['backlog', 'fazendo', 'feito'];
 const PRIO_OPTS: DemandaPrioridade[] = ['baixa', 'media', 'alta'];
 
-export default function DemandaModal({ demanda, statusPadrao, onClose, onSalvar, onRemover }: Props) {
+export default function DemandaModal({ demanda, statusPadrao, equipe, onClose, onSalvar, onRemover }: Props) {
   const [titulo, setTitulo] = useState(demanda?.titulo ?? '');
   const [descricao, setDescricao] = useState(demanda?.descricao ?? '');
   const [prioridade, setPrioridade] = useState<DemandaPrioridade>(demanda?.prioridade ?? 'media');
   const [status, setStatus] = useState<DemandaStatus>(demanda?.status ?? statusPadrao);
+  const [responsavelId, setResponsavelId] = useState<string>(demanda?.responsavel_id ?? '');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -42,6 +47,7 @@ export default function DemandaModal({ demanda, statusPadrao, onClose, onSalvar,
         descricao: descricao.trim() ? descricao.trim() : null,
         prioridade,
         status,
+        responsavel_id: responsavelId || null,
       });
     } finally {
       setSaving(false);
@@ -97,6 +103,16 @@ export default function DemandaModal({ demanda, statusPadrao, onClose, onSalvar,
               </select>
             </label>
           </div>
+
+          <label className={styles.field}>
+            <span>Responsável</span>
+            <select value={responsavelId} onChange={e => setResponsavelId(e.target.value)}>
+              <option value="">— sem responsável —</option>
+              {equipe.map(m => (
+                <option key={m.id} value={m.id}>{m.full_name}</option>
+              ))}
+            </select>
+          </label>
 
           <footer className={styles.footer}>
             {onRemover && (

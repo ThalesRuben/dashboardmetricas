@@ -1,5 +1,5 @@
 import { useState, type DragEvent } from 'react';
-import type { Demanda, DemandaStatus } from '../api/types';
+import type { Demanda, DemandaStatus, TeamMember } from '../api/types';
 import KanbanCard from './KanbanCard';
 import styles from './KanbanColumn.module.css';
 
@@ -7,12 +7,13 @@ interface Props {
   status: DemandaStatus;
   label: string;
   demandas: Demanda[];
+  equipe: TeamMember[];
   onAdicionar: () => void;
   onCardClick: (d: Demanda) => void;
   onDrop: (id: string) => void;
 }
 
-export default function KanbanColumn({ status, label, demandas, onAdicionar, onCardClick, onDrop }: Props) {
+export default function KanbanColumn({ status, label, demandas, equipe, onAdicionar, onCardClick, onDrop }: Props) {
   const [hover, setHover] = useState(false);
 
   function handleDragOver(e: DragEvent<HTMLDivElement>) {
@@ -54,7 +55,7 @@ export default function KanbanColumn({ status, label, demandas, onAdicionar, onC
           <p className={styles.empty}>Nenhuma demanda aqui.</p>
         )}
         {demandas.map(d => (
-          <KanbanCard key={d.id} demanda={d} onClick={() => onCardClick(d)} />
+          <KanbanCard key={d.id} demanda={d} equipe={equipe} onClick={() => onCardClick(d)} />
         ))}
       </div>
     </section>

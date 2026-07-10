@@ -5,11 +5,13 @@ import type {
   DemandaCreateInput,
   DemandaStatus,
   DemandaUpdateInput,
+  TeamMember,
 } from '../api/types';
 
 export interface UseDemandasReturn {
   demandas: Demanda[];
   porStatus: Record<DemandaStatus, Demanda[]>;
+  equipe: TeamMember[];
   loading: boolean;
   criar: (input: DemandaCreateInput) => Promise<void>;
   atualizar: (input: DemandaUpdateInput) => Promise<void>;
@@ -20,15 +22,21 @@ export interface UseDemandasReturn {
 
 export function useDemandas(): UseDemandasReturn {
   const [demandas, setDemandas] = useState<Demanda[]>([]);
+  const [equipe, setEquipe] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await demandasRepo.listar();
+      const [list, team] = await Promise.all([
+        demandasRepo.listar(),
+        demandasRepo.listarEquipe(),
+      ]);
       setDemandas(list);
+      setEquipe(team);
     } catch {
       setDemandas([]);
+      setEquipe([]);
     } finally {
       setLoading(false);
     }
@@ -70,5 +78,5 @@ export function useDemandas(): UseDemandasReturn {
     return buckets;
   }, [demandas]);
 
-  return { demandas, porStatus, loading, criar, atualizar, remover, moverPara, refresh };
+  return { demandas, porStatus, equipe, loading, criar, atualizar, remover, moverPara, refresh };
 }

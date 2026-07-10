@@ -1,7 +1,13 @@
 import type { DemandasRepo } from './demandasRepo';
-import type { Demanda } from './types';
+import type { Demanda, TeamMember } from './types';
 
 const STORAGE_KEY = 'ads-dash:demandas';
+
+const MOCK_ME = 'mock-me';
+const MOCK_TEAM: TeamMember[] = [
+  { id: MOCK_ME,       full_name: 'Eu (mock)' },
+  { id: 'mock-outra',  full_name: 'Outra pessoa (mock)' },
+];
 
 function ler(): Demanda[] {
   try {
@@ -12,13 +18,19 @@ function ler(): Demanda[] {
   const seed: Demanda[] = [
     { id: 'seed-1', titulo: 'Configurar envio de relatório semanal',
       descricao: 'Definir dia/hora e formato do PDF.',
-      status: 'backlog', prioridade: 'alta',  ordem: 1, criado_em: agora, atualizado_em: agora },
+      status: 'backlog', prioridade: 'alta',  ordem: 1,
+      criado_por: MOCK_ME, responsavel_id: MOCK_ME,
+      criado_em: agora, atualizado_em: agora },
     { id: 'seed-2', titulo: 'Revisar copy dos anúncios de junho',
       descricao: null,
-      status: 'fazendo', prioridade: 'media', ordem: 1, criado_em: agora, atualizado_em: agora },
+      status: 'fazendo', prioridade: 'media', ordem: 1,
+      criado_por: MOCK_ME, responsavel_id: 'mock-outra',
+      criado_em: agora, atualizado_em: agora },
     { id: 'seed-3', titulo: 'Conectar segunda linha do WhatsApp',
       descricao: 'Linha 5531991340420 falta autenticar no n8n.',
-      status: 'feito',   prioridade: 'alta',  ordem: 1, criado_em: agora, atualizado_em: agora },
+      status: 'feito',   prioridade: 'alta',  ordem: 1,
+      criado_por: MOCK_ME, responsavel_id: null,
+      criado_em: agora, atualizado_em: agora },
   ];
   escrever(seed);
   return seed;
@@ -41,6 +53,8 @@ export const mockDemandasRepo: DemandasRepo = {
       status: input.status ?? 'backlog',
       prioridade: input.prioridade ?? 'media',
       ordem: Date.now(),
+      criado_por: MOCK_ME,
+      responsavel_id: input.responsavel_id ?? null,
       criado_em: agora,
       atualizado_em: agora,
     };
@@ -54,12 +68,13 @@ export const mockDemandasRepo: DemandasRepo = {
     const next = list.map(d => d.id === input.id
       ? {
           ...d,
-          titulo:     input.titulo     ?? d.titulo,
-          descricao:  input.descricao  !== undefined ? input.descricao  : d.descricao,
-          status:     input.status     ?? d.status,
-          prioridade: input.prioridade ?? d.prioridade,
-          ordem:      input.ordem      ?? d.ordem,
-          atualizado_em: agora,
+          titulo:         input.titulo         ?? d.titulo,
+          descricao:      input.descricao      !== undefined ? input.descricao      : d.descricao,
+          status:         input.status         ?? d.status,
+          prioridade:     input.prioridade     ?? d.prioridade,
+          ordem:          input.ordem          ?? d.ordem,
+          responsavel_id: input.responsavel_id !== undefined ? input.responsavel_id : d.responsavel_id,
+          atualizado_em:  agora,
         }
       : d);
     escrever(next);
@@ -67,5 +82,9 @@ export const mockDemandasRepo: DemandasRepo = {
 
   async remover(id) {
     escrever(ler().filter(d => d.id !== id));
+  },
+
+  async listarEquipe() {
+    return MOCK_TEAM;
   },
 };
