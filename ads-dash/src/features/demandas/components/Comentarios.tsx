@@ -45,8 +45,7 @@ export default function Comentarios({ demandaId, equipe }: Props) {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  async function enviar(e: React.FormEvent) {
-    e.preventDefault();
+  async function enviar() {
     const clean = texto.trim();
     if (!clean || enviando) return;
     setEnviando(true);
@@ -120,19 +119,25 @@ export default function Comentarios({ demandaId, equipe }: Props) {
 
       {erro && <p className={styles.erro}>{erro}</p>}
 
-      <form className={styles.formulario} onSubmit={enviar}>
+      <div className={styles.formulario}>
         <textarea
           className={styles.textarea}
           value={texto}
           onChange={e => setTexto(e.target.value)}
+          onKeyDown={e => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+              e.preventDefault();
+              enviar();
+            }
+          }}
           placeholder="Escreva um comentário…"
           rows={2}
           disabled={enviando}
         />
-        <button type="submit" className={styles.enviar} disabled={enviando || !texto.trim()}>
+        <button type="button" className={styles.enviar} onClick={enviar} disabled={enviando || !texto.trim()}>
           {enviando ? 'Enviando…' : 'Comentar'}
         </button>
-      </form>
+      </div>
     </section>
   );
 }
