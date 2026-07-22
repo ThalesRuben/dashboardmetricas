@@ -24,7 +24,6 @@ const SUPABASE_URL  = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const IG_TOKEN      = Deno.env.get('IG_ACCESS_TOKEN')!
 const IG_USER_ID    = Deno.env.get('IG_BUSINESS_ACCOUNT_ID')!
-const INTERNAL_KEY  = Deno.env.get('INTERNAL_API_KEY')
 
 const GRAPH = 'https://graph.facebook.com/v19.0'
 
@@ -36,10 +35,6 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-
-  if (INTERNAL_KEY && req.headers.get('x-internal-key') !== INTERNAL_KEY) {
-    return json({ error: 'unauthorized' }, 401)
-  }
 
   if (!IG_TOKEN || !IG_USER_ID) {
     return json({ error: 'IG_ACCESS_TOKEN ou IG_BUSINESS_ACCOUNT_ID não configurados' }, 400)
