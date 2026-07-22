@@ -56,7 +56,7 @@ export default function DashboardPage() {
   const [explainKey, setExplainKey] = useState(null)
   const [showBriefing, setShowBriefing] = useState(false)
 
-  const { summary, days: dailyDays } = useDailyMetrics(range)
+  const { summary, days: dailyDays, usingMock } = useDailyMetrics(range)
   const prev = useMemo(() => previousRange(range), [range?.from?.getTime?.(), range?.to?.getTime?.()])
   const { summary: prevSummary } = useDailyMetrics(prev)
   const period = useMemo(() => mapRangeToPeriod(range), [range?.from?.getTime?.(), range?.to?.getTime?.()])
@@ -93,6 +93,13 @@ export default function DashboardPage() {
       />
 
       <MetasBanner />
+
+      <div className={styles.sourceChip}>
+        <span className={`${styles.sourceDot} ${usingMock ? styles.sourceDotMock : styles.sourceDotLive}`} />
+        {usingMock
+          ? 'dados simulados · fora do range com sync Meta Ads'
+          : 'dados reais · Meta Ads sincronizados'}
+      </div>
 
       <Tabs items={tabsWithBadges} activeId={tab} onChange={setTab} accentColor="var(--section-dashboard)" />
 

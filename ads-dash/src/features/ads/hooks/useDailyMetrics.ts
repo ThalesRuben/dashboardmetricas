@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { supabase } from '@/shared/lib/supabase'
 import type { DailyMetric, MetricsSummary, DateRange } from '../api/types'
 
 const DAY_PATTERN = [0.85, 1.10, 1.05, 1.00, 1.20, 0.95, 0.70]
@@ -80,17 +81,111 @@ export function aggregate(days: DailyMetric[] | null | undefined): MetricsSummar
   }
 }
 
+// ---------- RPC → DailyMetric ----------
+
+interface RpcRow {
+  date: string
+  investido: number | string
+  receita:   number | string
+  impressoes: number | string
+  cliques:    number | string
+  mensagens:  number | string
+  agendamentos: number | string
+  vendas:     number | string
+  ctr_meta:   number | string
+  ctr_google: number | string
+}
+
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function mapRpcRow(r: RpcRow): DailyMetric {
+  const investido    = Number(r.investido    || 0)
+  const receita      = Number(r.receita      || 0)
+  const impressoes   = Number(r.impressoes   || 0)
+  const cliques      = Number(r.cliques      || 0)
+  const mensagens    = Number(r.mensagens    || 0)
+  const agendamentos = Number(r.agendamentos || 0)
+  const vendas       = Number(r.vendas       || 0)
+  const ctrMeta      = Number(r.ctr_meta     || 0)
+  const ctrGoogle    = Number(r.ctr_google   || 0)
+
+  const roas = investido > 0 ? +(receita / investido).toFixed(2) : 0
+  const roi  = investido > 0 ? Math.round(((receita - investido) / investido) * 100) : 0
+  const ctr  = impressoes > 0 ? +((cliques / impressoes) * 100).toFixed(2) : 0
+
+  const [y, m, d] = r.date.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+
+  return {
+    date: r.date,
+    iso: dt.toISOString(),
+    dow: dt.getDay(),
+    investido, receita, impressoes, cliques,
+    mensagens, agendamentos, vendas, roas, roi, ctr,
+    ctrMeta, ctrGoogle,
+    posts: 0,
+    funil: { impressoes, cliques, mensagens, agendamentos, vendas },
+  }
+}
+
+// ---------- Hook ----------
+
 export interface UseDailyMetricsReturn {
   days: DailyMetric[]
   summary: MetricsSummary | null
+  loading: boolean
+  usingMock: boolean
 }
 
 export function useDailyMetrics(range?: DateRange | null): UseDailyMetricsReturn {
-  return useMemo(() => {
-    if (!range?.from || !range?.to) return { days: [], summary: null }
-    const days = generateDailyRange(range.from, range.to)
-    return { days, summary: aggregate(days) }
-  }, [range?.from?.getTime?.(), range?.to?.getTime?.()])
+  const [days, setDays]           = useState<DailyMetric[]>([])
+  const [loading, setLoading]     = useState<boolean>(true)
+  const [usingMock, setUsingMock] = useState<boolean>(false)
+
+  const fromKey = range?.from?.getTime?.()
+  const toKey   = range?.to?.getTime?.()
+
+  useEffect(() => {
+    if (!range?.from || !range?.to) {
+      setDays([]); setLoading(false); setUsingMock(false)
+      return
+    }
+
+    let alive = true
+    setLoading(true)
+
+    ;(async () => {
+      const p_from = localDateStr(range.from)
+      const p_to   = localDateStr(range.to)
+
+      try {
+        const { data, error } = await supabase.rpc('ads_daily_agg', { p_from, p_to })
+        if (!alive) return
+
+        if (error || !data?.length) {
+          setDays(generateDailyRange(range.from, range.to))
+          setUsingMock(true)
+        } else {
+          setDays((data as RpcRow[]).map(mapRpcRow))
+          setUsingMock(false)
+        }
+      } catch {
+        if (!alive) return
+        setDays(generateDailyRange(range.from, range.to))
+        setUsingMock(true)
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+
+    return () => { alive = false }
+  }, [fromKey, toKey])
+
+  const summary = useMemo(() => aggregate(days), [days])
+
+  return { days, summary, loading, usingMock }
 }
 
 export function deltaPct(curr: number, prev: number): number {
