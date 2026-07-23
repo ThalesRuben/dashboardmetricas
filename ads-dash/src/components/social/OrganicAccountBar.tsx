@@ -80,14 +80,19 @@ export default function OrganicAccountBar({
     return () => window.removeEventListener('storage', refresh)
   }, [connectorKey, knownAccounts])
 
-  const connected = !!conn
+  // Considera conectado quando há entrada em localStorage OU quando os dados
+  // vêm reais do backend (usingMock === false). Assim, o cron do Supabase
+  // populando as tabelas já é suficiente pra a UI sair de "Conectar".
+  const connected = !!conn || !usingMock
   const lastSync = formatLastSync(conn?.em ?? null)
   const styleVar = { '--bar-accent': sectionColor } as CSSProperties
 
   const meta = metaOverride
     ? metaOverride
     : connected
-      ? `conectado · última sync ${lastSync}`
+      ? conn
+        ? `conectado · última sync ${lastSync}`
+        : 'conectado · sync automática pelo servidor'
       : 'não conectado — dados de demonstração'
 
   return (

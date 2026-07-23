@@ -77,8 +77,16 @@ export default function InstagramPage() {
     setSyncing(true)
     const res = await triggerSync()
     setSyncing(false)
-    if (res.ok) toast.success(res.msg, { title: 'Sincronizado' })
-    else        toast.error(res.msg, { title: 'Falha na sincronização' })
+    if (res.ok) {
+      try {
+        const raw = JSON.parse(localStorage.getItem('ads-dash:connections') || '{}')
+        raw.instagram = { conta: a?.username || '@conta', em: Date.now() }
+        localStorage.setItem('ads-dash:connections', JSON.stringify(raw))
+      } catch { /* ignore */ }
+      toast.success(res.msg, { title: 'Sincronizado' })
+    } else {
+      toast.error(res.msg, { title: 'Falha na sincronização' })
+    }
   }
 
   return (
