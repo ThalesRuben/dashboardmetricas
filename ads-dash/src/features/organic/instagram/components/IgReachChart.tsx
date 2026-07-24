@@ -1,5 +1,7 @@
 import { Bar } from 'react-chartjs-2'
+import { Chart, CategoryScale, LinearScale, BarElement, Tooltip } from 'chart.js'
 import { useChartTheme } from '@/shared/lib/chartTheme'
+Chart.register(CategoryScale, LinearScale, BarElement, Tooltip)
 
 export default function IgReachChart({ serie }) {
   const t = useChartTheme()

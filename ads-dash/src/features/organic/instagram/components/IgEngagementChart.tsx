@@ -1,5 +1,7 @@
 import { Line } from 'react-chartjs-2'
+import { Chart, CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip } from 'chart.js'
 import { useChartTheme } from '@/shared/lib/chartTheme'
+Chart.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip)
 
 export default function IgEngagementChart({ serie }) {
   const t = useChartTheme()
