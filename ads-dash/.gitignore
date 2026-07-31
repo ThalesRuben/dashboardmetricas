@@ -26,3 +26,4 @@ docs/knowledge-graph/.obsidian/cache
 
 .vercel
 .claude/skills/
+.tmp-cron-instagram.sql
