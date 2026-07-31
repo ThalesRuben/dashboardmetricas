@@ -1,16 +1,24 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useGoals } from '@/features/ads/hooks/useGoals'
+import { useMetrics } from '@/features/ads/hooks/useMetrics'
 import { useAlerts, formatAlertTime } from '@/features/alerts'
 import { useToast } from '@/app/providers/ToastContext'
 import PageHeader from '@/components/ui/PageHeader'
+import { fmtNumber, fmtRoas, fmtPct } from '@/shared/lib/format'
 import styles from './AlertsPage.module.css'
 
 export default function AlertsPage() {
   const { goals, loading: goalsLoading, updateGoal } = useGoals()
   const { alerts, loading: alertsLoading } = useAlerts()
+  const { data: today } = useMetrics('hoje')
   const [whatsapp, setWhatsapp] = useState('')
   const [email, setEmail]       = useState('')
   const toast = useToast()
+
+  const statuses = useMemo(
+    () => (goals || []).filter(g => g.enabled).map(g => buildStatus(g, today)),
+    [goals, today],
+  )
 
   function handleSave() {
     toast.info('Persistência ainda não conectada — os canais ficam só no estado local.', {
@@ -147,14 +155,17 @@ export default function AlertsPage() {
           {/* Status das metas */}
           <div className={styles.card} style={{ marginTop: 14 }}>
             <h2 className={styles.cardTitle}>Status das metas hoje</h2>
-            <div className={styles.statusList}>
-              <StatusRow label="ROAS"        meta="3.5x"  atual="4.2x"  ok />
-              <StatusRow label="CTR Meta"    meta="2.5%"  atual="3.8%"  ok />
-              <StatusRow label="Mensagens"   meta="100"   atual="148"   ok />
-              <StatusRow label="Vendas"      meta="25"    atual="37"    ok />
-              <StatusRow label="CTR Google"  meta="2.5%"  atual="5.1%"  ok />
-              <StatusRow label="Orçamento"   meta="<80%"  atual="85%"   ok={false} />
-            </div>
+            {!today ? (
+              <div className={styles.loading}>Carregando métricas de hoje...</div>
+            ) : statuses.length === 0 ? (
+              <div className={styles.empty}>Ative alguma meta ao lado pra acompanhar aqui.</div>
+            ) : (
+              <div className={styles.statusList}>
+                {statuses.map(s => (
+                  <StatusRow key={s.key} label={s.label} meta={s.meta} atual={s.atual} ok={s.ok} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -172,4 +183,47 @@ function StatusRow({ label, meta, atual, ok }) {
       </span>
     </div>
   )
+}
+
+// Cruza uma goal (do Supabase) com o summary de hoje pra calcular
+// meta formatada, valor atual real, e se está ok.
+// Convenção:
+//   - roas/ctr/mensagens/agendamentos/vendas → maior é melhor
+//   - budget → menor é melhor (% de orçamento consumido)
+function buildStatus(goal, data) {
+  const base = { key: goal.key, label: goal.label, meta: '—', atual: '—', ok: true }
+  if (!data) return { ...base, atual: '…' }
+
+  switch (goal.key) {
+    case 'roas': {
+      const atual = Number(data.roas) || 0
+      return { ...base, meta: `${goal.value}x`, atual: fmtRoas(atual), ok: atual >= goal.value }
+    }
+    case 'ctr': {
+      // CTR Meta é a que Fabio investe mais — usada como referência
+      const atual = Number(data.ctrMeta) || 0
+      return { ...base, label: 'CTR (Meta)', meta: `${goal.value}%`, atual: fmtPct(atual), ok: atual >= goal.value }
+    }
+    case 'mensagens': {
+      const atual = Number(data.mensagens) || 0
+      return { ...base, meta: `${fmtNumber(goal.value)}/dia`, atual: fmtNumber(atual), ok: atual >= goal.value }
+    }
+    case 'agendamentos': {
+      const atual = Number(data.agendamentos) || 0
+      return { ...base, meta: `${fmtNumber(goal.value)}/sem`, atual: fmtNumber(atual), ok: atual >= goal.value }
+    }
+    case 'vendas': {
+      const atual = Number(data.vendas) || 0
+      return { ...base, meta: `${fmtNumber(goal.value)}/dia`, atual: fmtNumber(atual), ok: atual >= goal.value }
+    }
+    case 'budget': {
+      // Consumo do orçamento planejado × investido no dia
+      const planejado = Number(data.budget?.meta || 0) + Number(data.budget?.google || 0)
+      if (planejado <= 0) return { ...base, meta: `<${goal.value}%`, atual: '—', ok: true }
+      const pct = (Number(data.investimento) || 0) / planejado * 100
+      return { ...base, meta: `<${goal.value}%`, atual: `${pct.toFixed(0)}%`, ok: pct <= goal.value }
+    }
+    default:
+      return base
+  }
 }
