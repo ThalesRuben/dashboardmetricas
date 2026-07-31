@@ -3,6 +3,7 @@ import { useMetrics } from '@/features/ads/hooks/useMetrics'
 import DateRangePicker, { fromPreset, formatDate } from '@/shared/ui/DateRangePicker'
 import SchedulesTab from './reports/SchedulesTab'
 import PageHeader from '@/components/ui/PageHeader'
+import { fmtNumber, fmtBRL, fmtCompact, fmtRoas, fmtPct } from '@/shared/lib/format'
 import styles from './ReportsPage.module.css'
 
 const METRICS_OPTIONS = [
@@ -295,49 +296,58 @@ export default function ReportsPage() {
 
             <div className={styles.previewDivider} />
 
-            <div className={styles.previewKpis}>
-              {metrics.includes('roas')         && <PreviewKpi label="ROAS" value="4.2x" />}
-              {metrics.includes('roi')          && <PreviewKpi label="ROI" value="320%" />}
-              {metrics.includes('investimento') && <PreviewKpi label="Invest." value="R$890" />}
-              {metrics.includes('receita')      && <PreviewKpi label="Receita" value="R$3.738" />}
-            </div>
+            {!data ? (
+              <div className={styles.previewRow}>
+                <span style={{ color: 'var(--text-subtle)' }}>Carregando dados do período…</span>
+              </div>
+            ) : (
+              <>
+                <div className={styles.previewKpis}>
+                  {metrics.includes('roas')         && <PreviewKpi label="ROAS"    value={fmtRoas(data.roas)} />}
+                  {metrics.includes('roi')          && <PreviewKpi label="ROI"     value={`${data.roi}%`} />}
+                  {metrics.includes('investimento') && <PreviewKpi label="Invest." value={fmtBRL(data.investimento)} />}
+                  {metrics.includes('receita')      && <PreviewKpi label="Receita" value={fmtBRL(data.receita)} />}
+                </div>
 
-            {metrics.includes('ctr') && (
-              <div className={styles.previewRow}>
-                <span>CTR Meta</span><strong>3.8%</strong>
-              </div>
-            )}
-            {metrics.includes('mensagens') && (
-              <div className={styles.previewRow}>
-                <span>Mensagens CTWA</span><strong>148</strong>
-              </div>
-            )}
-            {metrics.includes('agendamentos') && (
-              <div className={styles.previewRow}>
-                <span>Agendamentos</span><strong>63</strong>
-              </div>
-            )}
-            {metrics.includes('vendas') && (
-              <div className={styles.previewRow}>
-                <span>Vendas aprovadas</span><strong>37</strong>
-              </div>
-            )}
-            {metrics.includes('funil') && (
-              <div className={styles.previewFunil}>
-                <div className={styles.previewFunilBar} style={{ width:'100%' }}>Impressões 12.4k</div>
-                <div className={styles.previewFunilBar} style={{ width:'85%', opacity:0.8 }}>Cliques 547</div>
-                <div className={styles.previewFunilBar} style={{ width:'65%', opacity:0.65 }}>Mensagens 148</div>
-                <div className={styles.previewFunilBar} style={{ width:'45%', opacity:0.5 }}>Agend. 63</div>
-                <div className={styles.previewFunilBar} style={{ width:'30%', opacity:0.4 }}>Vendas 37</div>
-              </div>
-            )}
-            {metrics.includes('campanhas') && (
-              <div className={styles.previewTable}>
-                <div className={styles.previewTh}>Campanha · ROAS · Status</div>
-                <div className={styles.previewTr}>Salão — Promoção Verão · 5.1x · Ativo</div>
-                <div className={styles.previewTr}>Salão — Retargeting · 4.8x · Ativo</div>
-                <div className={styles.previewTr}>Salão BH — Pesquisa · 4.7x · Ativo</div>
-              </div>
+                {metrics.includes('ctr') && (
+                  <div className={styles.previewRow}>
+                    <span>CTR Meta / Google</span><strong>{fmtPct(data.ctrMeta)} · {fmtPct(data.ctrGoogle)}</strong>
+                  </div>
+                )}
+                {metrics.includes('mensagens') && (
+                  <div className={styles.previewRow}>
+                    <span>Mensagens CTWA</span><strong>{fmtNumber(data.mensagens)}</strong>
+                  </div>
+                )}
+                {metrics.includes('agendamentos') && (
+                  <div className={styles.previewRow}>
+                    <span>Agendamentos</span><strong>{fmtNumber(data.agendamentos)}</strong>
+                  </div>
+                )}
+                {metrics.includes('vendas') && (
+                  <div className={styles.previewRow}>
+                    <span>Vendas aprovadas</span><strong>{fmtNumber(data.vendas)}</strong>
+                  </div>
+                )}
+                {metrics.includes('funil') && (
+                  <FunilPreview funil={data.funil} />
+                )}
+                {metrics.includes('campanhas') && (
+                  <div className={styles.previewTable}>
+                    <div className={styles.previewTh}>Campanha · ROAS · Status</div>
+                    {(data.campanhas || []).slice(0, 5).map(c => (
+                      <div key={c.id ?? c.nome} className={styles.previewTr}>
+                        {c.nome} · {fmtRoas(c.roas)} · {c.status}
+                      </div>
+                    ))}
+                    {(!data.campanhas || data.campanhas.length === 0) && (
+                      <div className={styles.previewTr} style={{ opacity: 0.55 }}>
+                        Sem campanhas no período.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
 
             <div className={styles.previewFooter}>
@@ -356,6 +366,38 @@ function PreviewKpi({ label, value }) {
     <div className={styles.previewKpi}>
       <div className={styles.previewKpiVal}>{value}</div>
       <div className={styles.previewKpiLbl}>{label}</div>
+    </div>
+  )
+}
+
+function FunilPreview({ funil }) {
+  if (!funil) return null
+  const top = Math.max(
+    Number(funil.impressoes) || 0,
+    Number(funil.cliques) || 0,
+    1,
+  )
+  const rows = [
+    { label: 'Impressões',   value: funil.impressoes,   opacity: 1 },
+    { label: 'Cliques',      value: funil.cliques,      opacity: 0.8 },
+    { label: 'Mensagens',    value: funil.mensagens,    opacity: 0.65 },
+    { label: 'Agendamentos', value: funil.agendamentos, opacity: 0.5 },
+    { label: 'Vendas',       value: funil.vendas,       opacity: 0.4 },
+  ]
+  return (
+    <div className={styles.previewFunil}>
+      {rows.map(r => {
+        const pct = Math.max(6, Math.min(100, ((Number(r.value) || 0) / top) * 100))
+        return (
+          <div
+            key={r.label}
+            className={styles.previewFunilBar}
+            style={{ width: `${pct}%`, opacity: r.opacity }}
+          >
+            {r.label} {fmtCompact(r.value)}
+          </div>
+        )
+      })}
     </div>
   )
 }
