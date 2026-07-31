@@ -1,0 +1,162 @@
+.wrap { margin-bottom: var(--space-6); }
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 2px 0;
+}
+
+.subtitle {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--text-subtle);
+  margin: 0;
+}
+
+.periodBox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+}
+
+.calIcon { font-size: 13px; opacity: 0.75; }
+
+.periodSelect {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  padding-right: 16px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-subtle) 50%),
+                    linear-gradient(135deg, var(--text-subtle) 50%, transparent 50%);
+  background-position: right 4px top 6px, right 0 top 6px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.periodSelect option { background: var(--bg-elevated); color: var(--text); }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+@media (max-width: 1100px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 820px)  { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px)  { .grid { grid-template-columns: 1fr; } }
+
+.card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 178px;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
+
+.cardLabel {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.info {
+  color: var(--text-subtle);
+  display: inline-flex;
+  cursor: help;
+}
+.info:hover { color: var(--text); }
+
+.cardRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.value {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.05;
+  letter-spacing: -0.5px;
+}
+
+.delta {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+}
+.d_up      { color: var(--accent-cyan); }
+.d_down    { color: var(--accent-red); }
+.d_neutral { color: var(--text-subtle); }
+
+.spark {
+  height: 40px;
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+}
+
+.sparkEmpty {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  color: var(--text-faint);
+  align-self: center;
+  width: 100%;
+  text-align: center;
+}
+
+.moreBtn {
+  margin-top: 4px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: border-color .12s, background .12s, color .12s;
+}
+.moreBtn:hover:not(:disabled) {
+  border-color: var(--section-instagram);
+  color: var(--section-instagram);
+}
+.moreBtn:disabled {
+  color: var(--text-faint);
+  cursor: not-allowed;
+  opacity: 0.6;
+}

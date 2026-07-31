@@ -5,7 +5,6 @@ import { detectHype, HYPE_LEVELS } from '@/features/organic/instagram/lib/hypeDe
 import { fmtNumber, fmtPct } from '@/shared/lib/format'
 import PageHeader from '@/components/ui/PageHeader'
 import Tabs from '@/components/ui/Tabs'
-import KpiCard from '@/shared/ui/KpiCard'
 import ContentCard from '@/components/ui/ContentCard'
 import IgGrowthChart from '@/features/organic/instagram/components/IgGrowthChart'
 import IgEngagementChart from '@/features/organic/instagram/components/IgEngagementChart'
@@ -13,6 +12,7 @@ import IgReachChart from '@/features/organic/instagram/components/IgReachChart'
 import IgTimeline from '@/features/organic/instagram/components/IgTimeline'
 import ChannelEngines from '@/features/organic/instagram/components/ChannelEngines'
 import ContentCalendar from '@/features/organic/instagram/components/ContentCalendar'
+import IgPublicitySummary from '@/features/organic/instagram/components/IgPublicitySummary'
 import OrganicAccountBar from '@/components/social/OrganicAccountBar'
 import OrganicAiInsights from '@/components/social/OrganicAiInsights'
 import { generateInstagramInsights } from '@/lib/aiInsights'
@@ -118,36 +118,14 @@ export default function InstagramPage() {
 
       {tab === 'visao' && (
         <>
-          <section className={styles.kpis}>
-            <KpiCard
-              label="Seguidores"
-              value={fmtNumber(a.seguidores)}
-              delta={a.seguidores_delta_30d ? `+${fmtNumber(a.seguidores_delta_30d)} em 30d` : null}
-              up={a.seguidores_delta_30d > 0}
-              accentColor="var(--section-instagram)"
-              serie={(a.serie_seguidores || []).map(s => s.value)}
-            />
-            <KpiCard
-              label="Alcance (dia)"
-              value={fmtNumber(a.alcance_dia)}
-              delta="+12% vs ontem"
-              up
-              serie={(a.serie_alcance || []).map(s => s.value)}
-            />
-            <KpiCard
-              label="Engajamento"
-              value={`${a.engajamento_taxa}%`}
-              delta="+0.4pp"
-              up
-              serie={(a.serie_engajamento || []).map(s => s.value)}
-            />
-            <KpiCard
-              label="Visitas ao perfil"
-              value={fmtNumber(a.visitas_perfil)}
-              delta="+22 vs ontem"
-              up
-            />
-          </section>
+          <IgPublicitySummary
+            account={a}
+            posts={data.posts}
+            onViewMore={(_id, sortKey) => {
+              setSort(sortKey)
+              setTab('conteudo')
+            }}
+          />
 
           <section className={styles.section}>
             <ChannelEngines />
