@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useInstagramMetrics } from '@/features/organic/instagram/hooks/useInstagramMetrics'
 import { useToast } from '@/app/providers/ToastContext'
 import { detectHype, HYPE_LEVELS } from '@/features/organic/instagram/lib/hypeDetector'
@@ -67,6 +67,21 @@ export default function InstagramPage() {
     return list
   }, [data?.posts, filter, sort, hypeByPostId])
 
+  // Mantém localStorage[ads-dash:connections].instagram alinhado com o
+  // username real que veio do sync, pra o OrganicAccountBar mostrar a
+  // conta certa sem depender de o usuário clicar em "Sincronizar".
+  const syncedUsername = data?.account?.username
+  useEffect(() => {
+    if (!syncedUsername || usingMock) return
+    try {
+      const raw = JSON.parse(localStorage.getItem('ads-dash:connections') || '{}')
+      if (raw.instagram?.conta !== syncedUsername) {
+        raw.instagram = { conta: syncedUsername, em: raw.instagram?.em ?? Date.now() }
+        localStorage.setItem('ads-dash:connections', JSON.stringify(raw))
+      }
+    } catch { /* ignore */ }
+  }, [syncedUsername, usingMock])
+
   if (loading || !data) {
     return <div className={styles.page}><div className={styles.loading}>Carregando métricas do Instagram...</div></div>
   }
@@ -101,7 +116,7 @@ export default function InstagramPage() {
         connectorKey="instagram"
         platformLabel="Instagram"
         sectionColor="var(--section-instagram)"
-        knownAccounts={['@theblondeconcept', '@salao.bella']}
+        knownAccounts={a.username ? [a.username] : []}
         usingMock={usingMock}
         syncing={syncing}
         onSync={handleSync}
