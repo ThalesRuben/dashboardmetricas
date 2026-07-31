@@ -1,12 +1,14 @@
 // Supabase Edge Function — gemini-inbox-coach
 //
+// [NOME MANTIDO POR COMPATIBILIDADE COM O FRONT — provider é OpenAI]
+//
 // Recebe uma conversa do WhatsApp (thread + msgs) e devolve sugestões da IA
 // pra aumentar conversão: próxima resposta pronta pra colar, análise do
 // estado da conversa, oportunidades que o atendente ainda não explorou e
 // classificação de temperatura do lead (quente/morno/frio).
 //
 // Variáveis de ambiente (Supabase → Edge Functions → Secrets):
-//   GEMINI_API_KEY   chave da API do Google AI Studio
+//   OPENAI_API_KEY   chave da API da OpenAI
 //
 // Deploy:
 //   supabase functions deploy gemini-inbox-coach --no-verify-jwt
@@ -14,8 +16,8 @@
 // Uso (no app):
 //   supabase.functions.invoke('gemini-inbox-coach', { body: { thread, msgs, brain } })
 
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
-const MODEL = 'gemini-2.0-flash'
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
+const MODEL = 'gpt-4o-mini'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -70,9 +72,9 @@ CONVERSA:
 TRANSCRIÇÃO (mais antigas em cima):
 ${transcricao || '(sem mensagens)'}
 
-Sua tarefa: analise o estado da conversa e devolva sugestões acionáveis pra fechar a venda / avançar o lead. Responda SOMENTE com JSON válido (sem markdown) neste formato:
+Sua tarefa: analise o estado da conversa e devolva sugestões acionáveis pra fechar a venda / avançar o lead. Responda SOMENTE com um objeto JSON válido (sem markdown, sem \`\`\`) neste formato:
 {
-  "modelo": "gemini-2.0-flash",
+  "modelo": "${MODEL}",
   "resumo": "<1-2 frases sobre o estado da conversa: o que o cliente quer, em que ponto travou>",
   "tag_sugerida": "quente|morno|frio",
   "proxima_resposta": "<mensagem PRONTA pra colar e enviar pelo WhatsApp. Curta (1-3 frases), em pt-BR, tom da marca, com CTA claro. Use o primeiro nome se disponível.>",
@@ -100,8 +102,8 @@ Regras:
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  if (!GEMINI_API_KEY) {
-    return json({ error: 'GEMINI_API_KEY não configurada.' }, 400)
+  if (!OPENAI_API_KEY) {
+    return json({ error: 'OPENAI_API_KEY não configurada.' }, 400)
   }
 
   try {
@@ -111,24 +113,29 @@ Deno.serve(async (req) => {
     }
     const prompt = buildPrompt(thread, msgs, brain || {})
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.6, responseMimeType: 'application/json' },
-        }),
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
-    )
+      body: JSON.stringify({
+        model: MODEL,
+        temperature: 0.6,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: 'Você é um coach de vendas experiente em WhatsApp Business. Responda sempre em JSON válido, sem markdown.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    })
 
     const data = await res.json()
     if (!res.ok) {
-      return json({ error: `Gemini ${res.status}: ${data.error?.message || 'erro'}` }, 502)
+      return json({ error: `OpenAI ${res.status}: ${data.error?.message || 'erro'}` }, 502)
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+    const text = data.choices?.[0]?.message?.content || '{}'
     const analysis = JSON.parse(text)
     analysis.gerado_em = new Date().toISOString()
     return json(analysis)
