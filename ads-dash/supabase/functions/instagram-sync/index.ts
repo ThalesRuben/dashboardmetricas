@@ -25,7 +25,7 @@ const SERVICE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const IG_TOKEN      = Deno.env.get('IG_ACCESS_TOKEN')!
 const IG_USER_ID    = Deno.env.get('IG_BUSINESS_ACCOUNT_ID')!
 
-const GRAPH = 'https://graph.facebook.com/v19.0'
+const GRAPH = 'https://graph.facebook.com/v22.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,6 +50,14 @@ Deno.serve(async (req) => {
       message: 'Sincronização concluída.',
       account_saved: !!account,
       posts_saved: posts.length,
+      metrics: account ? {
+        seguidores:     account.seguidores,
+        alcance_dia:    account.alcance_dia,
+        impressoes_dia: account.impressoes_dia,
+        visitas_perfil: account.visitas_perfil,
+        cliques_site:   account.cliques_site,
+      } : null,
+      insights_errors: (account?.payload as any)?.insightsErrors ?? [],
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -81,18 +89,38 @@ async function syncAccount(supabase: ReturnType<typeof createClient>) {
     fields: 'username,followers_count,follows_count,media_count',
   })
 
-  // Insights agregados das últimas 24h
-  let insights: any = { data: [] }
-  try {
-    insights = await ig(`${IG_USER_ID}/insights`, {
-      metric: 'reach,impressions,profile_views,website_clicks',
-      period: 'day',
-    })
-  } catch (_) { /* alguns endpoints exigem permissões extras — ignora silenciosamente */ }
+  // A partir da Graph API v22, métricas agregadas do account exigem
+  // metric_type=total_value e o valor sai em `total_value.value` em vez de
+  // `values[0].value`. `impressions` foi descontinuado; usa `views`.
+  const insightsErrors: string[] = []
+  const insights: any = { data: [] }
+
+  async function tryMetric(metric: string) {
+    try {
+      const res = await ig(`${IG_USER_ID}/insights`, {
+        metric,
+        period: 'day',
+        metric_type: 'total_value',
+      })
+      if (Array.isArray(res.data)) insights.data.push(...res.data)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      insightsErrors.push(`${metric}: ${msg}`)
+      console.error(`[instagram-sync] insight "${metric}" failed:`, msg)
+    }
+  }
+
+  // Pede uma métrica por vez — se uma falhar (falta de permissão, escopo),
+  // as outras ainda gravam.
+  await tryMetric('reach')
+  await tryMetric('views')
+  await tryMetric('profile_views')
+  await tryMetric('website_clicks')
 
   const getMetric = (name: string) => {
-    const item = insights.data?.find((x: any) => x.name === name)
-    return item?.values?.[0]?.value || 0
+    const item = insights.data.find((x: any) => x.name === name)
+    // v22 usa total_value.value; formato antigo era values[0].value.
+    return item?.total_value?.value ?? item?.values?.[0]?.value ?? 0
   }
 
   const today = new Date().toISOString().slice(0, 10)
@@ -104,10 +132,10 @@ async function syncAccount(supabase: ReturnType<typeof createClient>) {
     seguindo:   profile.follows_count   || 0,
     total_posts: profile.media_count    || 0,
     alcance_dia:    getMetric('reach'),
-    impressoes_dia: getMetric('impressions'),
+    impressoes_dia: getMetric('views'),
     visitas_perfil: getMetric('profile_views'),
     cliques_site:   getMetric('website_clicks'),
-    payload: { profile, insights },
+    payload: { profile, insights, insightsErrors },
     source: 'api',
   }
 
@@ -128,16 +156,19 @@ async function syncPosts(supabase: ReturnType<typeof createClient>) {
   const rows: any[] = []
   for (const m of media.data || []) {
     let insightsByName: Record<string, number> = {}
-    try {
-      const isReel = m.media_type === 'VIDEO' || m.media_type === 'REELS'
-      const metrics = isReel
-        ? 'reach,plays,likes,comments,shares,saved'
-        : 'reach,impressions,saved,likes,comments,shares'
-      const ins = await ig(`${m.id}/insights`, { metric: metrics })
-      insightsByName = Object.fromEntries(
-        (ins.data || []).map((x: any) => [x.name, x.values?.[0]?.value || 0])
-      )
-    } catch (_) { /* nem todo post permite insights se for muito antigo */ }
+    // v22: `impressions` e `plays` foram unificados em `views`. Se pedirmos uma
+    // métrica inválida, o request inteiro é rejeitado — por isso pedimos uma
+    // por vez e tolerâmos falhas individuais.
+    const metricList = ['reach', 'views', 'likes', 'comments', 'shares', 'saved']
+    for (const metric of metricList) {
+      try {
+        const ins = await ig(`${m.id}/insights`, { metric })
+        for (const x of ins.data || []) {
+          const value = x.total_value?.value ?? x.values?.[0]?.value ?? 0
+          insightsByName[x.name] = value
+        }
+      } catch (_) { /* posts muito antigos ou sem permissão — ignora */ }
+    }
 
     const tipo = m.media_type === 'VIDEO' ? 'REEL' : (m.media_type || 'IMAGE')
     const reach = insightsByName.reach || 0
@@ -145,6 +176,7 @@ async function syncPosts(supabase: ReturnType<typeof createClient>) {
     const comments = insightsByName.comments ?? m.comments_count ?? 0
     const saved = insightsByName.saved || 0
     const shares = insightsByName.shares || 0
+    const views = insightsByName.views || 0
     const engagementRate = reach > 0
       ? +(((likes + comments + saved + shares) / reach) * 100).toFixed(2)
       : 0
@@ -163,8 +195,8 @@ async function syncPosts(supabase: ReturnType<typeof createClient>) {
       salvamentos: saved,
       compartilhamentos: shares,
       alcance: reach,
-      impressoes: insightsByName.impressions || 0,
-      plays: insightsByName.plays || 0,
+      impressoes: views,
+      plays: views,
       engajamento_taxa: engagementRate,
       raw: { media: m, insights: insightsByName },
       fetched_at: new Date().toISOString(),
