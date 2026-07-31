@@ -11,6 +11,7 @@ interface Props {
 }
 
 type KpiId =
+  | 'ganho_seguidores'
   | 'visualizadores'
   | 'engaj_post'
   | 'cliques_link'
@@ -111,8 +112,27 @@ export default function IgPublicitySummary({ account, posts, daily, onViewMore }
     const sCliques = seriesDaily(r => r.cliques_site)
     const sVisitas = seriesDaily(r => r.visitas_perfil)
     const sMsg = seriesDaily(r => r.mensagens_ads || 0)
+    const sSeguidores = seriesDaily(r => r.seguidores)
+
+    // Ganho de seguidores no período (fim - início da janela)
+    const seguidoresInicio = dailyInWindow[0]?.seguidores || 0
+    const seguidoresFim = dailyInWindow[dailyInWindow.length - 1]?.seguidores || 0
+    const ganhoSeguidores = seguidoresFim - seguidoresInicio
+    const ganhoSeguidoresPct = seguidoresInicio
+      ? +((ganhoSeguidores / seguidoresInicio) * 100).toFixed(2)
+      : null
 
     return [
+      {
+        id: 'ganho_seguidores' as KpiId,
+        label: 'Ganho de seguidores',
+        tooltip: 'Diferença entre seguidores no fim e no início do período.',
+        value: ganhoSeguidores,
+        valueLabel: (ganhoSeguidores > 0 ? '+' : '') + fmtCompactBr(ganhoSeguidores),
+        serie: sSeguidores,
+        delta: ganhoSeguidoresPct,
+        sortKey: 'recent' as const,
+      },
       {
         id: 'visualizadores' as KpiId,
         label: 'Visualizadores',
@@ -228,7 +248,7 @@ export default function IgPublicitySummary({ account, posts, daily, onViewMore }
             key={k.id}
             label={k.label}
             tooltip={k.tooltip}
-            value={fmtCompactBr(k.value)}
+            value={'valueLabel' in k && k.valueLabel != null ? k.valueLabel : fmtCompactBr(k.value)}
             delta={k.delta}
             serie={k.serie}
             empty={k.value === 0 && (k.serie || []).every(v => !v)}
