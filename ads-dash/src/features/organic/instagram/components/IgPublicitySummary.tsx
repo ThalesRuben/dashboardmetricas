@@ -1,11 +1,12 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import Sparkline from '@/shared/ui/Sparkline'
-import type { IgAccount, IgPost } from '@/app/providers/MetricsContext'
+import type { IgAccount, IgPost, IgDailyRow } from '@/app/providers/MetricsContext'
 import styles from './IgPublicitySummary.module.css'
 
 interface Props {
   account: IgAccount
   posts: IgPost[]
+  daily: IgDailyRow[]
   onViewMore?: (kpiId: KpiId, sort: 'engaj' | 'plays' | 'recent' | 'reach') => void
 }
 
@@ -51,7 +52,18 @@ function periodLabel(days: number): string {
   return `Últimos ${days} dias: ${s} a ${e}`
 }
 
-// Bucketiza posts em N buckets iguais no período e soma a métrica em cada bucket.
+// Divide série em duas metades e compara para inferir delta%.
+function deltaFromSeries(nums: number[]): number | null {
+  if (!nums || nums.length < 4) return null
+  const mid = Math.floor(nums.length / 2)
+  const a = nums.slice(0, mid).reduce((s, v) => s + v, 0)
+  const b = nums.slice(mid).reduce((s, v) => s + v, 0)
+  if (a === 0 && b === 0) return null
+  if (a === 0) return 100
+  return +(((b - a) / a) * 100).toFixed(1)
+}
+
+// Bucketiza posts em N buckets no período e soma a métrica em cada bucket.
 function seriesFromPosts(posts: IgPost[], days: number, metric: (p: IgPost) => number, buckets = 12): number[] {
   const now = Date.now()
   const start = now - days * 86_400_000
@@ -66,62 +78,55 @@ function seriesFromPosts(posts: IgPost[], days: number, metric: (p: IgPost) => n
   return arr
 }
 
-function seriesToNumbers(serie: Array<{ date: string; value: number }> | undefined): number[] {
-  return (serie || []).map(s => s.value)
-}
-
-// Divide série em duas metades e compara média/soma para inferir delta%
-function deltaFromSeries(nums: number[]): number | null {
-  if (!nums || nums.length < 4) return null
-  const mid = Math.floor(nums.length / 2)
-  const a = nums.slice(0, mid).reduce((s, v) => s + v, 0)
-  const b = nums.slice(mid).reduce((s, v) => s + v, 0)
-  if (a === 0 && b === 0) return null
-  if (a === 0) return 100
-  return +(((b - a) / a) * 100).toFixed(1)
-}
-
-export default function IgPublicitySummary({ account, posts, onViewMore }: Props) {
+export default function IgPublicitySummary({ account, posts, daily, onViewMore }: Props) {
   const [periodId, setPeriodId] = useState<PeriodId>('30')
   const period = PERIODS.find(p => p.id === periodId)!
   const days = period.days
 
   const kpis = useMemo(() => {
+    const now = Date.now()
+    const windowMs = days * 86_400_000
+
+    // --- daily rows dentro da janela ---
+    const dailyInWindow = daily.filter(r => {
+      const t = new Date(r.date).getTime()
+      return !isNaN(t) && now - t <= windowMs
+    })
+    const sumDaily = (fn: (r: IgDailyRow) => number) => dailyInWindow.reduce((s, r) => s + (fn(r) || 0), 0)
+    const seriesDaily = (fn: (r: IgDailyRow) => number) => dailyInWindow.map(fn)
+
+    // --- posts dentro da janela ---
     const postsInWindow = posts.filter(p => {
       const t = new Date(p.publicado_em).getTime()
-      return !isNaN(t) && Date.now() - t <= days * 86_400_000
+      return !isNaN(t) && now - t <= windowMs
     })
-    const sum = (fn: (p: IgPost) => number) => postsInWindow.reduce((s, p) => s + (fn(p) || 0), 0)
+    const sumPosts = (fn: (p: IgPost) => number) => postsInWindow.reduce((s, p) => s + (fn(p) || 0), 0)
 
-    // séries
-    const sReach = seriesFromPosts(postsInWindow, days, p => p.alcance || 0)
     const sEngaj = seriesFromPosts(postsInWindow, days, p => (p.curtidas || 0) + (p.comentarios || 0) + (p.salvamentos || 0) + (p.compartilhamentos || 0))
     const sPlays = seriesFromPosts(postsInWindow, days, p => p.plays || 0)
     const sShares = seriesFromPosts(postsInWindow, days, p => p.compartilhamentos || 0)
     const sComments = seriesFromPosts(postsInWindow, days, p => p.comentarios || 0)
-    const sSeguidores = seriesToNumbers(account.serie_seguidores)
 
-    const engajTotal = sum(p => (p.curtidas || 0) + (p.comentarios || 0) + (p.salvamentos || 0) + (p.compartilhamentos || 0))
-    const reachTotal = sum(p => p.alcance || 0)
-    const playsTotal = sum(p => p.plays || 0)
-    const sharesTotal = sum(p => p.compartilhamentos || 0)
-    const commentsTotal = sum(p => p.comentarios || 0)
+    const sViews = seriesDaily(r => r.impressoes_dia)
+    const sCliques = seriesDaily(r => r.cliques_site)
+    const sVisitas = seriesDaily(r => r.visitas_perfil)
+    const sMsg = seriesDaily(r => r.mensagens_ads || 0)
 
     return [
       {
         id: 'visualizadores' as KpiId,
         label: 'Visualizadores',
-        tooltip: 'Alcance somado dos posts publicados no período.',
-        value: reachTotal || (account.alcance_dia || 0) * days,
-        serie: sReach,
-        delta: deltaFromSeries(sReach),
+        tooltip: 'Total de views (impressões) da conta no período — somado dos snapshots diários do Graph API.',
+        value: sumDaily(r => r.impressoes_dia),
+        serie: sViews,
+        delta: deltaFromSeries(sViews),
         sortKey: 'reach' as const,
       },
       {
         id: 'engaj_post' as KpiId,
         label: 'Engajamentos com o post',
-        tooltip: 'Curtidas + comentários + salvamentos + compartilhamentos dos posts no período.',
-        value: engajTotal,
+        tooltip: 'Curtidas + comentários + salvamentos + compartilhamentos dos posts publicados no período.',
+        value: sumPosts(p => (p.curtidas || 0) + (p.comentarios || 0) + (p.salvamentos || 0) + (p.compartilhamentos || 0)),
         serie: sEngaj,
         delta: deltaFromSeries(sEngaj),
         sortKey: 'engaj' as const,
@@ -129,26 +134,26 @@ export default function IgPublicitySummary({ account, posts, onViewMore }: Props
       {
         id: 'cliques_link' as KpiId,
         label: 'Cliques no link',
-        tooltip: 'Cliques no link da bio (site) reportados pela conta.',
-        value: account.cliques_site || 0,
-        serie: sSeguidores.slice(-12),
-        delta: null,
+        tooltip: 'Cliques no link da bio (site) — somado dos snapshots diários.',
+        value: sumDaily(r => r.cliques_site),
+        serie: sCliques,
+        delta: deltaFromSeries(sCliques),
         sortKey: 'recent' as const,
       },
       {
         id: 'engaj_pagina' as KpiId,
         label: 'Engajamentos com a Página',
-        tooltip: 'Visitas ao perfil no período (proxy pra engajamento com a conta).',
-        value: account.visitas_perfil || 0,
-        serie: sSeguidores.slice(-12),
-        delta: null,
+        tooltip: 'Visitas ao perfil — somado dos snapshots diários (proxy do Meta Business Suite).',
+        value: sumDaily(r => r.visitas_perfil),
+        serie: sVisitas,
+        delta: deltaFromSeries(sVisitas),
         sortKey: 'recent' as const,
       },
       {
         id: 'reproducoes' as KpiId,
         label: 'Reproduções de vídeo',
-        tooltip: 'Plays dos reels e vídeos publicados no período.',
-        value: playsTotal,
+        tooltip: 'Views dos reels/vídeos publicados no período.',
+        value: sumPosts(p => p.plays || 0),
         serie: sPlays,
         delta: deltaFromSeries(sPlays),
         sortKey: 'plays' as const,
@@ -156,8 +161,8 @@ export default function IgPublicitySummary({ account, posts, onViewMore }: Props
       {
         id: 'compartilhamentos' as KpiId,
         label: 'Compartilhamentos do post',
-        tooltip: 'Total de compartilhamentos dos posts no período.',
-        value: sharesTotal,
+        tooltip: 'Compartilhamentos totais dos posts publicados no período.',
+        value: sumPosts(p => p.compartilhamentos || 0),
         serie: sShares,
         delta: deltaFromSeries(sShares),
         sortKey: 'engaj' as const,
@@ -165,8 +170,8 @@ export default function IgPublicitySummary({ account, posts, onViewMore }: Props
       {
         id: 'comentarios' as KpiId,
         label: 'Comentários no post',
-        tooltip: 'Total de comentários dos posts no período.',
-        value: commentsTotal,
+        tooltip: 'Total de comentários nos posts publicados no período.',
+        value: sumPosts(p => p.comentarios || 0),
         serie: sComments,
         delta: deltaFromSeries(sComments),
         sortKey: 'engaj' as const,
@@ -174,15 +179,14 @@ export default function IgPublicitySummary({ account, posts, onViewMore }: Props
       {
         id: 'conversas' as KpiId,
         label: 'Conversas por mensagem iniciadas',
-        tooltip: 'Sem dado direto do Instagram; ativar Meta Ads > CTWA pra popular.',
-        value: 0,
-        serie: [],
-        delta: null,
+        tooltip: 'Mensagens iniciadas via Click-to-WhatsApp — vem do Meta Ads (ads_daily_metrics.mensagens).',
+        value: sumDaily(r => r.mensagens_ads || 0),
+        serie: sMsg,
+        delta: deltaFromSeries(sMsg),
         sortKey: 'recent' as const,
-        empty: true,
       },
     ]
-  }, [account, posts, days])
+  }, [account, posts, daily, days])
 
   const totalPosts = useMemo(
     () => posts.filter(p => {
@@ -224,11 +228,11 @@ export default function IgPublicitySummary({ account, posts, onViewMore }: Props
             key={k.id}
             label={k.label}
             tooltip={k.tooltip}
-            value={k.empty ? '—' : fmtCompactBr(k.value)}
+            value={fmtCompactBr(k.value)}
             delta={k.delta}
             serie={k.serie}
-            empty={k.empty}
-            onViewMore={k.empty ? undefined : () => onViewMore?.(k.id, k.sortKey)}
+            empty={k.value === 0 && (k.serie || []).every(v => !v)}
+            onViewMore={() => onViewMore?.(k.id, k.sortKey)}
           />
         ))}
       </div>

@@ -41,9 +41,21 @@ export interface IgPost {
   replies?: number
 }
 
+export interface IgDailyRow {
+  date: string
+  alcance_dia: number
+  impressoes_dia: number
+  visitas_perfil: number
+  cliques_site: number
+  seguidores: number
+  // "conversas iniciadas" (CTWA) — vem do meta-ads-sync, agregado por dia
+  mensagens_ads?: number
+}
+
 export interface IgData {
   account: IgAccount
   posts: IgPost[]
+  daily: IgDailyRow[]
 }
 
 export interface IgSyncResult {
@@ -204,7 +216,22 @@ const IG_MOCK_POSTS: IgPost[] = [
   { id:'p7', tipo:'STORY',          caption:'Story: bastidor do salão',                            thumbnail_url:'', publicado_em: recentISO(8),   curtidas:   0, comentarios:   0, salvamentos:  0, compartilhamentos:  0, alcance: 3120, plays:    0, exits:182, replies:14, engajamento_taxa:0 },
 ]
 
-const IG_MOCK: IgData = { account: IG_MOCK_ACCOUNT, posts: IG_MOCK_POSTS }
+const IG_MOCK_DAILY: IgDailyRow[] = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date()
+  d.setDate(d.getDate() - (29 - i))
+  const base = 5000 + Math.sin(i / 3) * 800 + i * 30
+  return {
+    date: d.toISOString().slice(0, 10),
+    alcance_dia: Math.round(base),
+    impressoes_dia: Math.round(base * 1.6),
+    visitas_perfil: Math.round(base * 0.07),
+    cliques_site: Math.round(base * 0.006),
+    seguidores: 12000 + i * 15,
+    mensagens_ads: Math.round(3 + Math.random() * 8),
+  }
+})
+
+const IG_MOCK: IgData = { account: IG_MOCK_ACCOUNT, posts: IG_MOCK_POSTS, daily: IG_MOCK_DAILY }
 
 const GOALS_FALLBACK: Goal[] = [
   { key: 'roas',         label: 'ROAS mínimo',             unit: 'x',     value: 3.5,  enabled: true },
@@ -268,9 +295,21 @@ export function MetricsProvider({ children }: MetricsProviderProps) {
   const loadIg = useCallback(async (): Promise<void> => {
     setIgLoading(true)
     try {
-      const [accountRes, postsRes] = await Promise.all([
-        supabase.from('instagram_account_metrics').select('*').order('date', { ascending: false }).limit(30),
-        supabase.from('instagram_posts').select('*').order('publicado_em', { ascending: false }).limit(20),
+      // Últimos 60 dias de daily (pra somar por período no /instagram).
+      const since = new Date()
+      since.setDate(since.getDate() - 60)
+      const sinceISO = since.toISOString().slice(0, 10)
+
+      const [accountRes, postsRes, adsRes] = await Promise.all([
+        supabase.from('instagram_account_metrics')
+          .select('*')
+          .gte('date', sinceISO)
+          .order('date', { ascending: false })
+          .limit(60),
+        supabase.from('instagram_posts').select('*').order('publicado_em', { ascending: false }).limit(60),
+        supabase.from('ads_daily_metrics')
+          .select('date, mensagens')
+          .gte('date', sinceISO),
       ])
       const accountRows = accountRes.data
       const posts = postsRes.data as IgPost[] | null
@@ -285,6 +324,31 @@ export function MetricsProvider({ children }: MetricsProviderProps) {
           date: new Date(r.date).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }),
           value: r.seguidores,
         }))
+
+        // Mensagens iniciadas (CTWA) por dia — soma todas as campanhas.
+        const msgByDate = new Map<string, number>()
+        for (const r of (adsRes.data || []) as Array<{ date: string; mensagens: number }>) {
+          msgByDate.set(r.date, (msgByDate.get(r.date) || 0) + Number(r.mensagens || 0))
+        }
+
+        const daily: IgDailyRow[] = [...accountRows].reverse().map(r => ({
+          date: r.date,
+          alcance_dia: r.alcance_dia || 0,
+          impressoes_dia: r.impressoes_dia || 0,
+          visitas_perfil: r.visitas_perfil || 0,
+          cliques_site: r.cliques_site || 0,
+          seguidores: r.seguidores || 0,
+          mensagens_ads: msgByDate.get(r.date) || 0,
+        }))
+
+        // `instagram_account_metrics` não guarda engajamento_taxa (nem existe
+        // como métrica agregada na Graph API). Calculamos aqui a partir da
+        // média das taxas dos últimos 7 posts com alcance > 0.
+        const postsWithReach = (posts || []).filter(p => (p.engajamento_taxa || 0) > 0).slice(0, 7)
+        const engajamento_taxa = postsWithReach.length
+          ? +(postsWithReach.reduce((s, p) => s + (p.engajamento_taxa || 0), 0) / postsWithReach.length).toFixed(2)
+          : 0
+
         setIg({
           account: {
             username: latest.username || '@conta',
@@ -296,12 +360,13 @@ export function MetricsProvider({ children }: MetricsProviderProps) {
             impressoes_dia: latest.impressoes_dia,
             visitas_perfil: latest.visitas_perfil,
             cliques_site: latest.cliques_site,
-            engajamento_taxa: latest.engajamento_taxa,
+            engajamento_taxa,
             serie_seguidores,
             serie_engajamento: IG_MOCK_ACCOUNT.serie_engajamento,
             serie_alcance:     IG_MOCK_ACCOUNT.serie_alcance,
           },
           posts: posts || [],
+          daily,
         })
         setIgUsingMock(false)
       }

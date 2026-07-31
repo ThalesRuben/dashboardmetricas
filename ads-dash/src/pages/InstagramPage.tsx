@@ -121,6 +121,7 @@ export default function InstagramPage() {
           <IgPublicitySummary
             account={a}
             posts={data.posts}
+            daily={data.daily || []}
             onViewMore={(_id, sortKey) => {
               setSort(sortKey)
               setTab('conteudo')
