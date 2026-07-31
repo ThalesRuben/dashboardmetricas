@@ -1,7 +1,10 @@
 // Supabase Edge Function — gemini-instagram-insights
 //
+// [NOME MANTIDO POR COMPATIBILIDADE COM O FRONT — provider é OpenAI]
+//
 // Gera insights estratégicos para uma conta do Instagram inteira,
-// usando a API do Google Gemini com o contexto da diretriz de marketing.
+// usando a API da OpenAI (gpt-4o-mini) com o contexto da diretriz de
+// marketing.
 //
 // Diferença para gemini-analyze: aquela função analisa um vídeo específico.
 // Esta aqui recebe o snapshot da conta (`IgData`) e devolve um plano
@@ -9,7 +12,7 @@
 // conteúdo dos próximos 7 dias e ações de curto prazo.
 //
 // Variáveis de ambiente (Supabase → Edge Functions → Secrets):
-//   GEMINI_API_KEY   chave da API do Google AI Studio
+//   OPENAI_API_KEY   chave da API da OpenAI (https://platform.openai.com/api-keys)
 //
 // Deploy:
 //   supabase functions deploy gemini-instagram-insights --no-verify-jwt
@@ -20,8 +23,8 @@
 // Se a chave não estiver configurada, responde 400 e o app cai para o
 // motor de regras local (generateInstagramInsights em src/lib/aiInsights.ts).
 
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
-const MODEL = 'gemini-2.0-flash'
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
+const MODEL = 'gpt-4o-mini'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,7 +40,7 @@ function json(obj: unknown, status = 200) {
 }
 
 function summarizePosts(posts: Array<Record<string, unknown>>) {
-  // O Gemini recebe melhor um resumo do que a lista bruta.
+  // O modelo recebe melhor um resumo do que a lista bruta.
   // Mandamos só os 8 mais recentes + os top 3 por engajamento.
   const recent = [...posts]
     .sort((a, b) => new Date(String(b.publicado_em)).getTime() - new Date(String(a.publicado_em)).getTime())
@@ -89,9 +92,9 @@ SNAPSHOT DA CONTA:
 ${JSON.stringify(posts, null, 2)}
 
 Analise a conta como um todo e devolva insights estratégicos acionáveis.
-Responda SOMENTE com JSON válido (sem markdown) neste formato:
+Responda SOMENTE com um objeto JSON válido (sem markdown, sem \`\`\`) neste formato:
 {
-  "modelo": "gemini-2.0-flash",
+  "modelo": "${MODEL}",
   "resumo": "<2-3 frases sobre o estado geral da conta>",
   "insights": [
     {
@@ -122,8 +125,8 @@ Regras:
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  if (!GEMINI_API_KEY) {
-    return json({ error: 'GEMINI_API_KEY não configurada — usando fallback local.' }, 400)
+  if (!OPENAI_API_KEY) {
+    return json({ error: 'OPENAI_API_KEY não configurada — usando fallback local.' }, 400)
   }
 
   try {
@@ -133,24 +136,29 @@ Deno.serve(async (req) => {
     }
     const prompt = buildPrompt(ig, brain || {})
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, responseMimeType: 'application/json' },
-        }),
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
-    )
+      body: JSON.stringify({
+        model: MODEL,
+        temperature: 0.7,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: 'Você é um estrategista de marketing digital especialista em Instagram para pequenos negócios brasileiros. Responda sempre em JSON válido, sem markdown.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    })
 
     const data = await res.json()
     if (!res.ok) {
-      return json({ error: `Gemini ${res.status}: ${data.error?.message || 'erro'}` }, 502)
+      return json({ error: `OpenAI ${res.status}: ${data.error?.message || 'erro'}` }, 502)
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+    const text = data.choices?.[0]?.message?.content || '{}'
     const analysis = JSON.parse(text)
     analysis.gerado_em = new Date().toISOString()
     return json(analysis)
