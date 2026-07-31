@@ -71,6 +71,10 @@ export default function InstagramPage() {
   // username real que veio do sync, pra o OrganicAccountBar mostrar a
   // conta certa sem depender de o usuário clicar em "Sincronizar".
   const syncedUsername = data?.account?.username
+  const knownAccounts = useMemo(
+    () => (syncedUsername && !usingMock ? [syncedUsername] : []),
+    [syncedUsername, usingMock],
+  )
   useEffect(() => {
     if (!syncedUsername || usingMock) return
     try {
@@ -116,7 +120,7 @@ export default function InstagramPage() {
         connectorKey="instagram"
         platformLabel="Instagram"
         sectionColor="var(--section-instagram)"
-        knownAccounts={a.username ? [a.username] : []}
+        knownAccounts={knownAccounts}
         usingMock={usingMock}
         syncing={syncing}
         onSync={handleSync}

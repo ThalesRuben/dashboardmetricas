@@ -69,11 +69,15 @@ export default function OrganicAccountBar({
     function refresh() {
       const c = loadConnection(connectorKey)
       setConn(c)
-      const list = c?.conta
-        ? Array.from(new Set([c.conta, ...knownAccounts]))
-        : knownAccounts
+      // `knownAccounts` = handles vindos do dado real (ex: username
+      // sincronizado do IG). Tem prioridade sobre o localStorage (que
+      // pode estar stale de uma sessão anterior). localStorage vira
+      // fallback pra quando não há dado real ainda.
+      const list = knownAccounts.length > 0
+        ? Array.from(new Set([...knownAccounts, ...(c?.conta ? [c.conta] : [])]))
+        : (c?.conta ? [c.conta] : [])
       setAccounts(list)
-      setSelected(prev => prev || c?.conta || list[0] || '')
+      setSelected(list[0] || '')
     }
     refresh()
     window.addEventListener('storage', refresh)
