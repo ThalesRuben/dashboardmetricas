@@ -216,6 +216,52 @@ const IG_MOCK_POSTS: IgPost[] = [
   { id:'p7', tipo:'STORY',          caption:'Story: bastidor do salão',                            thumbnail_url:'', publicado_em: recentISO(8),   curtidas:   0, comentarios:   0, salvamentos:  0, compartilhamentos:  0, alcance: 3120, plays:    0, exits:182, replies:14, engajamento_taxa:0 },
 ]
 
+// --- Derivadores de séries a partir dos dados reais ---
+
+/**
+ * Últimas N semanas fechadas (7d cada, terminando hoje).
+ * value = média do `engajamento_taxa` dos posts publicados naquela semana.
+ * Semanas sem post ficam com value = 0.
+ */
+function buildEngajamentoSemanal(posts: IgPost[], weeks = 4): Array<{ date: string; value: number }> {
+  const now = Date.now()
+  const buckets: Array<{ sum: number; n: number }> = Array.from({ length: weeks }, () => ({ sum: 0, n: 0 }))
+  for (const p of posts) {
+    const t = new Date(p.publicado_em).getTime()
+    if (isNaN(t)) continue
+    const weeksAgo = Math.floor((now - t) / (7 * 86_400_000))
+    if (weeksAgo < 0 || weeksAgo >= weeks) continue
+    if (!(p.engajamento_taxa > 0)) continue
+    const idx = weeks - 1 - weeksAgo // mais antiga na esquerda
+    buckets[idx].sum += p.engajamento_taxa
+    buckets[idx].n += 1
+  }
+  return buckets.map((b, i) => ({
+    date: `Sem ${i + 1}`,
+    value: b.n ? +(b.sum / b.n).toFixed(2) : 0,
+  }))
+}
+
+/**
+ * Alcance médio por dia da semana (Seg..Dom) a partir das linhas diárias.
+ */
+function buildAlcancePorDiaSemana(daily: IgDailyRow[]): Array<{ date: string; value: number }> {
+  const labels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+  const buckets: Array<{ sum: number; n: number }> = labels.map(() => ({ sum: 0, n: 0 }))
+  for (const r of daily) {
+    const d = new Date(r.date + 'T00:00:00')
+    if (isNaN(d.getTime())) continue
+    // JS: 0 = Dom, 1 = Seg, ... 6 = Sáb → converte pra 0 = Seg .. 6 = Dom
+    const idx = (d.getDay() + 6) % 7
+    buckets[idx].sum += r.alcance_dia || 0
+    buckets[idx].n += 1
+  }
+  return labels.map((label, i) => ({
+    date: label,
+    value: buckets[i].n ? Math.round(buckets[i].sum / buckets[i].n) : 0,
+  }))
+}
+
 const IG_MOCK_DAILY: IgDailyRow[] = Array.from({ length: 30 }, (_, i) => {
   const d = new Date()
   d.setDate(d.getDate() - (29 - i))
@@ -349,6 +395,9 @@ export function MetricsProvider({ children }: MetricsProviderProps) {
           ? +(postsWithReach.reduce((s, p) => s + (p.engajamento_taxa || 0), 0) / postsWithReach.length).toFixed(2)
           : 0
 
+        const serie_engajamento = buildEngajamentoSemanal(posts || [], 4)
+        const serie_alcance     = buildAlcancePorDiaSemana(daily)
+
         setIg({
           account: {
             username: latest.username || '@conta',
@@ -362,8 +411,8 @@ export function MetricsProvider({ children }: MetricsProviderProps) {
             cliques_site: latest.cliques_site,
             engajamento_taxa,
             serie_seguidores,
-            serie_engajamento: IG_MOCK_ACCOUNT.serie_engajamento,
-            serie_alcance:     IG_MOCK_ACCOUNT.serie_alcance,
+            serie_engajamento,
+            serie_alcance,
           },
           posts: posts || [],
           daily,
