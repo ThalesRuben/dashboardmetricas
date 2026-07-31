@@ -12,6 +12,7 @@ interface Props {
 
 type KpiId =
   | 'ganho_seguidores'
+  | 'total_seguidores'
   | 'visualizadores'
   | 'engaj_post'
   | 'cliques_link'
@@ -123,6 +124,15 @@ export default function IgPublicitySummary({ account, posts, daily, onViewMore }
       : null
 
     return [
+      {
+        id: 'total_seguidores' as KpiId,
+        label: 'Total de seguidores',
+        tooltip: 'Seguidores atuais da conta (último snapshot do sync).',
+        value: seguidoresFim,
+        serie: sSeguidores,
+        delta: ganhoSeguidoresPct,
+        sortKey: 'recent' as const,
+      },
       {
         id: 'ganho_seguidores' as KpiId,
         label: 'Ganho de seguidores',
