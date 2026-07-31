@@ -1,47 +1,66 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/app/providers/AuthContext'
 import { useToast } from '@/app/providers/ToastContext'
 import { MetasSettings } from '@/features/metas'
 import PageHeader from '@/components/ui/PageHeader'
+import { supabase } from '@/shared/lib/supabase'
+import { fmtTimeAgo } from '@/shared/lib/format'
 import styles from './SettingsPage.module.css'
 
-const INITIAL_USERS = [
-  { id:1, email:'admin@salao.com',  name:'Administrador', role:'admin',  lastLogin:'Hoje, 10:32' },
-  { id:2, email:'gestor@salao.com', name:'Gestor de mídia', role:'editor', lastLogin:'Hoje, 09:15' },
-  { id:3, email:'view@salao.com',   name:'Visualizador',   role:'viewer', lastLogin:'Ontem, 18:44' },
-]
+interface TeamMember {
+  id: string
+  full_name: string
+  email: string
+  role: string
+  member_since: string
+  last_sign_in: string | null
+}
 
-const ROLE_LABEL = { admin:'Administrador', editor:'Editor', viewer:'Visualizador' }
-const ROLE_TAG   = { admin: styles.tagAdmin, editor: styles.tagEditor, viewer: styles.tagViewer }
+const ROLE_LABEL: Record<string, string> = {
+  owner: 'Dono', admin: 'Administrador', editor: 'Editor',
+  member: 'Membro', viewer: 'Visualizador',
+}
+const ROLE_TAG: Record<string, string> = {
+  owner:  styles.tagAdmin,
+  admin:  styles.tagAdmin,
+  editor: styles.tagEditor,
+  member: styles.tagEditor,
+  viewer: styles.tagViewer,
+}
 
 export default function SettingsPage() {
   const { user, profile } = useAuth()
   const toast = useToast()
-  const [users, setUsers] = useState(INITIAL_USERS)
-  const [newEmail, setNewEmail] = useState('')
-  const [newName, setNewName]   = useState('')
-  const [newRole, setNewRole]   = useState('viewer')
+  const [users, setUsers] = useState<TeamMember[]>([])
+  const [usersLoading, setUsersLoading] = useState(true)
+  const [usersError, setUsersError] = useState<string | null>(null)
   const [twoFa, setTwoFa]       = useState(false)
   const [logAccess, setLogAccess] = useState(true)
 
-  function addUser() {
-    if (!newEmail || !newName) {
-      toast.error('Informe nome e e-mail.')
-      return
+  useEffect(() => {
+    let cancelled = false
+    async function loadTeam() {
+      setUsersLoading(true)
+      const { data, error } = await supabase.rpc('list_team_members')
+      if (cancelled) return
+      if (error) {
+        setUsersError(error.message)
+        setUsers([])
+      } else {
+        setUsersError(null)
+        setUsers((data as TeamMember[]) || [])
+      }
+      setUsersLoading(false)
     }
-    setUsers(u => [...u, {
-      id: Date.now(),
-      email: newEmail,
-      name: newName,
-      role: newRole,
-      lastLogin: 'Nunca'
-    }])
-    setNewEmail(''); setNewName('')
-    toast.info('Usuário adicionado localmente. Convite real será enviado quando a integração com Supabase Auth estiver conectada.', { title: 'Em breve' })
-  }
+    loadTeam()
+    return () => { cancelled = true }
+  }, [])
 
-  function removeUser(id) {
-    setUsers(u => u.filter(x => x.id !== id))
+  function handleInvite() {
+    toast.info(
+      'Convites são enviados pelo painel do Supabase → Authentication → Users → Add user.',
+      { title: 'Ainda não conectado por aqui' },
+    )
   }
 
   function handleSave() {
@@ -142,30 +161,46 @@ export default function SettingsPage() {
       {/* Usuários */}
       <div className={styles.card} style={{ marginTop: 14 }}>
         <h2 className={styles.cardTitle}>Usuários com acesso</h2>
-        <div className={styles.usersTable}>
-          <div className={styles.userThead}>
-            <span>Nome</span><span>E-mail</span><span>Perfil</span><span>Último acesso</span><span></span>
+
+        {usersLoading ? (
+          <div className={styles.loading}>Carregando membros do time...</div>
+        ) : usersError ? (
+          <div className={styles.infoBox}>
+            Não consegui listar membros: <code>{usersError}</code>.<br />
+            Se você ainda não rodou a migration <code>0032_list_team_members.sql</code>,
+            cole o SQL no <a href="https://supabase.com/dashboard/project/wvygpfeaifhkzxyrfzte/sql/new" target="_blank" rel="noreferrer">SQL Editor</a>.
           </div>
-          {users.map(u => (
-            <div key={u.id} className={styles.userRow}>
-              <span className={styles.userName}>{u.name}</span>
-              <span className={styles.userEmail}>{u.email}</span>
-              <span className={`${styles.roleTag} ${ROLE_TAG[u.role]}`}>{ROLE_LABEL[u.role]}</span>
-              <span className={styles.userLogin}>{u.lastLogin}</span>
-              <button className={styles.removeBtn} onClick={() => removeUser(u.id)} title="Remover">✕</button>
+        ) : users.length === 0 ? (
+          <div className={styles.infoBox}>
+            Nenhum membro no tenant. Adicione pelo Supabase → Authentication → Users.
+          </div>
+        ) : (
+          <div className={styles.usersTable}>
+            <div className={styles.userThead}>
+              <span>Nome</span><span>E-mail</span><span>Perfil</span><span>Último acesso</span><span></span>
             </div>
-          ))}
-        </div>
+            {users.map(u => (
+              <div key={u.id} className={styles.userRow}>
+                <span className={styles.userName}>
+                  {u.full_name || <em style={{ color: 'var(--text-subtle)' }}>sem nome</em>}
+                </span>
+                <span className={styles.userEmail}>{u.email}</span>
+                <span className={`${styles.roleTag} ${ROLE_TAG[u.role] || styles.tagViewer}`}>
+                  {ROLE_LABEL[u.role] || u.role}
+                </span>
+                <span className={styles.userLogin}>
+                  {u.last_sign_in ? fmtTimeAgo(u.last_sign_in) : 'nunca'}
+                </span>
+                <span />
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className={styles.addRow}>
-          <input className={styles.addInput} value={newName}  onChange={e => setNewName(e.target.value)}  placeholder="Nome completo" />
-          <input className={styles.addInput} value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@exemplo.com" type="email" />
-          <select className={styles.addSelect} value={newRole} onChange={e => setNewRole(e.target.value)}>
-            <option value="viewer">Visualizador</option>
-            <option value="editor">Editor</option>
-            <option value="admin">Admin</option>
-          </select>
-          <button className={styles.addBtn} onClick={addUser}>+ Convidar</button>
+          <button className={styles.addBtn} onClick={handleInvite} style={{ width: '100%' }}>
+            + Convidar novo usuário
+          </button>
         </div>
       </div>
     </div>
