@@ -30,6 +30,7 @@ import MetricExplainer from '@/shared/ui/MetricExplainer'
 import JourneyTimeline from '@/components/ui/JourneyTimeline'
 import BriefingModal from '@/components/ui/BriefingModal'
 import BibleBadge from '@/components/ui/BibleBadge'
+import AtelierAtencao from '@/features/dashboard/components/AtelierAtencao'
 import styles from './DashboardPage.module.css'
 
 const TABS = [
@@ -79,84 +80,54 @@ export default function DashboardPage() {
     t.id === 'atencao' && attentionCount > 0 ? { ...t, badge: attentionCount } : t
   ), [attentionCount])
 
+  const atelierTab = tab === 'atencao'
+
   return (
     <div className={styles.page}>
-      <PageHeader
-        section="dashboard"
-        title={greeting(firstName)}
-        actions={
-          <>
-            <button className="btn" onClick={() => setShowBriefing(true)}>Briefing 1 página</button>
-            <DateRangePicker value={range} onChange={setRange} />
-          </>
-        }
-      />
+      {!atelierTab && (
+        <>
+          <PageHeader
+            section="dashboard"
+            title={greeting(firstName)}
+            actions={
+              <>
+                <button className="btn" onClick={() => setShowBriefing(true)}>Briefing 1 página</button>
+                <DateRangePicker value={range} onChange={setRange} />
+              </>
+            }
+          />
 
-      <MetasBanner />
+          <MetasBanner />
 
-      <div className={styles.sourceChip}>
-        <span className={`${styles.sourceDot} ${usingMock ? styles.sourceDotMock : styles.sourceDotLive}`} />
-        {usingMock
-          ? 'dados simulados · fora do range com sync Meta Ads'
-          : 'dados reais · Meta Ads sincronizados'}
-      </div>
+          <div className={styles.sourceChip}>
+            <span className={`${styles.sourceDot} ${usingMock ? styles.sourceDotMock : styles.sourceDotLive}`} />
+            {usingMock
+              ? 'dados simulados · fora do range com sync Meta Ads'
+              : 'dados reais · Meta Ads sincronizados'}
+          </div>
+        </>
+      )}
 
       <Tabs items={tabsWithBadges} activeId={tab} onChange={setTab} accentColor="var(--section-dashboard)" />
 
       {tab === 'atencao' && summary && (
-        <>
-          <div className={styles.bibleStrip}>
-            <BibleBadge to="/bible#conceito">
-              Estas métricas validam o conceito <strong>luxo + experiência</strong> da marca
-            </BibleBadge>
-          </div>
-          <HeroBlock
-            left={<WeeklyBriefing summary={summary} prev={prevSummary} ig={ig} />}
-            right={<HealthScore summary={summary} prev={prevSummary} ig={ig} whatsapp={wa} />}
-          />
-
-          <section className={styles.kpis}>
-            <KpiCard
-              label="ROAS"
-              value={fmtRoas(summary.roas)}
-              delta={renderDelta(summary.roas, prevSummary?.roas, '%')}
-              up={summary.roas >= (prevSummary?.roas || 0)}
-              neutral={!prevSummary?.roas}
-              serie={serieFor('roas')}
-              onClick={() => setExplainKey('roas')}
-              accentColor="var(--section-dashboard)"
-            />
-            <KpiCard
-              label="Mensagens (WhatsApp)"
-              value={fmtNumber(summary.mensagens)}
-              delta={renderDelta(summary.mensagens, prevSummary?.mensagens)}
-              up={summary.mensagens >= (prevSummary?.mensagens || 0)}
-              neutral={!prevSummary?.mensagens}
-              serie={serieFor('mensagens')}
-              onClick={() => setExplainKey('mensagens')}
-            />
-            <KpiCard
-              label="Agendamentos"
-              value={fmtNumber(summary.agendamentos)}
-              delta={renderDelta(summary.agendamentos, prevSummary?.agendamentos)}
-              up={summary.agendamentos >= (prevSummary?.agendamentos || 0)}
-              neutral={!prevSummary?.agendamentos}
-              serie={serieFor('agendamentos')}
-              onClick={() => setExplainKey('agendamentos')}
-            />
-            <KpiCard
-              label="Vendas"
-              value={fmtNumber(summary.vendas)}
-              delta={renderDelta(summary.vendas, prevSummary?.vendas)}
-              up={summary.vendas >= (prevSummary?.vendas || 0)}
-              neutral={!prevSummary?.vendas}
-              serie={serieFor('vendas')}
-              onClick={() => setExplainKey('vendas')}
-            />
-          </section>
-
-          <AttentionList anomalies={anomalies} hype={topHype} hypeCount={hypePosts.length} />
-        </>
+        <AtelierAtencao
+          summary={summary}
+          prevSummary={prevSummary}
+          days={dailyDays || []}
+          anomalies={anomalies.map(a => ({
+            key: a.key,
+            metric: a.label,
+            severity: a.tone === 'good' ? 'good' : 'bad',
+            title: a.mensagem,
+            detail: `atual ${a.atual} · padrão ${a.esperado}`,
+          }))}
+          hype={topHype}
+          hypeCount={hypePosts.length}
+          rangeLabel={rangeLabelFor(range)}
+          onKpiClick={key => setExplainKey(key)}
+          onOpenBriefing={() => setShowBriefing(true)}
+        />
       )}
 
       {tab === 'jornada' && <JourneyTimeline />}
@@ -233,6 +204,16 @@ function renderDelta(curr, prev, suffix = '') {
   if (prev == null || prev === 0) return null
   const pct = deltaPct(curr, prev)
   return `${fmtDelta(pct, suffix || '%')} vs ant.`
+}
+
+function rangeLabelFor(range) {
+  if (!range?.from || !range?.to) return 'últimos 7 dias'
+  const days = Math.round((range.to - range.from) / 86_400_000) + 1
+  if (days === 1)  return 'hoje'
+  if (days === 7)  return 'últimos 7 dias'
+  if (days === 14) return 'últimos 14 dias'
+  if (days === 30) return 'últimos 30 dias'
+  return `últimos ${days} dias`
 }
 
 function ChartTile({ title, children }) {
