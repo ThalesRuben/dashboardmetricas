@@ -1,24 +1,46 @@
 import { useMemo } from 'react'
+import { useInstagramMetrics } from '@/features/organic/instagram/hooks/useInstagramMetrics'
+import type { IgPost } from '@/app/providers/MetricsContext'
 import styles from './ContentCalendar.module.css'
 
-// Calendário editorial — planejamento de conteúdo por dia (publicado +
-// agendado + sugerido). Inspirado em Hootsuite/Buffer/Later.
-// Os "sugeridos" são slots vazios em dias/horários de melhor performance.
+// Calendário editorial — leia os últimos posts publicados diretamente de
+// `instagram_posts` (via useInstagramMetrics), com uma janela de -14 dias
+// até hoje. O futuro fica com "slot vazio" — planejamento manual ainda
+// não é suportado (feature futura).
 
 const DOW = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB']
 
-const TIPO = {
-  reel:     { label: 'REEL',     tone: 'magenta' },
-  carousel: { label: 'CARROSSEL', tone: 'accent' },
+interface TipoInfo { label: string; tone: 'magenta' | 'accent' | 'amber' | 'plain' }
+const TIPO: Record<string, TipoInfo> = {
+  reel:     { label: 'REEL',      tone: 'magenta' },
+  carousel: { label: 'CARROSSEL', tone: 'accent'  },
   story:    { label: 'STORY',     tone: 'amber'   },
   post:     { label: 'POST',      tone: 'plain'   },
 }
 
-// gera o calendário a partir de hoje: 5 dias pra trás + 9 dias pra frente
-function buildCalendar() {
+interface CalendarDay {
+  date: Date
+  key: string
+  isToday: boolean
+  isPast: boolean
+  isFuture: boolean
+}
+
+interface DisplayPost {
+  id: string
+  date: string
+  hora: string
+  tipo: 'reel' | 'carousel' | 'story' | 'post'
+  titulo: string
+  engaj: string | null
+  alcance: number
+}
+
+// -14 dias até +7 (mostra o histórico recente + espaço pra planejar)
+function buildCalendar(): CalendarDay[] {
   const today = new Date(); today.setHours(0, 0, 0, 0)
-  const days = []
-  for (let i = -5; i <= 9; i++) {
+  const days: CalendarDay[] = []
+  for (let i = -14; i <= 7; i++) {
     const d = new Date(today)
     d.setDate(d.getDate() + i)
     days.push({
@@ -26,49 +48,60 @@ function buildCalendar() {
       key: d.toISOString().slice(0, 10),
       isToday: i === 0,
       isPast: i < 0,
+      isFuture: i > 0,
     })
   }
   return days
 }
 
-// mock de posts — alguns publicados (no passado), alguns agendados (futuro),
-// alguns slots sugeridos pela DNA (terça/sexta 19h, melhores horários).
-function buildPosts(days) {
-  const today = days.find(d => d.isToday).date
-  const dateAt = offset => {
-    const d = new Date(today); d.setDate(d.getDate() + offset); return d.toISOString().slice(0, 10)
-  }
-  return [
-    // publicados
-    { id: 'p1', date: dateAt(-4), hora: '12:30', tipo: 'reel',     titulo: 'POV: você descobriu o loiro perfeito',  status: 'publicado', engaj: '14.2%' },
-    { id: 'p2', date: dateAt(-3), hora: '19:15', tipo: 'carousel', titulo: 'Antes e depois — mechas iluminadas',     status: 'publicado', engaj: '9.8%' },
-    { id: 'p3', date: dateAt(-1), hora: '11:00', tipo: 'story',    titulo: 'Bastidor agenda lotada',                 status: 'publicado', engaj: '6.1%' },
-    { id: 'p4', date: dateAt(-1), hora: '20:00', tipo: 'reel',     titulo: 'Transformação em 60 segundos',           status: 'publicado', engaj: '11.5%' },
-    // agendados
-    { id: 's1', date: dateAt(1),  hora: '19:00', tipo: 'reel',     titulo: 'Cliente reagindo ao resultado 🥹',       status: 'agendado',  engaj: null },
-    { id: 's2', date: dateAt(3),  hora: '12:00', tipo: 'carousel', titulo: 'Tabela de preços pacote noiva',           status: 'agendado',  engaj: null },
-    { id: 's3', date: dateAt(5),  hora: '19:00', tipo: 'reel',     titulo: '3 erros na descoloração caseira',         status: 'agendado',  engaj: null },
-    // sugeridos (slots vazios em horários top)
-    { id: 'g1', date: dateAt(2),  hora: '19:00', tipo: 'reel',     titulo: 'Slot top — gancho "resultado primeiro"',   status: 'sugerido',  engaj: null },
-    { id: 'g2', date: dateAt(7),  hora: '19:00', tipo: 'reel',     titulo: 'Slot top — fórmula "antes e depois"',     status: 'sugerido',  engaj: null },
-    { id: 'g3', date: dateAt(8),  hora: '12:00', tipo: 'carousel', titulo: 'Slot médio — dica educativa',              status: 'sugerido',  engaj: null },
-  ]
+function mapTipo(igTipo: string): 'reel' | 'carousel' | 'story' | 'post' {
+  if (igTipo === 'REEL' || igTipo === 'VIDEO') return 'reel'
+  if (igTipo === 'CAROUSEL' || igTipo === 'CAROUSEL_ALBUM') return 'carousel'
+  if (igTipo === 'STORY') return 'story'
+  return 'post'
 }
 
-const STATUS_LABEL = {
-  publicado: { label: 'PUBL', tone: styles => styles.stPub },
-  agendado:  { label: 'AGEND', tone: styles => styles.stSch },
-  sugerido:  { label: 'SLOT', tone: styles => styles.stSug },
+function extractPosts(igPosts: IgPost[], days: CalendarDay[]): DisplayPost[] {
+  const dayKeys = new Set(days.map(d => d.key))
+  return igPosts
+    .filter(p => {
+      if (!p.publicado_em) return false
+      const dateKey = new Date(p.publicado_em).toISOString().slice(0, 10)
+      return dayKeys.has(dateKey)
+    })
+    .map(p => {
+      const d = new Date(p.publicado_em)
+      const dateKey = d.toISOString().slice(0, 10)
+      const hora = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+      const caption = (p.caption || '').trim()
+      return {
+        id: p.id || (p as unknown as { ig_post_id?: string }).ig_post_id || dateKey + hora,
+        date: dateKey,
+        hora,
+        tipo: mapTipo(p.tipo),
+        titulo: caption ? caption.slice(0, 80) + (caption.length > 80 ? '…' : '') : '(sem legenda)',
+        engaj: p.engajamento_taxa > 0 ? p.engajamento_taxa.toFixed(1) + '%' : null,
+        alcance: p.alcance || 0,
+      }
+    })
+    // Melhor engajamento primeiro dentro do mesmo dia
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date)
+      return (parseFloat(b.engaj || '0') - parseFloat(a.engaj || '0'))
+    })
 }
 
 export default function ContentCalendar() {
+  const { data, loading } = useInstagramMetrics()
+  const igPosts = data?.posts || []
+
   const days = useMemo(buildCalendar, [])
-  const posts = useMemo(() => buildPosts(days), [days])
+  const posts = useMemo(() => extractPosts(igPosts, days), [igPosts, days])
 
   const counts = {
-    publicados: posts.filter(p => p.status === 'publicado').length,
-    agendados:  posts.filter(p => p.status === 'agendado').length,
-    sugeridos:  posts.filter(p => p.status === 'sugerido').length,
+    publicados: posts.length,
+    dias:       new Set(posts.map(p => p.date)).size,
+    topEngaj:   posts.length > 0 ? Math.max(...posts.map(p => parseFloat(p.engaj || '0'))) : 0,
   }
 
   return (
@@ -76,12 +109,18 @@ export default function ContentCalendar() {
       <div className={styles.head}>
         <div>
           <h2 className={styles.title}>Calendário editorial</h2>
-          <p className={styles.sub}>Publicado · agendado · slots sugeridos pela DNA do conteúdo vencedor.</p>
+          <p className={styles.sub}>
+            {loading
+              ? 'Carregando posts sincronizados…'
+              : `Últimas 3 semanas + janela de planejamento. Dado real de instagram_posts.`}
+          </p>
         </div>
         <div className={styles.legend}>
-          <span className={styles.legItem}><span className={`${styles.legDot} ${styles.stPub}`} />{counts.publicados} publicados</span>
-          <span className={styles.legItem}><span className={`${styles.legDot} ${styles.stSch}`} />{counts.agendados} agendados</span>
-          <span className={styles.legItem}><span className={`${styles.legDot} ${styles.stSug}`} />{counts.sugeridos} sugeridos</span>
+          <span className={styles.legItem}><span className={`${styles.legDot} ${styles.stPub}`} />{counts.publicados} posts publicados</span>
+          <span className={styles.legItem}>{counts.dias} dias com publicação</span>
+          {counts.topEngaj > 0 && (
+            <span className={styles.legItem}>melhor: {counts.topEngaj.toFixed(1)}%</span>
+          )}
         </div>
       </div>
 
@@ -99,21 +138,23 @@ export default function ContentCalendar() {
                 {d.isToday && <span className={styles.todayTag}>HOJE</span>}
               </div>
               <div className={styles.dayBody}>
-                {dayPosts.length === 0 && !d.isPast && (
-                  <button className={styles.empty}>+ slot vazio</button>
+                {dayPosts.length === 0 && d.isPast && (
+                  <span className={styles.emptyPast}>sem publicação</span>
+                )}
+                {dayPosts.length === 0 && (d.isToday || d.isFuture) && (
+                  <span className={styles.emptyFuture}>—</span>
                 )}
                 {dayPosts.map(p => {
                   const t = TIPO[p.tipo] || TIPO.post
-                  const s = STATUS_LABEL[p.status]
                   return (
-                    <div key={p.id} className={`${styles.post} ${styles['t_' + t.tone]} ${styles['s_' + p.status]}`}>
+                    <div key={p.id} className={`${styles.post} ${styles['t_' + t.tone]} ${styles.s_publicado}`}>
                       <div className={styles.postHead}>
                         <span className={styles.postTipo}>{t.label}</span>
                         <span className={styles.postHora}>{p.hora}</span>
                       </div>
                       <p className={styles.postTitulo}>{p.titulo}</p>
                       <div className={styles.postFoot}>
-                        <span className={s.tone(styles)}>{s.label}</span>
+                        <span className={styles.stPub}>PUBL</span>
                         {p.engaj && <span className={styles.postEngaj}>engaj. {p.engaj}</span>}
                       </div>
                     </div>

@@ -106,6 +106,21 @@
 }
 .empty:hover { border-color: var(--accent); color: var(--accent); }
 
+.emptyPast {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  opacity: 0.5;
+  padding: 4px 0;
+}
+.emptyFuture {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-faint);
+  opacity: 0.35;
+  padding: 4px 0;
+}
+
 .post {
   background: var(--bg-input);
   border: 1px solid var(--border);
