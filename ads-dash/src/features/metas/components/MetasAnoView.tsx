@@ -35,17 +35,24 @@ const VEREDITO_INFO: Record<VereditoCenario, { tone: string; text: string; icon:
   'sem-meta':    { tone: 'subtle',  text: 'Sem meta',         icon: '—' },
 }
 
+const KPIS_HERO = ['faturamento', 'investimento_ads'] as const
+
 export default function MetasAnoView({ anoRef, onAbrirTrimestre }: Props) {
   const qRefs = useMemo(() => trimestresDoAno(anoRef), [anoRef])
   const [resumos, setResumos] = useState<ResumoQ[] | null>(null)
+  const [anoMetas, setAnoMetas] = useState<MetaKpi[] | null>(null)
 
   useEffect(() => {
     let cancel = false
     async function carregar() {
-      const linhas = await Promise.all(qRefs.map(r => metasRepo.listarPorPeriodo('trimestre', r)))
+      const [linhasAno, ...linhasQ] = await Promise.all([
+        metasRepo.listarPorPeriodo('ano', anoRef),
+        ...qRefs.map(r => metasRepo.listarPorPeriodo('trimestre', r)),
+      ])
       if (cancel) return
+      setAnoMetas(linhasAno)
       setResumos(qRefs.map((r, i) => {
-        const meta = linhas[i].find(m => m.kpi === KPI_PRINCIPAL) ?? null
+        const meta = linhasQ[i].find(m => m.kpi === KPI_PRINCIPAL) ?? null
         const tempo = progressoTempoRef('trimestre', r)
         const c = { min: meta?.valor_meta_min ?? null, base: meta?.valor_meta ?? 0, max: meta?.valor_meta_max ?? null }
         const v = vereditoCenario(meta?.valor_realizado ?? 0, c, tempo)
@@ -54,16 +61,87 @@ export default function MetasAnoView({ anoRef, onAbrirTrimestre }: Props) {
     }
     carregar()
     return () => { cancel = true }
-  }, [qRefs])
+  }, [qRefs, anoRef])
 
-  if (!resumos) return <p className={styles.loading}>Carregando ano…</p>
+  if (!resumos || !anoMetas) return <p className={styles.loading}>Carregando ano…</p>
+
+  const tempoAno = progressoTempoRef('ano', anoRef)
 
   return (
-    <div className={styles.grid}>
-      {resumos.map(r => (
-        <QCard key={r.ref} resumo={r} onAbrir={() => onAbrirTrimestre(r.ref)} />
-      ))}
-    </div>
+    <>
+      <section className={styles.heroGrid}>
+        {KPIS_HERO.map(kpi => {
+          const meta = anoMetas.find(m => m.kpi === kpi) ?? null
+          return <AnoHeroCard key={kpi} kpi={kpi} meta={meta} tempoAno={tempoAno} anoRef={anoRef} />
+        })}
+      </section>
+
+      <h3 className={styles.secTitle}>Por trimestre</h3>
+      <div className={styles.grid}>
+        {resumos.map(r => (
+          <QCard key={r.ref} resumo={r} onAbrir={() => onAbrirTrimestre(r.ref)} />
+        ))}
+      </div>
+    </>
+  )
+}
+
+const KPI_LABEL: Record<string, string> = {
+  faturamento: 'Faturamento',
+  investimento_ads: 'Investimento em Ads',
+}
+
+function AnoHeroCard({ kpi, meta, tempoAno, anoRef }: { kpi: string; meta: MetaKpi | null; tempoAno: number; anoRef: string }) {
+  const realizado = meta?.valor_realizado ?? 0
+  const base = meta?.valor_meta ?? 0
+  const min  = meta?.valor_meta_min ?? null
+  const max  = meta?.valor_meta_max ?? null
+  const cenarios = { min, base, max }
+  const info = VEREDITO_INFO[vereditoCenario(realizado, cenarios, tempoAno)]
+  const falta = quantoFalta(realizado, cenarios)
+  const pctBase = base > 0 ? Math.round((realizado / base) * 100) : 0
+  const label = KPI_LABEL[kpi] || meta?.label || kpi
+
+  return (
+    <article className={`${styles.hero} ${styles[`tone_${info.tone}`]}`}>
+      <header className={styles.heroHead}>
+        <div>
+          <h3 className={styles.heroTitle}>{label}</h3>
+          <p className={styles.heroSub}>Ano {anoRef} · {Math.round(tempoAno * 100)}% decorrido</p>
+        </div>
+        <span className={`${styles.tag} ${styles[`tag_${info.tone}`]}`}>
+          {info.icon} {info.text}
+        </span>
+      </header>
+
+      <div className={styles.heroValor}>
+        <span className={styles.heroReal}>{fmtBRL(realizado)}</span>
+        <span className={styles.heroSlash}>/</span>
+        <span className={styles.heroMeta}>{base > 0 ? fmtBRL(base) : 'sem meta'}</span>
+      </div>
+
+      <div className={styles.heroBarWrap}>
+        <div className={styles.heroBarTrack}>
+          <span className={styles.heroBarFill} style={{ width: `${Math.min(100, pctBase)}%` }} />
+          <span className={styles.heroBarTime} style={{ left: `${Math.round(tempoAno * 100)}%` }} title="Tempo decorrido" />
+        </div>
+        <div className={styles.heroBarFoot}>
+          <span>{pctBase}% da base</span>
+          {falta.base != null && falta.base > 0 && base > 0 && (
+            <span>falta {fmtBRL(falta.base)}</span>
+          )}
+          {falta.base != null && falta.base <= 0 && base > 0 && (
+            <span className={styles.heroFootOk}>✓ meta batida</span>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.cenariosRow}>
+        <Cenario label="Mín"  valor={min}  falta={falta.min}  />
+        <Cenario label="Base" valor={base} falta={falta.base} destaque />
+        <Cenario label="Máx"  valor={max}  falta={falta.max}  />
+      </div>
+    </article>
   )
 }
 
