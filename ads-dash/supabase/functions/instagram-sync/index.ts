@@ -40,24 +40,115 @@ Deno.serve(async (req) => {
     return json({ error: 'IG_ACCESS_TOKEN ou IG_BUSINESS_ACCOUNT_ID não configurados' }, 400)
   }
 
+  // Modo discover: dado um ?discover_handle=nome (sem @), usa
+  // business_discovery pra devolver o ig_user_id da conta.
+  // Só funciona pra contas Business/Creator ligadas ao MESMO Meta Business
+  // Manager do IG_BUSINESS_ACCOUNT_ID atual.
+  try {
+    const url = new URL(req.url)
+    const handle = url.searchParams.get('discover_handle')?.replace(/^@/, '')
+    if (handle) {
+      const res = await ig(IG_USER_ID, {
+        fields: `business_discovery.username(${handle}){id,username,followers_count,media_count}`,
+      })
+      const found = res.business_discovery
+      if (!found) return json({ error: `Nada encontrado pra @${handle}` }, 404)
+      return json({
+        ig_user_id: found.id,
+        username:   '@' + found.username,
+        seguidores: found.followers_count,
+        posts:      found.media_count,
+      })
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return json({ error: `discover: ${msg}` }, 502)
+  }
+
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 
+  // Multi-conta: itera sobre todas as instagram_accounts ativas.
+  // Fallback pro IG_USER_ID do env se a tabela estiver vazia (compat com
+  // deploys anteriores). Pode focar em uma conta específica via
+  // ?ig_user_id=xxx (útil pro botão manual "Sincronizar" da UI).
   try {
-    const account = await syncAccount(supabase)
-    const posts   = await syncPosts(supabase)
+    const url = new URL(req.url)
+    const focusId = url.searchParams.get('ig_user_id')
 
+    let accountsToSync: Array<{ ig_user_id: string; username: string }> = []
+    if (focusId) {
+      const { data: row } = await supabase
+        .from('instagram_accounts')
+        .select('ig_user_id, username')
+        .eq('ig_user_id', focusId)
+        .maybeSingle()
+      accountsToSync = [{ ig_user_id: focusId, username: row?.username ?? '' }]
+    } else {
+      const { data: rows, error } = await supabase
+        .from('instagram_accounts')
+        .select('ig_user_id, username')
+        .eq('active', true)
+      if (error) throw new Error('list accounts: ' + error.message)
+      accountsToSync = (rows && rows.length > 0)
+        ? rows
+        : [{ ig_user_id: IG_USER_ID, username: '' }]
+    }
+
+    const results = []
+    for (const acc of accountsToSync) {
+      try {
+        const account = await syncAccount(supabase, acc.ig_user_id)
+        const posts   = await syncPosts(supabase, acc.ig_user_id)
+        results.push({
+          ig_user_id:    acc.ig_user_id,
+          username:      account.username,
+          mode:          'admin',
+          ok:            true,
+          posts_saved:   posts.length,
+          seguidores:    account.seguidores,
+          alcance_dia:   account.alcance_dia,
+          impressoes_dia:account.impressoes_dia,
+          visitas_perfil:account.visitas_perfil,
+          cliques_site:  account.cliques_site,
+          insights_errors: (account.payload as any)?.insightsErrors ?? [],
+        })
+      } catch (adminErr) {
+        // Fallback: token não tem admin nessa conta → tenta business_discovery
+        // com o handle vindo da tabela. Não traz insights privados (reach,
+        // views, cliques) mas grava seguidores + posts públicos.
+        const adminMsg = adminErr instanceof Error ? adminErr.message : String(adminErr)
+        const handle = acc.username?.replace(/^@/, '')
+        if (!handle) {
+          results.push({ ig_user_id: acc.ig_user_id, ok: false, error: adminMsg })
+          continue
+        }
+        try {
+          const bd = await syncViaBusinessDiscovery(supabase, acc.ig_user_id, handle)
+          results.push({
+            ig_user_id:  acc.ig_user_id,
+            username:    bd.username,
+            mode:        'public',
+            ok:          true,
+            posts_saved: bd.posts,
+            seguidores:  bd.seguidores,
+            note:        'sem admin no Meta Business — só dados públicos (sem reach/views/cliques)',
+          })
+        } catch (bdErr) {
+          const bdMsg = bdErr instanceof Error ? bdErr.message : String(bdErr)
+          results.push({
+            ig_user_id: acc.ig_user_id,
+            ok: false,
+            error: `admin: ${adminMsg} | discovery: ${bdMsg}`,
+          })
+        }
+      }
+    }
+
+    const oks = results.filter(r => r.ok).length
     return json({
-      message: 'Sincronização concluída.',
-      account_saved: !!account,
-      posts_saved: posts.length,
-      metrics: account ? {
-        seguidores:     account.seguidores,
-        alcance_dia:    account.alcance_dia,
-        impressoes_dia: account.impressoes_dia,
-        visitas_perfil: account.visitas_perfil,
-        cliques_site:   account.cliques_site,
-      } : null,
-      insights_errors: (account?.payload as any)?.insightsErrors ?? [],
+      message: `Sincronização concluída — ${oks}/${results.length} conta(s) ok.`,
+      total: results.length,
+      results,
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -84,8 +175,75 @@ async function ig(path: string, params: Record<string, string> = {}) {
   return json
 }
 
-async function syncAccount(supabase: ReturnType<typeof createClient>) {
-  const profile = await ig(IG_USER_ID, {
+// Fallback pra contas que o token não administra: usa business_discovery
+// via IG_USER_ID (a conta principal do Meta Business). Grava seguidores +
+// posts públicos, sem insights privados.
+async function syncViaBusinessDiscovery(
+  supabase: ReturnType<typeof createClient>,
+  igUserId: string,
+  handle: string,
+) {
+  const res = await ig(IG_USER_ID, {
+    fields: `business_discovery.username(${handle}){id,username,followers_count,follows_count,media_count,media.limit(25){id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count}}`,
+  })
+  const bd = res.business_discovery
+  if (!bd) throw new Error(`business_discovery vazio pra @${handle}`)
+
+  const today = new Date().toISOString().slice(0, 10)
+  const accountRow = {
+    date: today,
+    ig_user_id: igUserId,
+    username: '@' + bd.username,
+    seguidores: bd.followers_count || 0,
+    seguindo:   bd.follows_count   || 0,
+    total_posts: bd.media_count    || 0,
+    alcance_dia: 0,
+    impressoes_dia: 0,
+    visitas_perfil: 0,
+    cliques_site: 0,
+    payload: { business_discovery: bd, source_mode: 'public' },
+    source: 'business_discovery',
+  }
+  const { error: accErr } = await supabase
+    .from('instagram_account_metrics')
+    .upsert(accountRow, { onConflict: 'date,ig_user_id' })
+  if (accErr) throw new Error('upsert account (bd): ' + accErr.message)
+
+  const media = bd.media?.data || []
+  const rows = media.map((m: any) => {
+    const tipo = m.media_type === 'VIDEO' ? 'REEL' : (m.media_type || 'IMAGE')
+    return {
+      ig_post_id: m.id,
+      ig_user_id: igUserId,
+      tipo,
+      caption: m.caption?.slice(0, 500) || null,
+      media_url: m.media_url || null,
+      thumbnail_url: m.thumbnail_url || m.media_url || null,
+      permalink: m.permalink || null,
+      publicado_em: m.timestamp,
+      curtidas: m.like_count || 0,
+      comentarios: m.comments_count || 0,
+      salvamentos: 0,
+      compartilhamentos: 0,
+      alcance: 0,
+      impressoes: 0,
+      plays: 0,
+      engajamento_taxa: 0,
+      raw: { media: m, source_mode: 'public' },
+      fetched_at: new Date().toISOString(),
+    }
+  })
+  if (rows.length) {
+    const { error } = await supabase
+      .from('instagram_posts')
+      .upsert(rows, { onConflict: 'ig_post_id' })
+    if (error) throw new Error('upsert posts (bd): ' + error.message)
+  }
+  return { username: '@' + bd.username, seguidores: bd.followers_count || 0, posts: rows.length }
+}
+
+async function syncAccount(supabase: ReturnType<typeof createClient>, igUserId: string) {
+  const profile = await ig(igUserId, {
     fields: 'username,followers_count,follows_count,media_count',
   })
 
@@ -97,7 +255,7 @@ async function syncAccount(supabase: ReturnType<typeof createClient>) {
 
   async function tryMetric(metric: string) {
     try {
-      const res = await ig(`${IG_USER_ID}/insights`, {
+      const res = await ig(`${igUserId}/insights`, {
         metric,
         period: 'day',
         metric_type: 'total_value',
@@ -106,12 +264,10 @@ async function syncAccount(supabase: ReturnType<typeof createClient>) {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       insightsErrors.push(`${metric}: ${msg}`)
-      console.error(`[instagram-sync] insight "${metric}" failed:`, msg)
+      console.error(`[instagram-sync] insight "${metric}" failed pra ${igUserId}:`, msg)
     }
   }
 
-  // Pede uma métrica por vez — se uma falhar (falta de permissão, escopo),
-  // as outras ainda gravam.
   await tryMetric('reach')
   await tryMetric('views')
   await tryMetric('profile_views')
@@ -119,14 +275,13 @@ async function syncAccount(supabase: ReturnType<typeof createClient>) {
 
   const getMetric = (name: string) => {
     const item = insights.data.find((x: any) => x.name === name)
-    // v22 usa total_value.value; formato antigo era values[0].value.
     return item?.total_value?.value ?? item?.values?.[0]?.value ?? 0
   }
 
   const today = new Date().toISOString().slice(0, 10)
   const row = {
     date: today,
-    ig_user_id: IG_USER_ID,
+    ig_user_id: igUserId,
     username: '@' + profile.username,
     seguidores: profile.followers_count || 0,
     seguindo:   profile.follows_count   || 0,
@@ -147,8 +302,8 @@ async function syncAccount(supabase: ReturnType<typeof createClient>) {
   return row
 }
 
-async function syncPosts(supabase: ReturnType<typeof createClient>) {
-  const media = await ig(`${IG_USER_ID}/media`, {
+async function syncPosts(supabase: ReturnType<typeof createClient>, igUserId: string) {
+  const media = await ig(`${igUserId}/media`, {
     fields: 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count',
     limit: '25',
   })
@@ -183,7 +338,7 @@ async function syncPosts(supabase: ReturnType<typeof createClient>) {
 
     rows.push({
       ig_post_id: m.id,
-      ig_user_id: IG_USER_ID,
+      ig_user_id: igUserId,
       tipo,
       caption: m.caption?.slice(0, 500) || null,
       media_url: m.media_url || null,

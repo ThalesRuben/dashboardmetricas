@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useInstagramMetrics } from '@/features/organic/instagram/hooks/useInstagramMetrics'
 import { useToast } from '@/app/providers/ToastContext'
 import { detectHype, HYPE_LEVELS } from '@/features/organic/instagram/lib/hypeDetector'
@@ -42,7 +42,10 @@ const SORTS = [
 ]
 
 export default function InstagramPage() {
-  const { data, loading, usingMock, triggerSync } = useInstagramMetrics()
+  const {
+    data, loading, usingMock, triggerSync,
+    accounts, selectedAccountId, selectAccount,
+  } = useInstagramMetrics()
   const [syncing, setSyncing] = useState(false)
   const [tab, setTab] = useState('visao')
   const [filter, setFilter] = useState('all')
@@ -67,14 +70,21 @@ export default function InstagramPage() {
     return list
   }, [data?.posts, filter, sort, hypeByPostId])
 
-  // Mantém localStorage[ads-dash:connections].instagram alinhado com o
-  // username real que veio do sync, pra o OrganicAccountBar mostrar a
-  // conta certa sem depender de o usuário clicar em "Sincronizar".
+  // Lista de handles vinda da tabela instagram_accounts (multi-conta).
+  // Fallback pro username sincronizado quando a tabela ainda não foi
+  // populada (deploys antigos).
   const syncedUsername = data?.account?.username
-  const knownAccounts = useMemo(
-    () => (syncedUsername && !usingMock ? [syncedUsername] : []),
-    [syncedUsername, usingMock],
-  )
+  const knownAccounts = useMemo(() => {
+    if (accounts.length > 0) return accounts.map(a => a.username)
+    return syncedUsername && !usingMock ? [syncedUsername] : []
+  }, [accounts, syncedUsername, usingMock])
+
+  const handleAccountChange = useCallback((username: string) => {
+    const found = accounts.find(a => a.username === username)
+    if (found && found.ig_user_id !== selectedAccountId) {
+      selectAccount(found.ig_user_id)
+    }
+  }, [accounts, selectedAccountId, selectAccount])
   useEffect(() => {
     if (!syncedUsername || usingMock) return
     try {
@@ -121,6 +131,8 @@ export default function InstagramPage() {
         platformLabel="Instagram"
         sectionColor="var(--section-instagram)"
         knownAccounts={knownAccounts}
+        activeAccount={a?.username}
+        onAccountChange={handleAccountChange}
         usingMock={usingMock}
         syncing={syncing}
         onSync={handleSync}

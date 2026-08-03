@@ -63,6 +63,11 @@ export interface IgSyncResult {
   msg: string
 }
 
+export interface IgAccountEntry {
+  ig_user_id: string
+  username: string
+}
+
 export interface MetricsContextValue {
   // Ads
   adsByPeriod: Partial<Record<AdsPeriod, AdsPayload>>
@@ -72,6 +77,9 @@ export interface MetricsContextValue {
   ig: IgData | null
   igLoading: boolean
   igUsingMock: boolean
+  igAccounts: IgAccountEntry[]
+  selectedIgUserId: string | null
+  selectIgAccount: (id: string) => void
   refreshIg: () => Promise<void>
   triggerIgSync: () => Promise<IgSyncResult>
   // Goals
@@ -304,6 +312,8 @@ export function MetricsProvider({ children }: MetricsProviderProps) {
   const [ig, setIg] = useState<IgData | null>(null)
   const [igLoading, setIgLoading] = useState(true)
   const [igUsingMock, setIgUsingMock] = useState(false)
+  const [igAccounts, setIgAccounts] = useState<IgAccountEntry[]>([])
+  const [selectedIgUserId, setSelectedIgUserId] = useState<string | null>(null)
 
   // Goals
   const [goals, setGoals] = useState<Goal[]>(GOALS_FALLBACK)
@@ -338,21 +348,47 @@ export function MetricsProvider({ children }: MetricsProviderProps) {
 
   // === Instagram ===
 
-  const loadIg = useCallback(async (): Promise<void> => {
+  const loadIg = useCallback(async (accountIdOverride?: string | null): Promise<void> => {
     setIgLoading(true)
     try {
+      // 1. Descobre contas ativas do tenant
+      const { data: accRows } = await supabase
+        .from('instagram_accounts')
+        .select('ig_user_id, username')
+        .eq('active', true)
+        .order('added_at', { ascending: true })
+      const accountsList: IgAccountEntry[] = (accRows as IgAccountEntry[] | null) ?? []
+      setIgAccounts(accountsList)
+
+      // 2. Escolhe conta ativa: override manual > última selecionada > primeira da lista
+      const activeId = accountIdOverride
+        ?? selectedIgUserId
+        ?? accountsList[0]?.ig_user_id
+        ?? null
+      if (activeId !== selectedIgUserId) setSelectedIgUserId(activeId)
+
       // Últimos 60 dias de daily (pra somar por período no /instagram).
       const since = new Date()
       since.setDate(since.getDate() - 60)
       const sinceISO = since.toISOString().slice(0, 10)
 
+      let accountQuery = supabase.from('instagram_account_metrics')
+        .select('*')
+        .gte('date', sinceISO)
+        .order('date', { ascending: false })
+        .limit(60)
+      let postsQuery = supabase.from('instagram_posts')
+        .select('*')
+        .order('publicado_em', { ascending: false })
+        .limit(60)
+      if (activeId) {
+        accountQuery = accountQuery.eq('ig_user_id', activeId)
+        postsQuery   = postsQuery.eq('ig_user_id', activeId)
+      }
+
       const [accountRes, postsRes, adsRes] = await Promise.all([
-        supabase.from('instagram_account_metrics')
-          .select('*')
-          .gte('date', sinceISO)
-          .order('date', { ascending: false })
-          .limit(60),
-        supabase.from('instagram_posts').select('*').order('publicado_em', { ascending: false }).limit(60),
+        accountQuery,
+        postsQuery,
         supabase.from('ads_daily_metrics')
           .select('date, mensagens')
           .gte('date', sinceISO),
@@ -425,7 +461,13 @@ export function MetricsProvider({ children }: MetricsProviderProps) {
     } finally {
       setIgLoading(false)
     }
-  }, [])
+  }, [selectedIgUserId])
+
+  const selectIgAccount = useCallback((id: string) => {
+    setSelectedIgUserId(id)
+    // dispara refetch focado na conta escolhida
+    loadIg(id)
+  }, [loadIg])
 
   const triggerIgSync = useCallback(async (): Promise<IgSyncResult> => {
     try {
@@ -488,14 +530,17 @@ export function MetricsProvider({ children }: MetricsProviderProps) {
     ig,
     igLoading,
     igUsingMock,
-    refreshIg: loadIg,
+    igAccounts,
+    selectedIgUserId,
+    selectIgAccount,
+    refreshIg: () => loadIg(),
     triggerIgSync,
     // Goals
     goals,
     goalsLoading,
     updateGoal,
     refreshGoals: loadGoals,
-  }), [adsByPeriod, adsLoading, loadAds, ig, igLoading, igUsingMock, loadIg, triggerIgSync, goals, goalsLoading, updateGoal, loadGoals])
+  }), [adsByPeriod, adsLoading, loadAds, ig, igLoading, igUsingMock, igAccounts, selectedIgUserId, selectIgAccount, loadIg, triggerIgSync, goals, goalsLoading, updateGoal, loadGoals])
 
   return <MetricsContext.Provider value={value}>{children}</MetricsContext.Provider>
 }

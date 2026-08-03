@@ -27,6 +27,10 @@ export interface OrganicAccountBarProps {
   onSync?: () => void
   /** mensagem custom abaixo do handle (sobrescreve o default) */
   metaOverride?: string
+  /** notifica o parent quando o usuário troca de conta no dropdown */
+  onAccountChange?: (username: string) => void
+  /** força qual handle mostrar (sobrepõe seleção interna do bar) */
+  activeAccount?: string
 }
 
 function loadConnection(key: string): ConnectionEntry | null {
@@ -60,6 +64,8 @@ export default function OrganicAccountBar({
   syncing = false,
   onSync,
   metaOverride,
+  onAccountChange,
+  activeAccount,
 }: OrganicAccountBarProps) {
   const [conn, setConn] = useState<ConnectionEntry | null>(() => loadConnection(connectorKey))
   const [accounts, setAccounts] = useState<string[]>([])
@@ -77,12 +83,19 @@ export default function OrganicAccountBar({
         ? Array.from(new Set([...knownAccounts, ...(c?.conta ? [c.conta] : [])]))
         : (c?.conta ? [c.conta] : [])
       setAccounts(list)
-      setSelected(list[0] || '')
+      setSelected(prev => activeAccount || prev || list[0] || '')
     }
     refresh()
     window.addEventListener('storage', refresh)
     return () => window.removeEventListener('storage', refresh)
-  }, [connectorKey, knownAccounts])
+  }, [connectorKey, knownAccounts, activeAccount])
+
+  // Sync externo: quando o parent muda o activeAccount, atualiza selected
+  useEffect(() => {
+    if (activeAccount && activeAccount !== selected) {
+      setSelected(activeAccount)
+    }
+  }, [activeAccount, selected])
 
   // Considera conectado quando há entrada em localStorage OU quando os dados
   // vêm reais do backend (usingMock === false). Assim, o cron do Supabase
@@ -110,7 +123,11 @@ export default function OrganicAccountBar({
               <select
                 className={styles.selector}
                 value={selected}
-                onChange={e => setSelected(e.target.value)}
+                onChange={e => {
+                  const value = e.target.value
+                  setSelected(value)
+                  onAccountChange?.(value)
+                }}
                 aria-label={`Selecionar conta ${platformLabel}`}
               >
                 {accounts.map(a => <option key={a} value={a}>{a}</option>)}
