@@ -278,6 +278,38 @@ async function syncAccount(supabase: ReturnType<typeof createClient>, igUserId: 
     return item?.total_value?.value ?? item?.values?.[0]?.value ?? 0
   }
 
+  // Janela de 28 dias (mesma do Meta B.S.), agregada com deduplicação.
+  // O Graph API aceita since/until em UNIX seconds. Métricas que
+  // suportam isso na v22: reach, views, total_interactions,
+  // profile_views, website_clicks, follows.
+  const now = Math.floor(Date.now() / 1000)
+  const since28 = now - 28 * 86_400
+  const period28: Record<string, number> = {}
+  const period28Errors: string[] = []
+  async function tryMetric28(metric: string) {
+    try {
+      const res = await ig(`${igUserId}/insights`, {
+        metric,
+        period: 'day',
+        metric_type: 'total_value',
+        since: String(since28),
+        until: String(now),
+      })
+      const item = (res.data || [])[0]
+      period28[metric] = item?.total_value?.value ?? item?.values?.[0]?.value ?? 0
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      period28Errors.push(`${metric}: ${msg}`)
+      console.error(`[instagram-sync] período 28d "${metric}" failed pra ${igUserId}:`, msg)
+    }
+  }
+  await tryMetric28('reach')
+  await tryMetric28('views')
+  await tryMetric28('total_interactions')
+  await tryMetric28('profile_views')
+  await tryMetric28('website_clicks')
+  await tryMetric28('follower_count')
+
   const today = new Date().toISOString().slice(0, 10)
   const row = {
     date: today,
@@ -290,7 +322,13 @@ async function syncAccount(supabase: ReturnType<typeof createClient>, igUserId: 
     impressoes_dia: getMetric('views'),
     visitas_perfil: getMetric('profile_views'),
     cliques_site:   getMetric('website_clicks'),
-    payload: { profile, insights, insightsErrors },
+    reach_28d:          period28.reach              ?? null,
+    views_28d:          period28.views              ?? null,
+    interactions_28d:   period28.total_interactions ?? null,
+    profile_views_28d:  period28.profile_views      ?? null,
+    website_clicks_28d: period28.website_clicks     ?? null,
+    follows_28d:        period28.follower_count     ?? null,
+    payload: { profile, insights, insightsErrors, period28, period28Errors },
     source: 'api',
   }
 

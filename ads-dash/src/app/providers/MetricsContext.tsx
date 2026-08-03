@@ -18,6 +18,13 @@ export interface IgAccount {
   visitas_perfil?: number
   cliques_site?: number
   engajamento_taxa?: number
+  // Agregados 28d (mesmo período do Meta B.S., com dedup do Graph API).
+  // Preferir esses valores em vez de somar `daily` quando período = 30d.
+  reach_28d?: number | null
+  views_28d?: number | null
+  interactions_28d?: number | null
+  profile_views_28d?: number | null
+  website_clicks_28d?: number | null
   serie_seguidores: Array<{ date: string; value: number }>
   serie_engajamento: Array<{ date: string; value: number }>
   serie_alcance: Array<{ date: string; value: number }>
@@ -434,6 +441,10 @@ export function MetricsProvider({ children }: MetricsProviderProps) {
         const serie_engajamento = buildEngajamentoSemanal(posts || [], 4)
         const serie_alcance     = buildAlcancePorDiaSemana(daily)
 
+        // Pega o snapshot MAIS RECENTE que tenha os agregados 28d preenchidos
+        // (pode não ser o `latest` se o sync de hoje ainda não rodou com a v2)
+        const latest28 = accountRows.find(r => r.reach_28d != null) ?? latest
+
         setIg({
           account: {
             username: latest.username || '@conta',
@@ -446,6 +457,11 @@ export function MetricsProvider({ children }: MetricsProviderProps) {
             visitas_perfil: latest.visitas_perfil,
             cliques_site: latest.cliques_site,
             engajamento_taxa,
+            reach_28d:          latest28.reach_28d          ?? null,
+            views_28d:          latest28.views_28d          ?? null,
+            interactions_28d:   latest28.interactions_28d   ?? null,
+            profile_views_28d:  latest28.profile_views_28d  ?? null,
+            website_clicks_28d: latest28.website_clicks_28d ?? null,
             serie_seguidores,
             serie_engajamento,
             serie_alcance,

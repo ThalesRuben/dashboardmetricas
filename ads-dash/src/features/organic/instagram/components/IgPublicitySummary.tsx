@@ -123,6 +123,11 @@ export default function IgPublicitySummary({ account, posts, daily, onViewMore }
       ? +((ganhoSeguidores / seguidoresInicio) * 100).toFixed(2)
       : null
 
+    // Se o período for próximo de 28d (o único agregado real que temos hoje
+    // do Graph API), usa os valores 28d — batem exato com o Meta B.S.
+    // Fora disso (7d, 60d), volta pra soma diária (que superestima reach).
+    const use28d = days === 30 && account.reach_28d != null
+
     return [
       {
         id: 'total_seguidores' as KpiId,
@@ -146,8 +151,10 @@ export default function IgPublicitySummary({ account, posts, daily, onViewMore }
       {
         id: 'visualizadores' as KpiId,
         label: 'Visualizadores',
-        tooltip: 'Total de views (impressões) da conta no período — somado dos snapshots diários do Graph API.',
-        value: sumDaily(r => r.impressoes_dia),
+        tooltip: use28d
+          ? 'Views totais dos últimos 28 dias, agregado com deduplicação pelo Graph API (bate com Meta Business Suite).'
+          : 'Total de views (impressões) da conta no período — somado dos snapshots diários.',
+        value: use28d ? (account.views_28d || 0) : sumDaily(r => r.impressoes_dia),
         serie: sViews,
         delta: deltaFromSeries(sViews),
         sortKey: 'reach' as const,
@@ -155,8 +162,12 @@ export default function IgPublicitySummary({ account, posts, daily, onViewMore }
       {
         id: 'engaj_post' as KpiId,
         label: 'Engajamentos com o post',
-        tooltip: 'Curtidas + comentários + salvamentos + compartilhamentos dos posts publicados no período.',
-        value: sumPosts(p => (p.curtidas || 0) + (p.comentarios || 0) + (p.salvamentos || 0) + (p.compartilhamentos || 0)),
+        tooltip: use28d
+          ? 'Total de interações com o conteúdo nos últimos 28 dias (Graph API total_interactions).'
+          : 'Curtidas + comentários + salvamentos + compartilhamentos dos posts publicados no período.',
+        value: use28d
+          ? (account.interactions_28d || 0)
+          : sumPosts(p => (p.curtidas || 0) + (p.comentarios || 0) + (p.salvamentos || 0) + (p.compartilhamentos || 0)),
         serie: sEngaj,
         delta: deltaFromSeries(sEngaj),
         sortKey: 'engaj' as const,
@@ -164,8 +175,10 @@ export default function IgPublicitySummary({ account, posts, daily, onViewMore }
       {
         id: 'cliques_link' as KpiId,
         label: 'Cliques no link',
-        tooltip: 'Cliques no link da bio (site) — somado dos snapshots diários.',
-        value: sumDaily(r => r.cliques_site),
+        tooltip: use28d
+          ? 'Cliques no link da bio nos últimos 28 dias, agregado do Graph API.'
+          : 'Cliques no link da bio (site) — somado dos snapshots diários.',
+        value: use28d ? (account.website_clicks_28d || 0) : sumDaily(r => r.cliques_site),
         serie: sCliques,
         delta: deltaFromSeries(sCliques),
         sortKey: 'recent' as const,
@@ -173,8 +186,10 @@ export default function IgPublicitySummary({ account, posts, daily, onViewMore }
       {
         id: 'engaj_pagina' as KpiId,
         label: 'Engajamentos com a Página',
-        tooltip: 'Visitas ao perfil — somado dos snapshots diários (proxy do Meta Business Suite).',
-        value: sumDaily(r => r.visitas_perfil),
+        tooltip: use28d
+          ? 'Visitas ao perfil nos últimos 28 dias, agregado do Graph API.'
+          : 'Visitas ao perfil — somado dos snapshots diários (proxy do Meta Business Suite).',
+        value: use28d ? (account.profile_views_28d || 0) : sumDaily(r => r.visitas_perfil),
         serie: sVisitas,
         delta: deltaFromSeries(sVisitas),
         sortKey: 'recent' as const,
