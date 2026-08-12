@@ -219,10 +219,16 @@ export default function WhatsAppPage() {
             neutral
           />
           <KpiCard
-            label="Tempo de resposta"
+            label="T. até 1ª resposta"
             value={`${r.tempo_resposta_min} min`}
             delta={`${fmtPct(r.pct_sla_resposta)} em ≤10min`}
             up={r.tempo_resposta_min <= 10}
+          />
+          <KpiCard
+            label="T. médio por turno"
+            value={`${r.tempo_resposta_turno_min} min`}
+            delta="entre msgs do cliente e resposta"
+            up={r.tempo_resposta_turno_min > 0 && r.tempo_resposta_turno_min <= 15}
           />
         </section>
       )}

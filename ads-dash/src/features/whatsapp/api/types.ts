@@ -8,8 +8,12 @@ export interface WhatsAppResumo {
   agendamentos: number;
   agendamentos_delta: number;
   taxa_resposta: number;
+  // Tempo até PRIMEIRA resposta do atendente em threads criadas no período (mediana).
   tempo_resposta_min: number;
   pct_sla_resposta: number;
+  // Tempo médio POR TURNO — mediana entre cada msg do cliente e a próxima
+  // resposta do atendente na mesma thread. Detecta "some no meio da conversa".
+  tempo_resposta_turno_min: number;
   taxa_conversao: number;
   ticket_medio: number;
 }

@@ -10,6 +10,7 @@ const MOCK: WhatsAppSummary = {
     agendamentos: 74,      agendamentos_delta: 15.6,
     taxa_resposta: 94.2,   tempo_resposta_min: 6,
     pct_sla_resposta: 87.0,
+    tempo_resposta_turno_min: 14,
     taxa_conversao: 23.7,  ticket_medio: 240,
   },
   funil: [

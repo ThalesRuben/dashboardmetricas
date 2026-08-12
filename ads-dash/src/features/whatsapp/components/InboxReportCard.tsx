@@ -28,6 +28,7 @@ export default function InboxReportCard({ inboxPhone, label, threads, onOpen, ra
 
   const r = data.resumo
   const dentroMeta = r.tempo_resposta_min <= 10
+  const turnoOk = r.tempo_resposta_turno_min > 0 && r.tempo_resposta_turno_min <= 15
 
   // Mini-funil: 4 etapas com altura proporcional ao topo (conversas)
   const etapas = [
@@ -61,10 +62,16 @@ export default function InboxReportCard({ inboxPhone, label, threads, onOpen, ra
         <Kpi label="Agendamentos"  value={fmtNumber(r.agendamentos)} />
         <Kpi label="Conversão"     value={fmtPct(r.taxa_conversao)} />
         <Kpi
-          label="T. resposta"
+          label="T. entrada"
           value={`${r.tempo_resposta_min}m`}
           sub={`${fmtPct(r.pct_sla_resposta)} ≤10m`}
           tone={dentroMeta ? 'ok' : 'warn'}
+        />
+        <Kpi
+          label="T. médio turno"
+          value={`${r.tempo_resposta_turno_min}m`}
+          sub="entre msgs"
+          tone={turnoOk ? 'ok' : 'warn'}
         />
       </div>
 
