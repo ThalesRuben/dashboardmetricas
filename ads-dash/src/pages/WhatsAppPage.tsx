@@ -1,18 +1,26 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   useWhatsAppMetrics,
   useInbox,
   useWhatsAppInboxes,
+  useCrmSummary,
+  useFollowupsPendentes,
+  useSetThreadStatus,
   Inbox,
   DisparoMassa,
   InboxReportCard,
+  CrmKanban,
+  CrmThreadDrawer,
+  FollowupsFila,
   formatarPhoneBR,
+  crmRepo,
 } from '@/features/whatsapp'
 import type {
   WhatsAppThreadReal,
   WhatsAppThreadStatusReal,
   WhatsAppConversa,
   WhatsAppConversaStatus,
+  CrmCardExtras,
 } from '@/features/whatsapp'
 import { fmtNumber, fmtPct } from '@/shared/lib/format'
 import PageHeader from '@/components/ui/PageHeader'
@@ -57,9 +65,59 @@ export default function WhatsAppPage() {
   const [inboxPhone, setInboxPhone] = useState<string | null>(null)
   const [range, setRange] = useState<{ from: Date; to: Date; presetKey?: string } | null>(defaultRange)
   const { data, loading, usingMock } = useWhatsAppMetrics(inboxPhone, range)
-  const { threads } = useInbox({ inboxPhone })
+  const { threads, reloadThreads } = useInbox({ inboxPhone })
   const { inboxes } = useWhatsAppInboxes()
   const [tab, setTab] = useState('inbox')
+
+  // Estado do drawer CRM (usado pela aba "CRM" e "Follow-ups")
+  const [drawerThreadId, setDrawerThreadId] = useState<string | null>(null)
+  const drawerThread = threads.find(t => t.id === drawerThreadId) || null
+
+  const rangeParaSummary = useMemo(
+    () => range ? { from: range.from, to: range.to } : null,
+    [range],
+  )
+  const { summary: crmSummary, refresh: refreshSummary } = useCrmSummary(rangeParaSummary)
+  const { followups: followupsPend, marcarFeito: marcarFollowupFeito, refresh: refreshFollowups } = useFollowupsPendentes()
+  const setThreadStatus = useSetThreadStatus()
+
+  // Extras (tags, próximo followup, última venda) por thread — carrega quando abre CRM.
+  const [extrasPorThread, setExtrasPorThread] = useState<Record<string, CrmCardExtras>>({})
+  useEffect(() => {
+    if (tab !== 'crm' || threads.length === 0) return
+    let cancelled = false
+    ;(async () => {
+      // Carrega em paralelo mas limita pra não estourar (top 40 mais recentes).
+      const alvos = threads.slice(0, 40)
+      const resultados = await Promise.all(alvos.map(async (t) => {
+        const [tags, fups, vendas] = await Promise.all([
+          crmRepo.tagsDaThread(t.id).catch(() => []),
+          crmRepo.followupsDaThread(t.id).catch(() => []),
+          crmRepo.listarVendas(t.id).catch(() => []),
+        ])
+        const proxFollowup = fups.find(f => !f.feito) ?? null
+        const ultimaVenda = vendas[0] ?? null
+        return [t.id, { tags, proxFollowup, ultimaVenda }] as const
+      }))
+      if (cancelled) return
+      const map: Record<string, CrmCardExtras> = {}
+      for (const [id, extras] of resultados) map[id] = extras
+      setExtrasPorThread(map)
+    })()
+    return () => { cancelled = true }
+  }, [tab, threads])
+
+  async function handleMoverStatus(threadId: string, novo: WhatsAppThreadStatusReal) {
+    // Update otimista via reload — sem estado local pra evitar drift com realtime.
+    await setThreadStatus(threadId, novo)
+    await reloadThreads()
+    refreshSummary()
+  }
+
+  async function handleChangeStatusDrawer(novo: WhatsAppThreadStatusReal) {
+    if (!drawerThread) return
+    await handleMoverStatus(drawerThread.id, novo)
+  }
 
   const urgentes = useMemo(
     () => threads.filter(t => (t.nao_lidas || 0) > 0 || STATUS[t.status]?.urgent),
@@ -79,13 +137,19 @@ export default function WhatsAppPage() {
   // Só mostra o banner de "demo" se realmente não tem dado real chegando.
   const semDadoReal = usingMock && threads.length === 0
 
+  const followupsAtrasados = followupsPend.filter(f => new Date(f.data) < new Date()).length
+  const followupsBadge = followupsPend.length
+    ? (followupsAtrasados > 0 ? `${followupsPend.length} · ${followupsAtrasados} atrasado` : followupsPend.length)
+    : undefined
+
   const tabs = [
-    { id: 'inbox',    label: 'Inbox', badge: naoLidasTotal || undefined },
-    { id: 'precisam', label: 'Precisam de você', badge: urgentes.length || undefined },
-    { id: 'todas',    label: 'Todas as conversas', badge: threads.length || undefined },
-    { id: 'disparo',  label: 'Disparo em massa' },
-    { id: 'funil',    label: 'Funil' },
-    { id: 'origem',   label: 'Origem & motivos' },
+    { id: 'inbox',     label: 'Inbox', badge: naoLidasTotal || undefined },
+    { id: 'crm',       label: 'CRM', badge: threads.length || undefined },
+    { id: 'followups', label: 'Follow-ups', badge: followupsBadge },
+    { id: 'precisam',  label: 'Precisam de você', badge: urgentes.length || undefined },
+    { id: 'disparo',   label: 'Disparo em massa' },
+    { id: 'funil',     label: 'Funil' },
+    { id: 'origem',    label: 'Origem & motivos' },
   ]
 
   // DisparoMassa ainda fala o tipo legado WhatsAppConversa — adapta as threads.
@@ -167,6 +231,27 @@ export default function WhatsAppPage() {
 
       {tab === 'inbox' && <Inbox />}
 
+      {tab === 'crm' && (
+        <CrmKanban
+          threads={threads}
+          summary={crmSummary}
+          extrasPorThread={extrasPorThread}
+          onOpen={(t) => setDrawerThreadId(t.id)}
+          onMover={handleMoverStatus}
+        />
+      )}
+
+      {tab === 'followups' && (
+        <FollowupsFila
+          followups={followupsPend}
+          onAbrir={(id) => setDrawerThreadId(id)}
+          onMarcarFeito={async (id) => {
+            await marcarFollowupFeito(id)
+            refreshSummary()
+          }}
+        />
+      )}
+
       {tab === 'precisam' && (
         urgentes.length === 0 ? (
           <p className={styles.empty}>Fila vazia. Nada precisa de você agora.</p>
@@ -176,16 +261,6 @@ export default function WhatsAppPage() {
               {urgentes.length} conversa{urgentes.length > 1 ? 's' : ''} esperando você. Responda em até 10 min pra manter a meta de conversão.
             </p>
             {urgentes.map((t) => <ThreadRow key={t.id} t={t} onOpen={() => setTab('inbox')} />)}
-          </div>
-        )
-      )}
-
-      {tab === 'todas' && (
-        threads.length === 0 ? (
-          <p className={styles.empty}>Nenhuma conversa ainda. Assim que chegar mensagem, ela aparece aqui.</p>
-        ) : (
-          <div className={styles.queue}>
-            {threads.map((t) => <ThreadRow key={t.id} t={t} onOpen={() => setTab('inbox')} />)}
           </div>
         )
       )}
@@ -224,6 +299,18 @@ export default function WhatsAppPage() {
             ))}
           </Card>
         </div>
+      )}
+
+      {drawerThread && (
+        <CrmThreadDrawer
+          thread={drawerThread}
+          onClose={() => setDrawerThreadId(null)}
+          onChangeStatus={async (novo) => {
+            await handleChangeStatusDrawer(novo)
+            // Após venda/agendado, o resumo de fila muda
+            refreshFollowups()
+          }}
+        />
       )}
     </div>
   )

@@ -1,0 +1,83 @@
+.wrap { display: flex; flex-direction: column; gap: 10px; }
+.head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 4px;
+}
+.title {
+  font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted); font-weight: 600;
+  margin: 0;
+}
+.count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-subtle);
+}
+.item {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  gap: 12px; align-items: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  border-radius: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.item:hover {
+  border-color: var(--accent-cyan);
+  background: color-mix(in srgb, var(--accent-cyan) 4%, var(--bg-elevated));
+}
+.itemAtrasado {
+  border-color: rgba(231, 76, 60, 0.35);
+  background: rgba(231, 76, 60, 0.05);
+}
+.itemAtrasado:hover { background: rgba(231, 76, 60, 0.1); }
+
+.data {
+  display: flex; flex-direction: column;
+  font-family: var(--font-mono);
+}
+.dataDia {
+  font-size: 14px; font-weight: 600; color: var(--text);
+}
+.dataHora {
+  font-size: 11px; color: var(--text-subtle);
+}
+.dataAtrasada { color: #e74c3c; }
+
+.body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.nome {
+  font-size: 13px; color: var(--text); font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.motivo {
+  font-size: 12px; color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.subMeta {
+  font-size: 10px; color: var(--text-subtle);
+  font-family: var(--font-mono);
+}
+
+.actionBtn {
+  background: transparent;
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.12));
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+}
+.actionBtn:hover { color: #5dcaa5; border-color: #5dcaa5; }
+
+.empty {
+  text-align: center;
+  color: var(--text-subtle);
+  padding: 40px 16px;
+  border: 1px dashed var(--border-subtle, rgba(255,255,255,0.08));
+  border-radius: 8px;
+  font-size: 13px;
+  margin: 0;
+}

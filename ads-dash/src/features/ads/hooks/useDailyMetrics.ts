@@ -139,6 +139,47 @@ export interface UseDailyMetricsReturn {
   usingMock: boolean
 }
 
+// Busca vendas reais do CRM agregadas por dia no período (soma valor + qtd).
+// Fica em query separada pra não obrigar mudança na RPC ads_daily_agg.
+async function fetchCrmVendasPorDia(from: string, to: string): Promise<Map<string, { vendas: number; receita: number }>> {
+  const { data, error } = await supabase
+    .from('crm_vendas')
+    .select('data, valor_cents')
+    .gte('data', from)
+    .lte('data', to)
+  if (error || !data) return new Map()
+  const acc = new Map<string, { vendas: number; receita: number }>()
+  for (const row of data as Array<{ data: string; valor_cents: number }>) {
+    const cur = acc.get(row.data) || { vendas: 0, receita: 0 }
+    cur.vendas += 1
+    cur.receita += Number(row.valor_cents || 0) / 100
+    acc.set(row.data, cur)
+  }
+  return acc
+}
+
+// Sobrescreve vendas/receita de cada dia com o que veio do CRM. Como as vendas
+// hoje só existem no CRM (Meta Ads sempre volta 0 pra CTWA), somar seria
+// duplicar — o certo é substituir quando há registro no CRM.
+function aplicarVendasCrm(days: DailyMetric[], porDia: Map<string, { vendas: number; receita: number }>): DailyMetric[] {
+  if (porDia.size === 0) return days
+  return days.map(d => {
+    const crm = porDia.get(d.date)
+    if (!crm) return d
+    const vendas = crm.vendas
+    const receita = crm.receita
+    const investido = d.investido
+    return {
+      ...d,
+      vendas,
+      receita,
+      roas: investido > 0 ? +(receita / investido).toFixed(2) : d.roas,
+      roi:  investido > 0 ? Math.round(((receita - investido) / investido) * 100) : d.roi,
+      funil: { ...d.funil, vendas },
+    }
+  })
+}
+
 export function useDailyMetrics(range?: DateRange | null): UseDailyMetricsReturn {
   const [days, setDays]           = useState<DailyMetric[]>([])
   const [loading, setLoading]     = useState<boolean>(true)
@@ -161,16 +202,28 @@ export function useDailyMetrics(range?: DateRange | null): UseDailyMetricsReturn
       const p_to   = localDateStr(range.to)
 
       try {
-        const { data, error } = await supabase.rpc('ads_daily_agg', { p_from, p_to })
+        // Ads e CRM em paralelo — CRM tolera falha silenciosa.
+        const [adsRes, crmMap] = await Promise.all([
+          supabase.rpc('ads_daily_agg', { p_from, p_to }),
+          fetchCrmVendasPorDia(p_from, p_to).catch(() => new Map()),
+        ])
         if (!alive) return
 
+        const { data, error } = adsRes
+        let base: DailyMetric[]
+        let mock = false
+
         if (error || !data?.length) {
-          setDays(generateDailyRange(range.from, range.to))
-          setUsingMock(true)
+          base = generateDailyRange(range.from, range.to)
+          mock = true
         } else {
-          setDays((data as RpcRow[]).map(mapRpcRow))
-          setUsingMock(false)
+          base = (data as RpcRow[]).map(mapRpcRow)
         }
+
+        // Só sobrescreve vendas/receita quando NÃO for mock — mock já tem
+        // valores realistas e não faz sentido misturar.
+        setDays(mock ? base : aplicarVendasCrm(base, crmMap))
+        setUsingMock(mock)
       } catch {
         if (!alive) return
         setDays(generateDailyRange(range.from, range.to))
