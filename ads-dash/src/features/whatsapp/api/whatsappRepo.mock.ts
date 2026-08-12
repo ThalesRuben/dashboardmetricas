@@ -227,7 +227,7 @@ export const mockWhatsAppRepo: WhatsAppRepo = {
     return this.listarMsgs(contatoId);
   },
 
-  async listarMsgsPorContatos(contatoIds: string[]) {
+  async listarMsgsPorContatos(contatoIds: string[], _limit?: number, _inboxPhone?: string | null) {
     const all = await Promise.all(contatoIds.map((id) => this.listarMsgs(id)));
     return all.flat().sort((a, b) => (a.hora < b.hora ? -1 : 1));
   },

@@ -127,17 +127,19 @@ export function useInbox(options: UseInboxOptions = {}): UseInboxReturn {
     if (!activeId && threads.length > 0) setActiveId(threads[0].id)
   }, [threads, activeId])
 
-  // Carrega mensagens de TODOS os contatos do phone ativo.
+  // Carrega mensagens de TODOS os contatos do phone ativo, restritas à linha
+  // do inbox atual — sem isso, cliente que escreveu pras 2 linhas mostra as
+  // duas conversas coladas em qualquer inbox aberto.
   useEffect(() => {
     if (!activeThread) { setMsgs([]); return }
     let cancelled = false
     const ids = activeThread._contatoIds
-    whatsappRepo.listarMsgsPorContatos(ids).then((m) => {
+    whatsappRepo.listarMsgsPorContatos(ids, undefined, inboxPhone ?? activeThread.inbox_phone).then((m) => {
       if (!cancelled) setMsgs(m)
     })
     whatsappRepo.marcarLidoContatos(ids).catch(() => {})
     return () => { cancelled = true }
-  }, [activeThread?._phoneKey])
+  }, [activeThread?._phoneKey, inboxPhone])
 
   // Realtime: assina inserts em whatsapp_msgs e whatsapp_threads
   useEffect(() => {
@@ -181,7 +183,11 @@ export function useInbox(options: UseInboxOptions = {}): UseInboxReturn {
         setErroEnvio(r.erro || 'Falha ao enviar')
         return r
       }
-      const m = await whatsappRepo.listarMsgsPorContatos(activeThread._contatoIds)
+      const m = await whatsappRepo.listarMsgsPorContatos(
+        activeThread._contatoIds,
+        undefined,
+        inboxPhone ?? activeThread.inbox_phone,
+      )
       setMsgs(m)
       return r
     } catch (e) {

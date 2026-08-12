@@ -100,8 +100,8 @@ export const supabaseWhatsAppRepo: WhatsAppRepo = {
     return listarMsgsPorContatosImpl([contatoId], limit);
   },
 
-  async listarMsgsPorContatos(contatoIds: string[], limit = 400) {
-    return listarMsgsPorContatosImpl(contatoIds, limit);
+  async listarMsgsPorContatos(contatoIds: string[], limit = 400, inboxPhone?: string | null) {
+    return listarMsgsPorContatosImpl(contatoIds, limit, inboxPhone);
   },
 
   async enviarResposta(threadId: string, texto: string): Promise<ReplyResultado> {
@@ -155,12 +155,12 @@ export const supabaseWhatsAppRepo: WhatsAppRepo = {
 async function listarMsgsPorContatosImpl(
   contatoIds: string[],
   limit: number,
+  inboxPhone?: string | null,
 ): Promise<WhatsAppMsgReal[]> {
   if (!contatoIds.length) return [];
-  const { data: threads, error: tErr } = await supabase
-    .from('whatsapp_threads')
-    .select('id')
-    .in('contato_id', contatoIds);
+  let q = supabase.from('whatsapp_threads').select('id').in('contato_id', contatoIds);
+  if (inboxPhone) q = q.eq('inbox_phone', inboxPhone);
+  const { data: threads, error: tErr } = await q;
   if (tErr || !threads || threads.length === 0) return [];
   const threadIds = threads.map((t: { id: string }) => t.id);
 

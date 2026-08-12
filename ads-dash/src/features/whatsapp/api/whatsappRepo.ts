@@ -36,7 +36,13 @@ export interface WhatsAppRepo {
   listarMsgsPorContato(contatoId: string, limit?: number): Promise<WhatsAppMsgReal[]>;
   // Versão que aceita vários contatos — usada quando o mesmo phone existe
   // como contatos duplicados no banco (normalização inconsistente).
-  listarMsgsPorContatos(contatoIds: string[], limit?: number): Promise<WhatsAppMsgReal[]>;
+  // `inboxPhone` restringe a msgs vindas por uma linha específica; sem isso,
+  // se o cliente escreveu pras 2 linhas, as msgs de ambas se misturam.
+  listarMsgsPorContatos(
+    contatoIds: string[],
+    limit?: number,
+    inboxPhone?: string | null,
+  ): Promise<WhatsAppMsgReal[]>;
   enviarResposta(threadId: string, texto: string): Promise<ReplyResultado>;
   marcarLido(threadId: string): Promise<void>;
   marcarLidoContato(contatoId: string): Promise<void>;
