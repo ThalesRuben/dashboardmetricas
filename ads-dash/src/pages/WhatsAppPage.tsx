@@ -56,8 +56,8 @@ const STATUS: Record<WhatsAppThreadStatusReal, { label: string; tone: string; ur
 // Rótulos amigáveis dos números WhatsApp Business. Edite aqui pra renomear.
 // Sem entrada no mapa → chip mostra o telefone formatado "(31) 9XXXX-XXXX".
 const INBOX_LABELS: Record<string, string> = {
-  '5531990842381': 'Inbox Fabio',
-  '5531991340420': 'Inbox TBC',
+  '5531990842381': 'Inbox TBC',
+  '5531991340420': 'Inbox Fabio',
 }
 
 export default function WhatsAppPage() {
