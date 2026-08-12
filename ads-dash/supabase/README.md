@@ -82,28 +82,58 @@ supabase functions deploy whatsapp-send --no-verify-jwt
 
 ### Configurando o n8n (servidor DO)
 
-No fluxo que recebe webhook do WhatsApp, adicione **um nó "HTTP Request"** no final:
+No fluxo que recebe webhook do WhatsApp, adicione **um nó "HTTP Request"**
+em paralelo ao restante do flow (não atrás dele — assim toda msg é espelhada,
+tenha vindo de anúncio CTWA ou orgânico):
 
 - **Method:** `POST`
 - **URL:** `https://<seu-projeto>.supabase.co/functions/v1/inbox-ingest`
 - **Headers:**
   - `Content-Type: application/json`
   - `x-internal-key: <mesmo valor de INTERNAL_API_KEY>`
-- **Body (JSON):**
+- **Body (JSON) — shape esperado pela function:**
   ```json
   {
-    "phone":     "{{ $json.from }}",
-    "nome":      "{{ $json.profile.name }}",
-    "texto":     "{{ $json.text.body }}",
-    "msg_id":    "{{ $json.id }}",
-    "hora":      "{{ $now.toISO() }}",
-    "direction": "in"
+    "phone":       "5531999999999",
+    "texto":       "Oi, queria agendar",
+    "nome":        "Marina Alves",
+    "msg_id":      "id externo do provedor",
+    "hora":        "2026-08-12T14:32:00Z",
+    "direction":   "in",
+    "origem":      "whatsapp",
+    "tenant_slug": "the-blonde-concept",
+    "inbox_phone": "5531990842381"
   }
   ```
 
-  Ajuste os caminhos `$json.*` conforme o payload exato que o seu fluxo já tem.
-  Você continua gravando no Postgres da DigitalOcean normalmente — esse nó só
-  espelha pro Supabase pra alimentar o ads-dash.
+  | campo         | obrigatório | notas                                                                    |
+  | ------------- | ----------- | ------------------------------------------------------------------------ |
+  | `phone`       | sim         | telefone do cliente. Normalizado pra `55DDXXXXXXXXX` (12 ou 13 dígitos). |
+  | `texto`       | sim         | conteúdo da mensagem.                                                    |
+  | `nome`        | não         | nome do contato (WhatsApp profile). Só grava se ainda for null.          |
+  | `msg_id`      | não         | id externo pra dedup. Se já existir, function volta `{deduped: true}`.   |
+  | `hora`        | não         | ISO 8601. Default = `now()`.                                             |
+  | `direction`   | não         | `"in"` (cliente, default) ou `"out"` (atendente).                        |
+  | `origem`      | não         | default `"whatsapp"`.                                                    |
+  | `tenant_slug` | não         | default = env `DEFAULT_TENANT_SLUG`.                                     |
+  | `inbox_phone` | não\*       | número WhatsApp Business que recebeu a msg. Aliases aceitos: `connected_phone`, `connectedPhone`. |
+
+  \* `inbox_phone` é opcional pra retrocompat, mas **necessário em ambiente
+  multi-linha** (ex.: TBC atende 2 números em paralelo). Sem ele, msgs de linhas
+  diferentes caem na mesma thread.
+
+  **Rejeições silenciosas a conhecer** — function devolve 400 com `ignored: true`
+  quando o `phone` normalizado não tem 12 ou 13 dígitos. Isso bloqueia JID de
+  grupo (`123@g.us`), identificadores anônimos `@lid` da Meta e IDs sintéticos
+  do n8n antes que contaminem KPIs. Não é bug — é gate proposital.
+
+  **Provedor Z-API:** os caminhos `$json.*` do n8n dependem do shape do webhook
+  do seu provedor. Pra Z-API, o payload vem em `$json.body.*` — algo como
+  `{{ $json.body.phone }}`, `{{ $json.body.text.message }}`,
+  `{{ $json.body.senderName }}`, `{{ $json.body.connectedPhone }}` — mas
+  confirme com um webhook real no seu flow, já que Z-API mudou shape entre
+  versões. Você continua gravando no Postgres da DigitalOcean normalmente;
+  esse nó só espelha pro Supabase pra alimentar o ads-dash.
 
 ### Disparo em massa
 
