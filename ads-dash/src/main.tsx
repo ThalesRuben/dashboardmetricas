@@ -1,6 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { AuthProvider } from '@/app/providers/AuthContext'
 import { ThemeProvider } from '@/app/providers/ThemeContext'
 import { MetricsProvider } from '@/app/providers/MetricsContext'
@@ -16,6 +18,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <MetricsProvider>
             <ToastProvider>
               <App />
+              <Analytics />
+              <SpeedInsights />
             </ToastProvider>
           </MetricsProvider>
         </AuthProvider>
