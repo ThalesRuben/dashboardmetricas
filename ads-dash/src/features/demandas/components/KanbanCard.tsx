@@ -1,7 +1,7 @@
-import { useState, type DragEvent } from 'react';
+import { useMemo, useState, type DragEvent } from 'react';
 import type { Demanda, TeamMember } from '../api/types';
 import { PRIORIDADE_LABELS } from '../api/types';
-import { colorForMember, initialsForMember } from './memberColors';
+import { colorMapForTeam, initialsForMember } from './memberColors';
 import styles from './KanbanCard.module.css';
 
 interface Props {
@@ -76,6 +76,7 @@ export default function KanbanCard({
   dropIndicator = null,
 }: Props) {
   const [dragging, setDragging] = useState(false);
+  const cores = useMemo(() => colorMapForTeam(equipe.map(m => m.id)), [equipe]);
   const responsavel = demanda.responsavel_id
     ? equipe.find(m => m.id === demanda.responsavel_id)
     : null;
@@ -141,7 +142,7 @@ export default function KanbanCard({
       <div className={styles.rodape}>
         {responsavel ? (
           <span className={styles.responsavel} title={`Responsável: ${responsavel.full_name}`}>
-            <span className={styles.avatar} style={{ background: colorForMember(responsavel.id) }}>
+            <span className={styles.avatar} style={{ background: cores.get(responsavel.id) ?? '#556170' }}>
               {initialsForMember(responsavel.full_name)}
             </span>
             <span className={styles.respNome}>{responsavel.full_name}</span>

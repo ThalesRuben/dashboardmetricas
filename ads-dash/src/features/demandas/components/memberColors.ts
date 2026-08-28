@@ -1,28 +1,55 @@
 // Paleta determinística por membro — mesma pessoa mantém a mesma cor em todo lugar
 // (avatar no card, série no gráfico, badge na tabela).
+//
+// 12 hues bem espaçadas no círculo cromático pra minimizar colisão visual
+// entre pessoas diferentes (com 5 membros, dá pra cair em 5 cores distintas
+// e evidentemente diferentes na maioria dos casos).
 
 const PALETTE = [
-  '#5dcaa5', // teal
-  '#7f77dd', // roxo
-  '#ef9f27', // âmbar
-  '#d4537e', // magenta
-  '#3fb0d8', // ciano claro
-  '#c69c47', // ocre
-  '#8bb96b', // verde-oliva
-  '#e57373', // coral
+  '#ef4444', // vermelho
+  '#f97316', // laranja
+  '#eab308', // amarelo
+  '#84cc16', // lima
+  '#22c55e', // verde
+  '#14b8a6', // teal
+  '#06b6d4', // ciano
+  '#3b82f6', // azul
+  '#8b5cf6', // violeta
+  '#d946ef', // fúcsia
+  '#ec4899', // rosa
+  '#f43f5e', // vermelho-rosa
 ];
 
+// FNV-1a — distribuição melhor que polinomial simples pra strings similares
+// (UUIDs de Supabase começam com prefixos parecidos entre si).
 function hash(str: string): number {
-  let h = 0;
+  let h = 0x811c9dc5;
   for (let i = 0; i < str.length; i++) {
-    h = (h * 31 + str.charCodeAt(i)) | 0;
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
   }
-  return Math.abs(h);
+  return h >>> 0;
 }
 
 export function colorForMember(id: string | null | undefined): string {
   if (!id) return '#556170';
   return PALETTE[hash(id) % PALETTE.length];
+}
+
+// Distribui as cores da paleta pelos membros do time garantindo
+// espaçamento máximo — evita que 3 UUIDs "sem sorte" caiam em hues
+// vizinhos. Usar quando o time inteiro estiver disponível
+// (EquipeRendimento, KanbanCard com prop `equipe`, etc.).
+export function colorMapForTeam(ids: (string | null | undefined)[]): Map<string, string> {
+  const unicos = Array.from(new Set(ids.filter((x): x is string => !!x)));
+  // Ordem determinística por hash pra que a atribuição não flutue entre renders.
+  unicos.sort((a, b) => hash(a) - hash(b));
+  const passo = unicos.length > 0 ? Math.max(1, Math.floor(PALETTE.length / unicos.length)) : 1;
+  const mapa = new Map<string, string>();
+  unicos.forEach((id, i) => {
+    mapa.set(id, PALETTE[(i * passo) % PALETTE.length]);
+  });
+  return mapa;
 }
 
 export function initialsForMember(nome: string): string {

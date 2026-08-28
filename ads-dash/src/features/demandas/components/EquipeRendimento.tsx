@@ -10,7 +10,7 @@ import {
 } from 'chart.js';
 import { useChartTheme } from '@/shared/lib/chartTheme';
 import type { Demanda, TeamMember } from '../api/types';
-import { colorForMember, initialsForMember } from './memberColors';
+import { colorMapForTeam, initialsForMember } from './memberColors';
 import styles from './EquipeRendimento.module.css';
 
 Chart.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
@@ -58,9 +58,12 @@ export default function EquipeRendimento({ demandas, equipe }: Props) {
     return [...equipe, semDono];
   }, [equipe]);
 
+  const cores = useMemo(() => colorMapForTeam(equipe.map(m => m.id)), [equipe]);
+  const corDe = (id: string) => id === '__sem__' ? '#556170' : (cores.get(id) ?? '#556170');
+
   const chartData = useMemo(() => {
     const datasets = membros.map(m => {
-      const cor = m.id === '__sem__' ? '#556170' : colorForMember(m.id);
+      const cor = corDe(m.id);
       const contagem = janela.chaves.map(chave => {
         return demandas.filter(d => {
           if (!d.concluido_em) return false;
@@ -77,7 +80,7 @@ export default function EquipeRendimento({ demandas, equipe }: Props) {
       };
     });
     return { labels: janela.dias, datasets };
-  }, [demandas, membros, janela]);
+  }, [demandas, membros, janela, cores]);
 
   const totalNaJanela = chartData.datasets.reduce(
     (acc, ds) => acc + ds.data.reduce((a, b) => a + b, 0),
@@ -118,7 +121,7 @@ export default function EquipeRendimento({ demandas, equipe }: Props) {
       return {
         id: m.id,
         nome: m.full_name,
-        cor: m.id === '__sem__' ? '#556170' : colorForMember(m.id),
+        cor: corDe(m.id),
         inicial: initialsForMember(m.full_name),
         total,
         wip,
@@ -130,7 +133,7 @@ export default function EquipeRendimento({ demandas, equipe }: Props) {
     })
     .filter(row => row.total > 0)
     .sort((a, b) => b.atrasadas - a.atrasadas || b.feitas7d - a.feitas7d || b.total - a.total);
-  }, [demandas, membros]);
+  }, [demandas, membros, cores]);
 
   return (
     <section className={styles.wrapper}>

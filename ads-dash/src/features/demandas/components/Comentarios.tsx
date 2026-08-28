@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/app/providers/AuthContext';
 import { demandasRepo } from '../api/demandasRepo';
 import type { DemandaComentario, TeamMember } from '../api/types';
-import { colorForMember, initialsForMember } from './memberColors';
+import { colorMapForTeam, initialsForMember } from './memberColors';
 import styles from './Comentarios.module.css';
 
 interface Props {
@@ -29,6 +29,7 @@ export default function Comentarios({ demandaId, equipe }: Props) {
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const cores = useMemo(() => colorMapForTeam(equipe.map(m => m.id)), [equipe]);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -96,7 +97,7 @@ export default function Comentarios({ demandaId, equipe }: Props) {
             const nome = nomeAutor(c.autor_id);
             return (
               <div key={c.id} className={styles.item}>
-                <span className={styles.avatar} style={{ background: colorForMember(c.autor_id || '') }}>
+                <span className={styles.avatar} style={{ background: c.autor_id ? (cores.get(c.autor_id) ?? '#556170') : '#556170' }}>
                   {initialsForMember(nome)}
                 </span>
                 <div className={styles.body}>
