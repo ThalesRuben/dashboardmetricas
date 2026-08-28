@@ -33,6 +33,7 @@ export default function DemandaModal({ demanda, statusPadrao, equipe, onClose, o
   const [responsavelId, setResponsavelId] = useState<string>(demanda?.responsavel_id ?? '');
   const [prazo, setPrazo] = useState<string>(demanda?.prazo ?? '');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
@@ -44,6 +45,7 @@ export default function DemandaModal({ demanda, statusPadrao, equipe, onClose, o
     e.preventDefault();
     if (!titulo.trim() || saving) return;
     setSaving(true);
+    setSaveError(null);
     try {
       await onSalvar({
         titulo: titulo.trim(),
@@ -53,6 +55,9 @@ export default function DemandaModal({ demanda, statusPadrao, equipe, onClose, o
         responsavel_id: responsavelId || null,
         prazo: prazo || null,
       });
+    } catch (err) {
+      console.error('[demandas] salvar falhou:', err);
+      setSaveError(err instanceof Error ? err.message : 'Não foi possível salvar.');
     } finally {
       setSaving(false);
     }
@@ -129,6 +134,10 @@ export default function DemandaModal({ demanda, statusPadrao, equipe, onClose, o
           </div>
 
           {demanda && <Comentarios demandaId={demanda.id} equipe={equipe} />}
+
+          {saveError && (
+            <div className={styles.saveError} role="alert">{saveError}</div>
+          )}
 
           <footer className={styles.footer}>
             {onRemover && (

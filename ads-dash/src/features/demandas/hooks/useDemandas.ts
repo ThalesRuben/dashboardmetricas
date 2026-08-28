@@ -13,6 +13,7 @@ export interface UseDemandasReturn {
   porStatus: Record<DemandaStatus, Demanda[]>;
   equipe: TeamMember[];
   loading: boolean;
+  error: string | null;
   criar: (input: DemandaCreateInput) => Promise<void>;
   atualizar: (input: DemandaUpdateInput) => Promise<void>;
   remover: (id: string) => Promise<void>;
@@ -20,10 +21,16 @@ export interface UseDemandasReturn {
   refresh: () => Promise<void>;
 }
 
+function msgErro(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  return typeof e === 'string' ? e : 'Erro desconhecido';
+}
+
 export function useDemandas(): UseDemandasReturn {
   const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [equipe, setEquipe] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -34,9 +41,11 @@ export function useDemandas(): UseDemandasReturn {
       ]);
       setDemandas(list);
       setEquipe(team);
-    } catch {
-      setDemandas([]);
-      setEquipe([]);
+      setError(null);
+    } catch (e) {
+      // Mantém dados anteriores em tela — some só se der pra provar que sumiu.
+      console.error('[demandas] refresh falhou:', e);
+      setError(msgErro(e));
     } finally {
       setLoading(false);
     }
@@ -88,5 +97,5 @@ export function useDemandas(): UseDemandasReturn {
     return buckets;
   }, [demandas]);
 
-  return { demandas, porStatus, equipe, loading, criar, atualizar, remover, moverPara, refresh };
+  return { demandas, porStatus, equipe, loading, error, criar, atualizar, remover, moverPara, refresh };
 }

@@ -5,7 +5,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import styles from './DemandasPage.module.css';
 
 export default function DemandasPage() {
-  const { demandas, porStatus, equipe, loading, criar, atualizar, remover, moverPara } = useDemandas();
+  const { demandas, porStatus, equipe, loading, error, criar, atualizar, remover, moverPara } = useDemandas();
 
   return (
     <div className={styles.page}>
@@ -14,6 +14,12 @@ export default function DemandasPage() {
         title="Demandas"
         subtitle="Kanban interno pra organizar o que precisa ser feito. Arraste os cards entre as colunas."
       />
+
+      {error && (
+        <div className={styles.error} role="alert">
+          <strong>Erro ao carregar demandas:</strong> {error}
+        </div>
+      )}
 
       {loading ? (
         <p className={styles.loading}>Carregando…</p>
