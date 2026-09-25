@@ -58,8 +58,16 @@ export const supabaseSeoRepo: SeoRepo = {
     if (cached?.[0]?.payload) {
       research = cached[0].payload as SeoKeywordResearch;
     } else {
-      // TODO: trocar por integração real (Google Keyword Planner / SEMrush / Ahrefs).
-      research = buildMockResearch(clean);
+      // Ideias/perguntas reais via Google Autocomplete (edge function seo-autocomplete);
+      // volume/dificuldade/cpc/tendencia continuam determinísticos (mock declarado).
+      try {
+        const { data, error } = await supabase.functions.invoke('seo-autocomplete', { body: { termo: clean } });
+        if (error || !data) throw error ?? new Error('seo-autocomplete: sem payload');
+        research = data as SeoKeywordResearch;
+      } catch (e) {
+        console.warn('[seoRepo.researchKeyword] autocomplete falhou, caindo no mock', e);
+        research = buildMockResearch(clean);
+      }
       const { error } = await supabase.from('seo_research_history').insert({
         termo: research.termo,
         volume: research.volume,
