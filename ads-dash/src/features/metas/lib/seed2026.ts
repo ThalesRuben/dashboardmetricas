@@ -54,8 +54,8 @@ const Q3: MetaTrim = {
   trafego:     { min: 150_000,   base: 165_000,   max: 180_000 },
   meses: [
     { ref: '2026-07', faturamento: { min: 560_000, base: 600_000, max: 620_000 }, trafego: { min: 50_000, base: 55_000, max: 60_000 } },
-    { ref: '2026-08', faturamento: { min: 590_000, base: 620_000, max: 650_000 }, trafego: { min: 50_000, base: 55_000, max: 60_000 } },
-    { ref: '2026-09', faturamento: { min: 610_000, base: 650_000, max: 680_000 }, trafego: { min: 50_000, base: 55_000, max: 60_000 } },
+    { ref: '2026-08', faturamento: { min: 590_000, base: 620_000, max: 650_000 }, trafego: { min: 50_000, base: 55_000, max: 60_000 }, faturamentoReal: 419_686.37, trafegoReal: 42_000 },
+    { ref: '2026-09', faturamento: { min: 610_000, base: 650_000, max: 680_000 }, trafego: { min: 50_000, base: 55_000, max: 60_000 }, faturamentoReal: 404_645.10, trafegoReal: 37_000 },
   ],
 }
 
