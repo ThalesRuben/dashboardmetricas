@@ -52,8 +52,10 @@ const Q3: MetaTrim = {
   ref: '2026-Q3',
   faturamento: { min: 1_760_000, base: 1_870_000, max: 1_950_000 },
   trafego:     { min: 150_000,   base: 165_000,   max: 180_000 },
+  faturamentoReal: 1_354_033.47,
+  trafegoReal: 116_273,
   meses: [
-    { ref: '2026-07', faturamento: { min: 560_000, base: 600_000, max: 620_000 }, trafego: { min: 50_000, base: 55_000, max: 60_000 } },
+    { ref: '2026-07', faturamento: { min: 560_000, base: 600_000, max: 620_000 }, trafego: { min: 50_000, base: 55_000, max: 60_000 }, faturamentoReal: 529_702, trafegoReal: 37_273 },
     { ref: '2026-08', faturamento: { min: 590_000, base: 620_000, max: 650_000 }, trafego: { min: 50_000, base: 55_000, max: 60_000 }, faturamentoReal: 419_686.37, trafegoReal: 42_000 },
     { ref: '2026-09', faturamento: { min: 610_000, base: 650_000, max: 680_000 }, trafego: { min: 50_000, base: 55_000, max: 60_000 }, faturamentoReal: 404_645.10, trafegoReal: 37_000 },
   ],
@@ -85,10 +87,10 @@ const ANO_2026 = {
     base: Q1.trafego.base + Q2.trafego.base + Q3.trafego.base + Q4.trafego.base,
     max:  Q1.trafego.max  + Q2.trafego.max  + Q3.trafego.max  + Q4.trafego.max,
   },
-  // Realizado faturamento = Q1 fechado + Q2 fechado (Jun 407.389,58).
-  faturamentoReal: (Q1.faturamentoReal ?? 0) + (Q2.faturamentoReal ?? 0),
-  // Realizado tráfego = Q1 fechado + Q2 fechado (Jun já entrou 2026-07-02).
-  trafegoReal: (Q1.trafegoReal ?? 0) + (Q2.trafegoReal ?? 0),
+  // Realizado faturamento = Q1 + Q2 + Q3 (fechados até Set/2026).
+  faturamentoReal: (Q1.faturamentoReal ?? 0) + (Q2.faturamentoReal ?? 0) + (Q3.faturamentoReal ?? 0),
+  // Realizado tráfego = Q1 + Q2 + Q3.
+  trafegoReal: (Q1.trafegoReal ?? 0) + (Q2.trafegoReal ?? 0) + (Q3.trafegoReal ?? 0),
 }
 
 // ---------- Upserts ----------
