@@ -11,6 +11,12 @@ import type {
   WhatsAppThreadReal,
   WhatsAppMsgReal,
   WhatsAppInbox,
+  WhatsAppNumber,
+  WhatsAppNumberInput,
+  WhatsAppTemplate,
+  WhatsAppTemplateInput,
+  WhatsAppTemplateCreateResult,
+  WhatsAppTemplateSyncResult,
   ReplyResultado,
 } from './types';
 
@@ -47,6 +53,17 @@ export interface WhatsAppRepo {
   marcarLido(threadId: string): Promise<void>;
   marcarLidoContato(contatoId: string): Promise<void>;
   marcarLidoContatos(contatoIds: string[]): Promise<void>;
+
+  // Cadastro de números (whatsapp_numbers)
+  listarNumeros(): Promise<WhatsAppNumber[]>;
+  salvarNumero(id: string | null, input: WhatsAppNumberInput): Promise<WhatsAppNumber>;
+  removerNumero(id: string): Promise<void>;
+
+  // Templates HSM (whatsapp_templates + edge function whatsapp-templates)
+  listarTemplates(): Promise<WhatsAppTemplate[]>;
+  criarTemplate(input: WhatsAppTemplateInput): Promise<WhatsAppTemplateCreateResult>;
+  removerTemplate(id: string, hard?: boolean): Promise<void>;
+  sincronizarTemplates(): Promise<WhatsAppTemplateSyncResult>;
 }
 
 export const whatsappRepo: WhatsAppRepo = createRepo<WhatsAppRepo>({

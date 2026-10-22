@@ -9,6 +9,12 @@ import type {
   WhatsAppThreadReal,
   WhatsAppMsgReal,
   WhatsAppInbox,
+  WhatsAppNumber,
+  WhatsAppNumberInput,
+  WhatsAppTemplate,
+  WhatsAppTemplateInput,
+  WhatsAppTemplateCreateResult,
+  WhatsAppTemplateSyncResult,
   ReplyResultado,
 } from './types';
 import { MOCK_WHATSAPP } from './whatsappRepo.mock';
@@ -149,6 +155,92 @@ export const supabaseWhatsAppRepo: WhatsAppRepo = {
       .from('whatsapp_threads')
       .update({ nao_lidas: 0 })
       .in('contato_id', contatoIds);
+  },
+
+  async listarNumeros(): Promise<WhatsAppNumber[]> {
+    const { data, error } = await supabase
+      .from('whatsapp_numbers')
+      .select('id, rotulo, display_number, provider, phone_number_id, waba_id, zapi_instance_id, ativo, criado_em, atualizado_em')
+      .order('criado_em', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as WhatsAppNumber[];
+  },
+
+  async salvarNumero(id: string | null, input: WhatsAppNumberInput): Promise<WhatsAppNumber> {
+    const displayNumber = input.display_number.replace(/\D/g, '');
+    const payload = {
+      rotulo: input.rotulo.trim(),
+      display_number: displayNumber,
+      provider: input.provider,
+      phone_number_id: input.provider === 'meta_official' ? (input.phone_number_id?.trim() || null) : null,
+      waba_id: input.provider === 'meta_official' ? (input.waba_id?.trim() || null) : null,
+      zapi_instance_id: input.provider === 'zapi' ? (input.zapi_instance_id?.trim() || null) : null,
+      ativo: input.ativo ?? true,
+    };
+    if (id) {
+      const { data, error } = await supabase
+        .from('whatsapp_numbers')
+        .update(payload)
+        .eq('id', id)
+        .select('id, rotulo, display_number, provider, phone_number_id, waba_id, zapi_instance_id, ativo, criado_em, atualizado_em')
+        .single();
+      if (error) throw new Error(error.message);
+      return data as WhatsAppNumber;
+    }
+    const { data, error } = await supabase
+      .from('whatsapp_numbers')
+      .insert(payload)
+      .select('id, rotulo, display_number, provider, phone_number_id, waba_id, zapi_instance_id, ativo, criado_em, atualizado_em')
+      .single();
+    if (error) throw new Error(error.message);
+    return data as WhatsAppNumber;
+  },
+
+  async removerNumero(id: string) {
+    const { error } = await supabase
+      .from('whatsapp_numbers')
+      .delete()
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async listarTemplates(): Promise<WhatsAppTemplate[]> {
+    const { data, error } = await supabase
+      .from('whatsapp_templates')
+      .select('id, name, language, category, components, meta_template_id, status, motivo_rejeicao, criado_em, atualizado_em, sincronizado_em')
+      .order('criado_em', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as WhatsAppTemplate[];
+  },
+
+  async criarTemplate(input: WhatsAppTemplateInput): Promise<WhatsAppTemplateCreateResult> {
+    const { data, error } = await invokeFunction<WhatsAppTemplateCreateResult & { error?: string; detalhe?: unknown }>(
+      'whatsapp-templates',
+      { action: 'create', template: input },
+    );
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('Resposta vazia da function whatsapp-templates');
+    if ((data as { error?: string }).error) {
+      const det = (data as { detalhe?: { message?: string } }).detalhe;
+      throw new Error(det?.message || (data as { error: string }).error);
+    }
+    return data;
+  },
+
+  async removerTemplate(id: string, hard = false): Promise<void> {
+    const { error } = await invokeFunction('whatsapp-templates', { action: 'delete', id, hard });
+    if (error) throw new Error(error.message);
+  },
+
+  async sincronizarTemplates(): Promise<WhatsAppTemplateSyncResult> {
+    const { data, error } = await invokeFunction<WhatsAppTemplateSyncResult & { error?: string }>(
+      'whatsapp-templates',
+      { action: 'sync' },
+    );
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('Resposta vazia da function whatsapp-templates');
+    if ((data as { error?: string }).error) throw new Error((data as { error: string }).error);
+    return data;
   },
 };
 

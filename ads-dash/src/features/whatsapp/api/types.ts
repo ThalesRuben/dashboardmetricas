@@ -168,3 +168,92 @@ export interface ReplyResultado {
   fora_da_janela?: boolean;
   erro?: string;
 }
+
+// ============================================================
+// Cadastro de números WhatsApp (tabela whatsapp_numbers)
+// ============================================================
+
+export type WhatsAppProvider = 'zapi' | 'meta_official';
+
+export interface WhatsAppNumber {
+  id: string;
+  rotulo: string;
+  display_number: string;   // E.164 sem "+", ex: 5531990842381
+  provider: WhatsAppProvider;
+  phone_number_id: string | null;
+  waba_id: string | null;
+  zapi_instance_id: string | null;
+  ativo: boolean;
+  criado_em: string;        // ISO
+  atualizado_em: string;    // ISO
+}
+
+// Payload de criação/edição. Só os campos do provider selecionado precisam vir.
+export interface WhatsAppNumberInput {
+  rotulo: string;
+  display_number: string;
+  provider: WhatsAppProvider;
+  phone_number_id?: string | null;
+  waba_id?: string | null;
+  zapi_instance_id?: string | null;
+  ativo?: boolean;
+}
+
+// ============================================================
+// Templates HSM (Meta Cloud API) — tabela whatsapp_templates
+// ============================================================
+
+export type WhatsAppTemplateCategory = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
+
+export type WhatsAppTemplateStatus =
+  | 'draft' | 'pending' | 'approved' | 'rejected' | 'paused' | 'disabled';
+
+// Componente no formato aceito pela Graph API.
+// (Simplificado — expande conforme suportar mais tipos na UI.)
+export type WhatsAppTemplateComponent =
+  | { type: 'BODY'; text: string; example?: { body_text: string[][] } }
+  | { type: 'HEADER'; format: 'TEXT'; text: string; example?: { header_text: string[] } }
+  | { type: 'HEADER'; format: 'IMAGE' | 'VIDEO' | 'DOCUMENT'; example?: { header_handle: string[] } }
+  | { type: 'FOOTER'; text: string }
+  | {
+      type: 'BUTTONS';
+      buttons: Array<
+        | { type: 'QUICK_REPLY'; text: string }
+        | { type: 'URL'; text: string; url: string }
+        | { type: 'PHONE_NUMBER'; text: string; phone_number: string }
+      >;
+    };
+
+export interface WhatsAppTemplate {
+  id: string;
+  name: string;                                  // slug [a-z0-9_]
+  language: string;                              // ex: pt_BR
+  category: WhatsAppTemplateCategory;
+  components: WhatsAppTemplateComponent[];
+  meta_template_id: string | null;
+  status: WhatsAppTemplateStatus;
+  motivo_rejeicao: string | null;
+  criado_em: string;
+  atualizado_em: string;
+  sincronizado_em: string | null;
+}
+
+export interface WhatsAppTemplateInput {
+  name: string;
+  language: string;
+  category: WhatsAppTemplateCategory;
+  components: WhatsAppTemplateComponent[];
+}
+
+export interface WhatsAppTemplateCreateResult {
+  id: string;
+  status: WhatsAppTemplateStatus;
+  meta_template_id?: string;
+  message: string;
+  sem_config?: boolean;
+}
+
+export interface WhatsAppTemplateSyncResult {
+  templates_remotos: number;
+  atualizados_localmente: number;
+}

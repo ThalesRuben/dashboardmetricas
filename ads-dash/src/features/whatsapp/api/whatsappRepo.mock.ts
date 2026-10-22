@@ -142,6 +142,95 @@ const MOCK: WhatsAppSummary = {
 // Histórico in-memory (perde no refresh; o que importa é validar o fluxo).
 const DISPAROS_MEM: import('./types').WhatsAppDisparoHistorico[] = [];
 
+// Templates in-memory (perde no refresh).
+const TEMPLATES_MEM: import('./types').WhatsAppTemplate[] = [
+  {
+    id: 'mock-tpl-1',
+    name: 'confirma_horario',
+    language: 'pt_BR',
+    category: 'UTILITY',
+    components: [
+      {
+        type: 'BODY',
+        text: 'Oi {{1}}, seu horário de {{2}} está confirmado ✨',
+        example: { body_text: [['Marina', 'sábado às 14h']] },
+      },
+    ],
+    meta_template_id: 'meta_mock_1',
+    status: 'approved',
+    motivo_rejeicao: null,
+    criado_em: new Date(Date.now() - 7 * 86400000).toISOString(),
+    atualizado_em: new Date(Date.now() - 7 * 86400000).toISOString(),
+    sincronizado_em: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
+  {
+    id: 'mock-tpl-2',
+    name: 'promo_setembro',
+    language: 'pt_BR',
+    category: 'MARKETING',
+    components: [
+      {
+        type: 'BODY',
+        text: 'Oi {{1}}! Temos horários especiais essa semana. Bora agendar?',
+        example: { body_text: [['cliente']] },
+      },
+    ],
+    meta_template_id: null,
+    status: 'pending',
+    motivo_rejeicao: null,
+    criado_em: new Date(Date.now() - 2 * 3600000).toISOString(),
+    atualizado_em: new Date(Date.now() - 2 * 3600000).toISOString(),
+    sincronizado_em: null,
+  },
+  {
+    id: 'mock-tpl-3',
+    name: 'black_friday',
+    language: 'pt_BR',
+    category: 'MARKETING',
+    components: [
+      {
+        type: 'BODY',
+        text: 'Oi {{1}}, clique aqui pra garantir sua promo!',
+        example: { body_text: [['cliente']] },
+      },
+    ],
+    meta_template_id: null,
+    status: 'rejected',
+    motivo_rejeicao: 'Body contém "clique aqui" — não permitido em Marketing.',
+    criado_em: new Date(Date.now() - 1 * 86400000).toISOString(),
+    atualizado_em: new Date(Date.now() - 1 * 86400000).toISOString(),
+    sincronizado_em: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
+];
+
+// Cadastro de números in-memory (perde no refresh).
+const NUMEROS_MEM: import('./types').WhatsAppNumber[] = [
+  {
+    id: 'mock-num-1',
+    rotulo: 'Ana — Atendimento',
+    display_number: '5531990842381',
+    provider: 'zapi',
+    phone_number_id: null,
+    waba_id: null,
+    zapi_instance_id: '3D1FMOCK00',
+    ativo: true,
+    criado_em: new Date().toISOString(),
+    atualizado_em: new Date().toISOString(),
+  },
+  {
+    id: 'mock-num-2',
+    rotulo: 'Fabio — Suporte',
+    display_number: '5531991340420',
+    provider: 'zapi',
+    phone_number_id: null,
+    waba_id: null,
+    zapi_instance_id: '3D1FMOCK01',
+    ativo: true,
+    criado_em: new Date().toISOString(),
+    atualizado_em: new Date().toISOString(),
+  },
+];
+
 export const mockWhatsAppRepo: WhatsAppRepo = {
   async getSummary() {
     return MOCK;
@@ -247,6 +336,107 @@ export const mockWhatsAppRepo: WhatsAppRepo = {
 
   async marcarLidoContatos() {
     /* noop no mock */
+  },
+
+  async listarNumeros() {
+    return NUMEROS_MEM.slice();
+  },
+
+  async salvarNumero(id, input) {
+    const agora = new Date().toISOString();
+    if (id) {
+      const i = NUMEROS_MEM.findIndex(n => n.id === id);
+      if (i < 0) throw new Error('Número não encontrado');
+      NUMEROS_MEM[i] = {
+        ...NUMEROS_MEM[i],
+        rotulo: input.rotulo,
+        display_number: input.display_number,
+        provider: input.provider,
+        phone_number_id: input.phone_number_id ?? null,
+        waba_id: input.waba_id ?? null,
+        zapi_instance_id: input.zapi_instance_id ?? null,
+        ativo: input.ativo ?? NUMEROS_MEM[i].ativo,
+        atualizado_em: agora,
+      };
+      return NUMEROS_MEM[i];
+    }
+    const novo: import('./types').WhatsAppNumber = {
+      id: crypto.randomUUID(),
+      rotulo: input.rotulo,
+      display_number: input.display_number,
+      provider: input.provider,
+      phone_number_id: input.phone_number_id ?? null,
+      waba_id: input.waba_id ?? null,
+      zapi_instance_id: input.zapi_instance_id ?? null,
+      ativo: input.ativo ?? true,
+      criado_em: agora,
+      atualizado_em: agora,
+    };
+    NUMEROS_MEM.unshift(novo);
+    return novo;
+  },
+
+  async removerNumero(id) {
+    const i = NUMEROS_MEM.findIndex(n => n.id === id);
+    if (i >= 0) NUMEROS_MEM.splice(i, 1);
+  },
+
+  async listarTemplates() {
+    return TEMPLATES_MEM.slice().sort((a, b) => (b.criado_em < a.criado_em ? -1 : 1));
+  },
+
+  async criarTemplate(input) {
+    const agora = new Date().toISOString();
+    const existente = TEMPLATES_MEM.find(t => t.name === input.name && t.language === input.language);
+    if (existente && (existente.status === 'approved' || existente.status === 'pending')) {
+      throw new Error(`Já existe um template ${existente.status} com esse name+language.`);
+    }
+    if (existente) {
+      Object.assign(existente, {
+        category: input.category,
+        components: input.components,
+        status: 'pending' as const,
+        motivo_rejeicao: null,
+        atualizado_em: agora,
+        sincronizado_em: agora,
+      });
+      return {
+        id: existente.id,
+        status: existente.status,
+        message: 'Mock: template re-submetido pra aprovação.',
+        sem_config: true,
+      };
+    }
+    const novo: import('./types').WhatsAppTemplate = {
+      id: crypto.randomUUID(),
+      name: input.name,
+      language: input.language,
+      category: input.category,
+      components: input.components,
+      meta_template_id: null,
+      status: 'pending',
+      motivo_rejeicao: null,
+      criado_em: agora,
+      atualizado_em: agora,
+      sincronizado_em: agora,
+    };
+    TEMPLATES_MEM.unshift(novo);
+    return {
+      id: novo.id,
+      status: 'pending',
+      message: 'Mock: template submetido (simulado).',
+      sem_config: true,
+    };
+  },
+
+  async removerTemplate(id) {
+    const i = TEMPLATES_MEM.findIndex(t => t.id === id);
+    if (i >= 0) TEMPLATES_MEM.splice(i, 1);
+  },
+
+  async sincronizarTemplates() {
+    // Mock: só finge que rodou.
+    return { templates_remotos: TEMPLATES_MEM.length, atualizados_localmente: 0 };
   },
 };
 
