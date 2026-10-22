@@ -27,17 +27,23 @@ export default function InboxReportCard({ inboxPhone, label, threads, onOpen, ra
   }
 
   const r = data.resumo
-  const dentroMeta = r.tempo_resposta_min <= 10
+  // Status honesto: "no ritmo" exige SLA + conversão de fato. Antes o badge
+  // ficava "no ritmo" com conversão 0% desde que o tempo de resposta fosse
+  // zero (ou seja, 0 msgs respondidas também passava).
+  const slaOk    = r.tempo_resposta_min > 0 && r.tempo_resposta_min <= 10
+  const temVenda = r.taxa_conversao > 0 || r.agendamentos > 0
+  const dentroMeta = slaOk && temVenda
   const turnoOk = r.tempo_resposta_turno_min > 0 && r.tempo_resposta_turno_min <= 15
 
-  // Mini-funil: 4 etapas com altura proporcional ao topo (conversas)
+  // Funil complementar aos KPIs — mostra as etapas que NÃO repetem os KPIs
+  // de cima (Leads, Respostas e Vendas). Conversas/Agendamentos/Conversão
+  // já estão na linha de KPIs.
   const etapas = [
-    { label: 'Conversas',    valor: r.conversas },
-    { label: 'Leads',        valor: r.leads },
-    { label: 'Agendamentos', valor: r.agendamentos },
-    { label: 'Conversão %',  valor: 0, custom: `${fmtPct(r.taxa_conversao)}` },
+    { label: 'Leads',       valor: r.leads },
+    { label: 'Respondidas', valor: 0, custom: `${fmtPct(r.taxa_resposta || 0)}` },
+    { label: 'Vendas',      valor: 0, custom: fmtNumber((data.funil.find((f) => f.etapa.toLowerCase().includes('venda'))?.valor) || 0) },
   ]
-  const topo = Math.max(1, etapas[0].valor)
+  const topo = Math.max(1, r.conversas || 1)
 
   return (
     <article

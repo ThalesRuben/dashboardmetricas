@@ -1,7 +1,16 @@
 import { useState, useMemo } from 'react'
 import { useWhatsAppDisparos } from '../hooks/useWhatsAppDisparos'
+import { useWhatsAppInboxes } from '../hooks/useWhatsAppInboxes'
+import { normalizarPhoneBR, formatarPhoneBR } from '../lib/phone'
 import type { WhatsAppConversa, WhatsAppDisparoRecipient } from '../api/types'
 import styles from './DisparoMassa.module.css'
+
+// Regra BR válida: 12 (fixo) ou 13 (celular) dígitos canônicos iniciando em 55.
+// Exclui LIDs, grupos (JID), IDs de automação e qualquer outro formato.
+function isValidBrPhoneCanon(canon: string): boolean {
+  if (!canon.startsWith('55')) return false
+  return canon.length === 12 || canon.length === 13
+}
 
 type Publico = 'leads' | 'agendados' | 'todos' | 'colar'
 
@@ -21,6 +30,11 @@ const EXEMPLO_MSG =
 
 export default function DisparoMassa({ conversas }: Props) {
   const { historico, ultimoResultado, enviando, erro, disparar } = useWhatsAppDisparos()
+  const { inboxes } = useWhatsAppInboxes()
+  const selfSet = useMemo(
+    () => new Set(inboxes.map((i) => normalizarPhoneBR(i.inbox_phone))),
+    [inboxes],
+  )
 
   const [publico, setPublico] = useState<Publico>('leads')
   const [colado, setColado] = useState('')
@@ -44,14 +58,26 @@ export default function DisparoMassa({ conversas }: Props) {
     return filtradas
       .filter(c => !!c.telefone)
       .map(c => ({
-        phone: (c.telefone || '').replace(/\D/g, ''),
+        phone: normalizarPhoneBR(c.telefone || ''),
         params: [c.nome, ...variables.slice(1)],
       }))
   }, [publico, colado, conversas, variables])
 
-  const validos = destinatarios.filter(r => r.phone.length >= 10)
+  // Rejeita LIDs, grupos, IDs sintéticos e os próprios números do salão.
+  const validos = destinatarios.filter((r) => {
+    if (!isValidBrPhoneCanon(r.phone)) return false
+    if (selfSet.has(r.phone)) return false
+    return true
+  })
+  const rejeitados = destinatarios.length - validos.length
 
-  const previewParams = validos[0]?.params || variables
+  // Preview SEMPRE usa um nome exemplo quando a lista está vazia — evita
+  // o bug "Oi ! Aqui é..." com {{1}} vazio. Em modo "colar", {{1}} não é
+  // substituído por nome; marcamos isso no preview.
+  const previewParams =
+    publico === 'colar'
+      ? ['[nome]', ...variables.slice(1)]
+      : validos[0]?.params || ['[nome]', ...variables.slice(1)]
   const previewMsg = aplicarVars(mensagem || EXEMPLO_MSG, previewParams)
 
   const podeDisparar =
@@ -94,19 +120,26 @@ export default function DisparoMassa({ conversas }: Props) {
             <textarea
               className={styles.textarea}
               rows={6}
-              placeholder="Cole um número por linha. Ex: 5511984321100"
+              placeholder="Cole um número por linha. Ex: 5531984321100"
               value={colado}
               onChange={e => { setColado(e.target.value); setConfirmar(false) }}
             />
           ) : (
             <p className={styles.hint}>
-              Selecionados a partir das conversas recentes. Números sem DDI são ignorados.
+              Selecionados a partir das conversas recentes. Só números no formato BR válido
+              (55 + DDD + celular) são aceitos — LIDs e seus próprios números são excluídos.
             </p>
           )}
           <div className={styles.count}>
             <span className={styles.countNum}>{validos.length}</span>
             <span className={styles.countLabel}>destinatários válidos</span>
           </div>
+          {rejeitados > 0 && (
+            <p className={styles.hint}>
+              {rejeitados} número{rejeitados > 1 ? 's' : ''} rejeitado{rejeitados > 1 ? 's' : ''}
+              {' '}(LID, número do próprio inbox ou formato inválido).
+            </p>
+          )}
         </section>
 
         {/* coluna 2: mensagem */}
@@ -127,7 +160,9 @@ export default function DisparoMassa({ conversas }: Props) {
             value={mensagem}
             onChange={e => { setMensagem(e.target.value); setConfirmar(false) }}
           />
-          <label className={styles.label}>Variáveis padrão (separadas por <code>|</code>)</label>
+          <label className={styles.label}>
+            Variáveis padrão (separadas pelo caractere pipe <strong>|</strong>)
+          </label>
           <input
             className={styles.input}
             placeholder="ex: cliente | sábado às 14h"
@@ -136,7 +171,12 @@ export default function DisparoMassa({ conversas }: Props) {
           />
           <p className={styles.hint}>
             Use <code>{'{{1}}'}</code>, <code>{'{{2}}'}</code>… na mensagem.
-            Pra públicos filtrados, <code>{'{{1}}'}</code> vira o nome de cada contato automaticamente.
+            Em públicos filtrados, <code>{'{{1}}'}</code> vira o nome de cada contato automaticamente.
+            Em modo "colar", preencha a 1ª variável aqui ou a mensagem vai sair com <code>[nome]</code>.
+          </p>
+          <p className={styles.hint}>
+            <strong>Compliance:</strong> inclua instrução de opt-out ("responda SAIR pra não receber mais")
+            e evite enviar fora da janela de 24h sem template aprovado — isso bloqueia o número.
           </p>
         </section>
 
@@ -154,7 +194,13 @@ export default function DisparoMassa({ conversas }: Props) {
 
           {confirmar && (
             <div className={styles.confirm}>
-              Confirmar envio para <strong>{validos.length}</strong> número(s) via Z-API?
+              Confirmar envio para <strong>{validos.length}</strong> número{validos.length > 1 ? 's' : ''} via Z-API?
+              {validos.length > 0 && (
+                <div style={{ marginTop: 6, fontSize: 11, opacity: 0.8 }}>
+                  Primeiros 3: {validos.slice(0, 3).map((r) => formatarPhoneBR(r.phone)).join(' · ')}
+                  {validos.length > 3 && ` · +${validos.length - 3} outros`}
+                </div>
+              )}
             </div>
           )}
 

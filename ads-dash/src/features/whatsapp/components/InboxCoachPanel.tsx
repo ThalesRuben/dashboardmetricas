@@ -107,7 +107,7 @@ export default function InboxCoachPanel({ thread, msgs, onUseSuggestion }: Inbox
 
       {!result && !running && !error && (
         <div className={styles.empty}>
-          Clique em <strong>Analisar</strong> e a IA sugere a próxima resposta pra aumentar a chance de conversão.
+          Clique no botão <span className={styles.cta}>Analisar</span> acima e a IA sugere a próxima resposta pra aumentar a chance de conversão.
         </div>
       )}
 

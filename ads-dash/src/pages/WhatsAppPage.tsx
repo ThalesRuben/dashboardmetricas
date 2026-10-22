@@ -12,7 +12,11 @@ import {
   CrmKanban,
   CrmThreadDrawer,
   FollowupsFila,
+  NumerosPanel,
+  TemplatesPanel,
   formatarPhoneBR,
+  prettyPreview,
+  displayName,
   crmRepo,
 } from '@/features/whatsapp'
 import type {
@@ -65,8 +69,9 @@ export default function WhatsAppPage() {
   const [inboxPhone, setInboxPhone] = useState<string | null>(null)
   const [range, setRange] = useState<{ from: Date; to: Date; presetKey?: string } | null>(defaultRange)
   const { data, loading, usingMock } = useWhatsAppMetrics(inboxPhone, range)
-  const { threads, reloadThreads } = useInbox({ inboxPhone })
   const { inboxes } = useWhatsAppInboxes()
+  const selfInboxPhones = useMemo(() => inboxes.map((i) => i.inbox_phone), [inboxes])
+  const { threads, reloadThreads } = useInbox({ inboxPhone, selfInboxPhones })
   const [tab, setTab] = useState('inbox')
 
   // Estado do drawer CRM (usado pela aba "CRM" e "Follow-ups")
@@ -119,8 +124,18 @@ export default function WhatsAppPage() {
     await handleMoverStatus(drawerThread.id, novo)
   }
 
+  // "Precisam de você" = última msg do cliente ainda sem resposta OU com
+  // não lidas pendentes. Status 'aberta' sozinho NÃO qualifica — ex-leads
+  // confirmados ficam aberta mas já foram respondidos.
   const urgentes = useMemo(
-    () => threads.filter(t => (t.nao_lidas || 0) > 0 || STATUS[t.status]?.urgent),
+    () => threads.filter((t) => {
+      const naoLidas = t.nao_lidas || 0
+      if (naoLidas > 0) return true
+      // Thread 'lead' sempre entra na fila (recém-criada, cliente aguarda).
+      if (t.status === 'lead') return true
+      // 'aberta' só entra se tiver não lidas (já capturado acima).
+      return false
+    }),
     [threads],
   )
 
@@ -148,6 +163,8 @@ export default function WhatsAppPage() {
     { id: 'followups', label: 'Follow-ups', badge: followupsBadge },
     { id: 'precisam',  label: 'Precisam de você', badge: urgentes.length || undefined },
     { id: 'disparo',   label: 'Disparo em massa' },
+    { id: 'numeros',   label: 'Números' },
+    { id: 'templates', label: 'Templates' },
     { id: 'funil',     label: 'Funil' },
     { id: 'origem',    label: 'Origem & motivos' },
   ]
@@ -275,6 +292,10 @@ export default function WhatsAppPage() {
         <DisparoMassa conversas={conversasLegado} />
       )}
 
+      {tab === 'numeros' && <NumerosPanel />}
+
+      {tab === 'templates' && <TemplatesPanel />}
+
       {tab === 'funil' && (
         <>
           <section className={styles.section}>
@@ -282,10 +303,16 @@ export default function WhatsAppPage() {
             <Funnel funil={data.funil} />
           </section>
           <section className={styles.chartsGrid}>
-            <ChartTile title="Conversas por dia">
+            <ChartTile
+              title="Conversas por dia"
+              ariaLabel={`Gráfico de barras: conversas iniciadas por dia nos últimos ${data.serie_conversas.length} dias.`}
+            >
               <SocialLineChart serie={data.serie_conversas} color="#5dcaa5" type="bar" />
             </ChartTile>
-            <ChartTile title="Taxa de conversão (%)">
+            <ChartTile
+              title="Taxa de conversão (%)"
+              ariaLabel={`Gráfico de linha: taxa de conversão semanal. Último valor ${data.serie_conversao[data.serie_conversao.length - 1]?.value ?? 0}%.`}
+            >
               <SocialLineChart serie={data.serie_conversao} color="#5dcaa5" />
             </ChartTile>
           </section>
@@ -371,8 +398,20 @@ function InboxFilter({
 
 function ThreadRow({ t, onOpen }: { t: WhatsAppThreadReal; onOpen: () => void }) {
   const s = STATUS[t.status] || STATUS.aberta
-  const nome = t.contato_nome || t.contato_phone || '—'
-  const preview = t.ultima_msg_preview || 'Sem mensagens ainda.'
+  const nome = displayName(t.contato_nome, t.contato_phone)
+  const preview = prettyPreview(t.ultima_msg_preview) || 'Sem mensagens ainda.'
+  // Tempo esperando — se temos última msg do cliente E ainda tem não lidas,
+  // mostra "esperando há X min" pra apoiar a priorização.
+  const esperaMin = (() => {
+    if (!t.ultima_msg_cliente_em || (t.nao_lidas || 0) === 0) return null
+    const diff = Date.now() - new Date(t.ultima_msg_cliente_em).getTime()
+    const mins = Math.round(diff / 60000)
+    if (mins < 1) return null
+    if (mins < 60) return `${mins} min`
+    const horas = Math.round(mins / 60)
+    if (horas < 24) return `${horas} h`
+    return `${Math.round(horas / 24)}d`
+  })()
   return (
     <div className={styles.convRow} onClick={onOpen} role="button" tabIndex={0}>
       <span className={styles.convAvatar}>{nome.slice(0, 1).toUpperCase()}</span>
@@ -383,7 +422,8 @@ function ThreadRow({ t, onOpen }: { t: WhatsAppThreadReal; onOpen: () => void })
         </div>
         <p className={styles.convResumo}>{preview}</p>
         <span className={styles.convMeta}>
-          {fmtHoraCurta(t.ultima_atividade)} · via {t.origem}
+          {fmtHoraCurta(t.ultima_atividade)}
+          {esperaMin && ` · esperando há ${esperaMin}`}
           {(t.nao_lidas || 0) > 0 && ` · ${t.nao_lidas} não lida${t.nao_lidas > 1 ? 's' : ''}`}
         </span>
       </div>
@@ -407,8 +447,8 @@ function threadToConversa(t: WhatsAppThreadReal): WhatsAppConversa {
     t.status === 'arquivada' ? 'aberta' : (t.status as WhatsAppConversaStatus)
   return {
     id: t.id,
-    nome: t.contato_nome || t.contato_phone || '—',
-    resumo: t.ultima_msg_preview || '',
+    nome: displayName(t.contato_nome, t.contato_phone),
+    resumo: prettyPreview(t.ultima_msg_preview),
     status: statusLegado,
     hora: fmtHoraCurta(t.ultima_atividade),
     origem: t.origem,
@@ -422,15 +462,22 @@ function Funnel({ funil }) {
   return (
     <div className={styles.funnel}>
       {funil.map((f, i) => {
-        const pct = Math.round((f.valor / top) * 100)
+        // #49: 1 casa decimal. Topo é sempre 100,0% (base da pirâmide).
+        // Também mostra % em relação à etapa anterior pra ver drop por salto.
+        const pctTopo = top > 0 ? (f.valor / top) * 100 : 0
+        const prev = i > 0 ? funil[i - 1].valor : f.valor
+        const pctPrev = prev > 0 ? (f.valor / prev) * 100 : 0
         return (
           <div key={f.etapa} className={styles.funnelRow}>
             <div className={styles.funnelHead}>
               <span className={styles.funnelEtapa}>{f.etapa}</span>
-              <span className={styles.funnelValor}>{fmtNumber(f.valor)} · {pct}%</span>
+              <span className={styles.funnelValor}>
+                {fmtNumber(f.valor)} · {pctTopo.toFixed(1)}%
+                {i > 0 && pctPrev < 100 && ` (${pctPrev.toFixed(1)}% da etapa anterior)`}
+              </span>
             </div>
             <div className={styles.funnelTrack}>
-              <span className={styles.funnelFill} style={{ width: `${pct}%`, opacity: 1 - i * 0.12 }} />
+              <span className={styles.funnelFill} style={{ width: `${pctTopo}%`, opacity: 1 - i * 0.12 }} />
             </div>
           </div>
         )
@@ -460,9 +507,9 @@ function Card({ title, children }) {
   )
 }
 
-function ChartTile({ title, children }) {
+function ChartTile({ title, children, ariaLabel }: { title: string; children: React.ReactNode; ariaLabel?: string }) {
   return (
-    <div className={styles.chartTile}>
+    <div className={styles.chartTile} role="figure" aria-label={ariaLabel || title}>
       <h3 className={styles.cardTitle}>{title}</h3>
       {children}
     </div>

@@ -53,6 +53,20 @@ interface IngestBody {
   inbox_phone?: string
   connected_phone?: string
   connectedPhone?: string
+  // Novo (2026-10-22): Z-API inbound traz chatLid (LID da conversa) em
+  // paralelo ao phone real. Outbound entrega o LID no próprio campo phone
+  // (sufixo @lid). O ingest usa isso pra resolver o par e evitar criar
+  // contato órfão a cada envio do atendente.
+  chat_lid?: string
+  chatLid?: string
+}
+
+// Extrai dígitos puros de "<digitos>@lid" → "<digitos>". Null se não parece LID.
+function extrairLid(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  if (!/@lid$/i.test(raw)) return null
+  const digits = raw.replace(/@lid$/i, '').replace(/\D/g, '')
+  return digits || null
 }
 
 // Normaliza telefone BR pra formato canônico `55DDXXXXXXXXX` (13 dígitos).
@@ -85,26 +99,38 @@ Deno.serve(async (req) => {
     return json({ error: 'JSON inválido' }, 400)
   }
 
-  const phone = normalizarPhoneBR(body.phone || '')
-  if (!phone) return json({ error: 'phone é obrigatório' }, 400)
-  if (!body.texto) return json({ error: 'texto é obrigatório' }, 400)
+  // Detecta se o `phone` do payload é um LID (acontece em outbound Z-API,
+  // fromMe=true). Nesse caso, NÃO rejeita — vai resolver via lookup pelo LID.
+  const phoneRaw = body.phone || ''
+  const lidFromPhone = extrairLid(phoneRaw)
+  const lidFromChat  = extrairLid(body.chat_lid || body.chatLid || null)
+  const lid = lidFromPhone || lidFromChat || null
+  const isLidOnly = !!lidFromPhone  // phone chegou como @lid, não temos telefone real
 
-  // Blindagem contra payloads com `phone` fora do formato BR válido:
-  //   - JID de grupo WhatsApp (18+ dígitos)
-  //   - IDs sintéticos de automação n8n (14-15 dígitos com prefixo não-DDI)
-  //   - qualquer outro padrão que não seja telefone BR real
+  // Antes rejeitava texto vazio. Problema: reações, stickers e áudios sem
+  // caption chegam com `text.message = ""` e sumiam (~80/semana). Agora
+  // aceita e grava placeholder — o prettyPreview() no front já traduz.
+  const texto = body.texto && body.texto.trim() ? body.texto : '[sem texto]'
+
+  // Telefone real: só normaliza/valida quando NÃO é LID-only.
   // Telefone BR válido tem 12 dígitos (fixo: 55+DDD+8) ou 13 (celular: 55+DDD+9).
-  // Salão TBC é local (BH), não atende internacional → filtro não perde real.
-  if (phone.length !== 12 && phone.length !== 13) {
-    console.log(JSON.stringify({
-      tag: 'ingest-reject',
-      reason: 'phone_length_invalido',
-      phone_length: phone.length,
-      phone_raw: body.phone,
-      phone_normalized: phone,
-      body_keys: Object.keys(body),
-    }))
-    return json({ error: `phone com ${phone.length} dígitos rejeitado (esperado 12 ou 13)`, ignored: true }, 400)
+  let phone = ''
+  if (!isLidOnly) {
+    phone = normalizarPhoneBR(phoneRaw)
+    if (!phone) return json({ error: 'phone é obrigatório' }, 400)
+    if (phone.length !== 12 && phone.length !== 13) {
+      console.log(JSON.stringify({
+        tag: 'ingest-reject',
+        reason: 'phone_length_invalido',
+        phone_length: phone.length,
+        phone_raw: phoneRaw,
+        phone_normalized: phone,
+        body_keys: Object.keys(body),
+      }))
+      return json({ error: `phone com ${phone.length} dígitos rejeitado (esperado 12 ou 13)`, ignored: true }, 400)
+    }
+  } else if (!lid) {
+    return json({ error: 'phone @lid sem dígitos válidos', ignored: true }, 400)
   }
 
   const direction = body.direction === 'out' ? 'out' : 'in'
@@ -126,19 +152,14 @@ Deno.serve(async (req) => {
     return json({ error: `inbox_phone com ${inbox_phone.length} dígitos rejeitado (esperado 12 ou 13)`, ignored: true }, 400)
   }
 
-  // Log de diagnóstico — quais chaves o n8n mandou e como cada candidata
-  // a inbox_phone chegou. Aparece em Supabase Dashboard → Functions →
-  // inbox-ingest → Logs. Remover depois que estabilizar.
+  // Log de diagnóstico (temporário até estabilizar o fluxo LID).
   console.log(JSON.stringify({
     tag: 'ingest-recv',
     body_keys: Object.keys(body),
-    phone_cliente: phone,
+    phone_cliente: phone || null,
+    lid,
+    is_lid_only: isLidOnly,
     inbox_phone_final: inbox_phone,
-    inbox_raw: {
-      inbox_phone: body.inbox_phone || null,
-      connected_phone: body.connected_phone || null,
-      connectedPhone: body.connectedPhone || null,
-    },
   }))
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
@@ -165,22 +186,107 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 3. Upsert contato
-  const { data: contato, error: contatoErr } = await supabase
-    .from('whatsapp_contatos')
-    .upsert(
-      { tenant_id, phone, nome: body.nome || null, atualizado_em: new Date().toISOString() },
-      { onConflict: 'tenant_id,phone', ignoreDuplicates: false },
-    )
-    .select('id, nome')
-    .single()
-  if (contatoErr || !contato) {
-    return json({ error: 'falha ao upsert contato: ' + (contatoErr?.message || '') }, 500)
+  // 3. Resolver contato — 2 caminhos:
+  //    A) Outbound Z-API com phone=@lid → busca por lid, cai pra provisional.
+  //    B) Inbound (ou outbound com phone real) → upsert por (tenant_id,phone)
+  //       e, se veio chat_lid, grava lid no contato real + funde órfão.
+  let contato_id: string
+  let contato_nome: string | null = null
+
+  if (isLidOnly) {
+    // --- Caminho A: só temos o LID
+    const { data: byLid } = await supabase
+      .from('whatsapp_contatos')
+      .select('id, nome')
+      .eq('tenant_id', tenant_id)
+      .eq('lid', lid)
+      .maybeSingle()
+
+    if (byLid) {
+      contato_id = byLid.id
+      contato_nome = byLid.nome
+    } else {
+      // Edge case (fix #4): o LID em dígitos pode colidir com phone de um
+      // contato preexistente (ex.: um dos 8 internacionais desmarcados pela
+      // 0047 cujo phone casa com o LID vindo agora). Antes do insert tenta
+      // casar por phone = lid; se achar, associa o LID a esse contato.
+      const { data: byPhone } = await supabase
+        .from('whatsapp_contatos')
+        .select('id, nome, lid')
+        .eq('tenant_id', tenant_id)
+        .eq('phone', lid)
+        .maybeSingle()
+
+      if (byPhone) {
+        if (!byPhone.lid) {
+          await supabase.from('whatsapp_contatos').update({ lid }).eq('id', byPhone.id)
+        }
+        contato_id = byPhone.id
+        contato_nome = byPhone.nome
+      } else {
+        // Provisional de verdade: cria com phone = lid (placeholder).
+        // Quando o inbound chegar com telefone real + chatLid, o merge
+        // no caminho B refaz.
+        const { data: novo, error: ne } = await supabase
+          .from('whatsapp_contatos')
+          .insert({ tenant_id, phone: lid, lid, nome: body.nome || null })
+          .select('id, nome')
+          .single()
+        if (ne || !novo) {
+          return json({ error: 'falha ao criar contato LID: ' + (ne?.message || '') }, 500)
+        }
+        contato_id = novo.id
+        contato_nome = novo.nome
+      }
+    }
+  } else {
+    // --- Caminho B: temos telefone real
+    // Fix #1: só inclui `nome` no upsert quando ele vier preenchido.
+    // Antes, outbound com nome vazio sobrescrevia nome existente com null
+    // (ocorria em ~148 msgs/semana — SET nome=null roda em qualquer upsert).
+    const { data: up, error: ue } = await supabase
+      .from('whatsapp_contatos')
+      .upsert(
+        {
+          tenant_id,
+          phone,
+          atualizado_em: new Date().toISOString(),
+          ...(body.nome ? { nome: body.nome } : {}),
+        },
+        { onConflict: 'tenant_id,phone', ignoreDuplicates: false },
+      )
+      .select('id, nome, lid')
+      .single()
+    if (ue || !up) {
+      return json({ error: 'falha ao upsert contato: ' + (ue?.message || '') }, 500)
+    }
+    contato_id = up.id
+    contato_nome = up.nome
+
+    // Se chat_lid veio e o contato real ainda não tem lid:
+    // 1) FUNDE PRIMEIRO (merge apaga o contato órfão que tem lid=X)
+    // 2) DEPOIS grava o lid no real.
+    // Ordem importa — o índice único (tenant_id, lid) proíbe 2 contatos
+    // com mesmo lid, então gravar no real antes de apagar o órfão daria
+    // violação de unicidade.
+    if (lid && !(up as { lid: string | null }).lid) {
+      const { data: fused, error: mergeErr } = await supabase.rpc('whatsapp_merge_lid', {
+        p_tenant_id: tenant_id,
+        p_real_contato_id: contato_id,
+        p_lid: lid,
+      })
+      if (mergeErr) {
+        console.log(JSON.stringify({ tag: 'ingest-merge-error', lid, error: mergeErr.message }))
+      }
+      await supabase.from('whatsapp_contatos').update({ lid }).eq('id', contato_id)
+      if (fused && Number(fused) > 0) {
+        console.log(JSON.stringify({ tag: 'ingest-merge', contato_id, lid, threads_fused: fused }))
+      }
+    }
   }
-  const contato_id = contato.id
 
   // Se chegou nome novo e o existente era null, atualiza
-  if (body.nome && !contato.nome) {
+  if (body.nome && !contato_nome) {
     await supabase.from('whatsapp_contatos').update({ nome: body.nome }).eq('id', contato_id)
   }
 
@@ -255,7 +361,7 @@ Deno.serve(async (req) => {
       tenant_id,
       thread_id: thread.id,
       autor: direction === 'in' ? 'cliente' : 'atendente',
-      texto: body.texto,
+      texto,
       msg_id_externo: body.msg_id || null,
       hora,
       status: 'enviada',

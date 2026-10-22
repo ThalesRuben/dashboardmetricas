@@ -1,5 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useInbox } from '../hooks/useInbox'
+import { useWhatsAppInboxes } from '../hooks/useWhatsAppInboxes'
+import { prettyPreview, displayName } from '../lib/preview'
+import { formatarPhoneBR } from '../lib/phone'
 import type {
   WhatsAppThreadReal,
   WhatsAppMsgReal,
@@ -8,6 +11,13 @@ import type {
 } from '../api/types'
 import InboxCoachPanel from './InboxCoachPanel'
 import styles from './Inbox.module.css'
+
+// Rótulos amigáveis das linhas — espelha WhatsAppPage.
+// Sem entrada → chip usa telefone formatado.
+const INBOX_LABELS: Record<string, string> = {
+  '5531990842381': 'TBC',
+  '5531991340420': 'Fabio',
+}
 
 type Filter = 'todas' | 'nao_lidas' | 'leads' | 'agendados'
 
@@ -28,6 +38,8 @@ const STATUS_TONE: Record<WhatsAppThreadStatusReal, string> = {
 }
 
 export default function Inbox() {
+  const { inboxes } = useWhatsAppInboxes()
+  const selfInboxPhones = useMemo(() => inboxes.map((i) => i.inbox_phone), [inboxes])
   const {
     threads,
     msgs,
@@ -37,7 +49,7 @@ export default function Inbox() {
     erroEnvio,
     enviar,
     realtime,
-  } = useInbox()
+  } = useInbox({ selfInboxPhones })
   const [filter, setFilter] = useState<Filter>('todas')
 
   const filtered = useMemo(() => {
@@ -85,33 +97,48 @@ export default function Inbox() {
           {filtered.length === 0 && (
             <li className={styles.empty}>Nada por aqui.</li>
           )}
-          {filtered.map((t) => (
-            <li
-              key={t.id}
-              className={`${styles.listItem} ${t.id === activeThread?.id ? styles.listItemActive : ''}`}
-              onClick={() => setActiveId(t.id)}
-            >
-              <span className={styles.avatar}>{(t.contato_nome || t.contato_phone).slice(0, 1)}</span>
-              <div className={styles.listBody}>
-                <div className={styles.listTop}>
-                  <span className={styles.listName}>{t.contato_nome || t.contato_phone}</span>
-                  <span className={styles.listTime}>{fmtHora(t.ultima_atividade)}</span>
+          {filtered.map((t) => {
+            const nome = displayName(t.contato_nome, t.contato_phone)
+            // Como saber se a última msg é da equipe? O preview vem só com
+            // texto. Heurística segura: se `ultima_atividade` for mais nova
+            // que `ultima_msg_cliente_em`, a última foi do atendente.
+            const ultimaFoiDoAtendente =
+              !!t.ultima_msg_cliente_em &&
+              new Date(t.ultima_atividade).getTime() >
+                new Date(t.ultima_msg_cliente_em).getTime() + 1000
+            const inboxLabel = t.inbox_phone
+              ? INBOX_LABELS[t.inbox_phone] || formatarPhoneBR(t.inbox_phone)
+              : null
+            return (
+              <li
+                key={t.id}
+                className={`${styles.listItem} ${t.id === activeThread?.id ? styles.listItemActive : ''}`}
+                onClick={() => setActiveId(t.id)}
+              >
+                <span className={styles.avatar}>{nome.slice(0, 1).toUpperCase()}</span>
+                <div className={styles.listBody}>
+                  <div className={styles.listTop}>
+                    <span className={styles.listName}>{nome}</span>
+                    <span className={styles.listTime}>{fmtDataAdaptativa(t.ultima_atividade)}</span>
+                  </div>
+                  <div className={styles.listBottom}>
+                    <span className={styles.listPreview}>
+                      {prettyPreview(t.ultima_msg_preview, ultimaFoiDoAtendente)}
+                    </span>
+                    {(t.nao_lidas || 0) > 0 && (
+                      <span className={styles.unread}>{t.nao_lidas}</span>
+                    )}
+                  </div>
+                  <div className={styles.listMeta}>
+                    <span className={`${styles.tag} ${styles['t_' + STATUS_TONE[t.status]]}`}>
+                      {STATUS_LABEL[t.status]}
+                    </span>
+                    {inboxLabel && <span className={styles.metaOrigem}>Linha: {inboxLabel}</span>}
+                  </div>
                 </div>
-                <div className={styles.listBottom}>
-                  <span className={styles.listPreview}>{t.ultima_msg_preview || '—'}</span>
-                  {(t.nao_lidas || 0) > 0 && (
-                    <span className={styles.unread}>{t.nao_lidas}</span>
-                  )}
-                </div>
-                <div className={styles.listMeta}>
-                  <span className={`${styles.tag} ${styles['t_' + STATUS_TONE[t.status]]}`}>
-                    {STATUS_LABEL[t.status]}
-                  </span>
-                  <span className={styles.metaOrigem}>via {t.origem}</span>
-                </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
       </aside>
 
@@ -223,11 +250,12 @@ function Thread({ thread, msgs, enviando, erroEnvio, onSend, texto, setTexto, co
   return (
     <>
       <header className={styles.threadHead}>
-        <span className={styles.avatarLg}>{(thread.contato_nome || thread.contato_phone).slice(0, 1)}</span>
+        <span className={styles.avatarLg}>{displayName(thread.contato_nome, thread.contato_phone).slice(0, 1).toUpperCase()}</span>
         <div className={styles.threadHeadBody}>
-          <span className={styles.threadName}>{thread.contato_nome || thread.contato_phone}</span>
+          <span className={styles.threadName}>{displayName(thread.contato_nome, thread.contato_phone)}</span>
           <span className={styles.threadSub}>
-            {thread.contato_phone || '—'} · via {thread.origem}
+            {thread.contato_phone ? formatarPhoneBR(thread.contato_phone) : '—'}
+            {thread.inbox_phone && ` · Linha: ${INBOX_LABELS[thread.inbox_phone] || formatarPhoneBR(thread.inbox_phone)}`}
           </span>
         </div>
         <span className={`${styles.tag} ${styles['t_' + STATUS_TONE[thread.status]]}`}>
@@ -317,12 +345,13 @@ function EmptyThread() {
 }
 
 function ContactPanel({ thread, totalMsgs }: { thread: WhatsAppThreadReal; totalMsgs: number }) {
+  const nome = displayName(thread.contato_nome, thread.contato_phone)
   return (
     <>
       <div className={styles.contactHead}>
-        <span className={styles.avatarLg}>{(thread.contato_nome || thread.contato_phone).slice(0, 1)}</span>
-        <span className={styles.contactName}>{thread.contato_nome || thread.contato_phone}</span>
-        <span className={styles.contactPhone}>{thread.contato_phone || '—'}</span>
+        <span className={styles.avatarLg}>{nome.slice(0, 1).toUpperCase()}</span>
+        <span className={styles.contactName}>{nome}</span>
+        <span className={styles.contactPhone}>{thread.contato_phone ? formatarPhoneBR(thread.contato_phone) : '—'}</span>
       </div>
       <dl className={styles.contactList}>
         <div className={styles.contactItem}>
@@ -334,15 +363,15 @@ function ContactPanel({ thread, totalMsgs }: { thread: WhatsAppThreadReal; total
           </dd>
         </div>
         <div className={styles.contactItem}>
-          <dt>Origem</dt>
-          <dd>{thread.origem}</dd>
+          <dt>Linha</dt>
+          <dd>{thread.inbox_phone ? (INBOX_LABELS[thread.inbox_phone] || formatarPhoneBR(thread.inbox_phone)) : '—'}</dd>
         </div>
         <div className={styles.contactItem}>
           <dt>Última atividade</dt>
           <dd>{fmtData(thread.ultima_atividade)} {fmtHora(thread.ultima_atividade)}</dd>
         </div>
         <div className={styles.contactItem}>
-          <dt>Mensagens</dt>
+          <dt>Total de mensagens</dt>
           <dd>{totalMsgs}</dd>
         </div>
       </dl>
@@ -353,6 +382,20 @@ function ContactPanel({ thread, totalMsgs }: { thread: WhatsAppThreadReal; total
 function fmtHora(iso: string): string {
   try {
     return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  } catch { return iso }
+}
+
+// Data adaptativa pra listagens: hoje → HH:MM, ontem → "ontem", resto → DD/MM.
+// Padroniza o que Inbox mostrava (só HH:MM) com o CRM (DD/MM).
+function fmtDataAdaptativa(iso: string): string {
+  try {
+    const d = new Date(iso)
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+    const alvo = new Date(d);  alvo.setHours(0, 0, 0, 0)
+    const diff = Math.round((hoje.getTime() - alvo.getTime()) / 86400000)
+    if (diff === 0) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    if (diff === 1) return 'ontem'
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
   } catch { return iso }
 }
 

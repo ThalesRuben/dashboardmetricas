@@ -1,6 +1,7 @@
 import { useMemo, useState, type DragEvent } from 'react';
 import type { WhatsAppThreadReal, WhatsAppThreadStatusReal } from '../api/types';
 import type { CrmTag, CrmSummary, CrmFollowup, CrmVenda } from '../api/crmTypes';
+import { prettyPreview, displayName } from '../lib/preview';
 import styles from './CrmKanban.module.css';
 
 const COLUNAS: { id: WhatsAppThreadStatusReal; label: string }[] = [
@@ -187,7 +188,7 @@ function KanbanCard({
   onOpen: () => void;
 }) {
   const [dragging, setDragging] = useState(false);
-  const nome = thread.contato_nome || thread.contato_phone || '—';
+  const nome = displayName(thread.contato_nome, thread.contato_phone);
 
   function handleDragStart(e: DragEvent<HTMLButtonElement>) {
     e.dataTransfer.setData('text/plain', thread.id);
@@ -198,6 +199,12 @@ function KanbanCard({
 
   const followupInfo = extras?.proxFollowup ? followupStatus(extras.proxFollowup) : null;
   const naoLidas = thread.nao_lidas || 0;
+
+  const ultimaFoiDoAtendente =
+    !!thread.ultima_msg_cliente_em &&
+    new Date(thread.ultima_atividade).getTime() >
+      new Date(thread.ultima_msg_cliente_em).getTime() + 1000;
+  const preview = prettyPreview(thread.ultima_msg_preview, ultimaFoiDoAtendente);
 
   return (
     <button
@@ -213,7 +220,7 @@ function KanbanCard({
         <span className={styles.cardHora}>{fmtHoraCurta(thread.ultima_atividade)}</span>
       </div>
       {thread.ultima_msg_preview && (
-        <p className={styles.cardPreview}>{thread.ultima_msg_preview}</p>
+        <p className={styles.cardPreview}>{preview}</p>
       )}
       <div className={styles.cardBadges}>
         {naoLidas > 0 && (

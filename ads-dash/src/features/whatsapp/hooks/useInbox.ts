@@ -3,11 +3,17 @@ import { supabase } from '@/shared/lib/supabase'
 import { whatsappRepo } from '../api/whatsappRepo'
 import { getDataSource } from '@/shared/lib/api/createRepo'
 import { normalizarPhoneBR } from '../lib/phone'
+import { isValidBrPhone } from '../lib/preview'
 import type {
   WhatsAppThreadReal,
   WhatsAppMsgReal,
   ReplyResultado,
 } from '../api/types'
+
+// Teto no front enquanto o CRM-board não tem paginação real server-side.
+// 300 (anterior) truncava o kanban visivelmente; 2000 cobre volume de salão
+// com folga. Contadores corretos continuam vindo do RPC get_crm_counts.
+const LISTAR_LIMIT = 2000
 
 export interface UseInboxReturn {
   threads: WhatsAppThreadReal[]
@@ -24,6 +30,8 @@ export interface UseInboxReturn {
 export interface UseInboxOptions {
   /** Filtra threads pelo número WhatsApp Business que recebeu a msg. */
   inboxPhone?: string | null
+  /** Phones dos próprios inboxes do salão — excluídos da lista como "self". */
+  selfInboxPhones?: string[]
 }
 
 // Consolida várias threads do mesmo cliente (que vêm como contatos/threads
@@ -77,7 +85,7 @@ function consolidarPorPhone(raw: WhatsAppThreadReal[]): ConsolidatedThread[] {
 }
 
 export function useInbox(options: UseInboxOptions = {}): UseInboxReturn {
-  const { inboxPhone } = options
+  const { inboxPhone, selfInboxPhones } = options
   const [threadsRaw, setThreadsRaw] = useState<WhatsAppThreadReal[]>([])
   const [msgs, setMsgs] = useState<WhatsAppMsgReal[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -86,12 +94,26 @@ export function useInbox(options: UseInboxOptions = {}): UseInboxReturn {
   const realtime = getDataSource() === 'supabase'
   const channelId = useId()
 
+  // Guard de segurança: além da higiene SQL (migration 0045), filtra em
+  // runtime pra garantir que LIDs residuais, IDs sintéticos ou o próprio
+  // número do inbox NUNCA apareçam listados pro atendente.
+  const selfSet = useMemo(
+    () => new Set((selfInboxPhones || []).map((p) => normalizarPhoneBR(p))),
+    [selfInboxPhones],
+  )
+
   // Filtra ANTES de consolidar — mesmo cliente que mandou pros 2 números
   // precisa virar 2 threads separados na UI, não uma fusão.
   const threadsFiltradas = useMemo(() => {
-    if (!inboxPhone) return threadsRaw
-    return threadsRaw.filter((t) => t.inbox_phone === inboxPhone)
-  }, [threadsRaw, inboxPhone])
+    const base = threadsRaw.filter((t) => {
+      if (!isValidBrPhone(t.contato_phone)) return false
+      const canon = normalizarPhoneBR(t.contato_phone)
+      if (selfSet.has(canon)) return false
+      return true
+    })
+    if (!inboxPhone) return base
+    return base.filter((t) => t.inbox_phone === inboxPhone)
+  }, [threadsRaw, inboxPhone, selfSet])
 
   const threads = useMemo(() => consolidarPorPhone(threadsFiltradas), [threadsFiltradas])
 
@@ -113,7 +135,7 @@ export function useInbox(options: UseInboxOptions = {}): UseInboxReturn {
 
   const reloadThreads = useCallback(async () => {
     try {
-      const t = await whatsappRepo.listarThreads(300)
+      const t = await whatsappRepo.listarThreads(LISTAR_LIMIT)
       setThreadsRaw(t)
     } catch {
       setThreadsRaw([])
