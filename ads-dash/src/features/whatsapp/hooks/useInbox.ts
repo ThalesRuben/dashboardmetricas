@@ -32,7 +32,17 @@ export interface UseInboxOptions {
   inboxPhone?: string | null
   /** Phones dos próprios inboxes do salão — excluídos da lista como "self". */
   selfInboxPhones?: string[]
+  /**
+   * Quando `false` (default), esconde threads arquivadas e sem atividade
+   * nos últimos 30 dias — a vida ativa do salão. `true` mostra tudo
+   * incluindo histórico, pra consulta eventual.
+   */
+  showInactive?: boolean
 }
+
+// Janela de "atividade recente" — bate com a convenção dos filtros do
+// painel e com o arquivamento de 2026-10-22.
+const ACTIVE_WINDOW_DAYS = 30
 
 // Consolida várias threads do mesmo cliente (que vêm como contatos/threads
 // duplicados no banco por causa de normalização inconsistente do telefone
@@ -85,7 +95,7 @@ function consolidarPorPhone(raw: WhatsAppThreadReal[]): ConsolidatedThread[] {
 }
 
 export function useInbox(options: UseInboxOptions = {}): UseInboxReturn {
-  const { inboxPhone, selfInboxPhones } = options
+  const { inboxPhone, selfInboxPhones, showInactive = false } = options
   const [threadsRaw, setThreadsRaw] = useState<WhatsAppThreadReal[]>([])
   const [msgs, setMsgs] = useState<WhatsAppMsgReal[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -105,15 +115,21 @@ export function useInbox(options: UseInboxOptions = {}): UseInboxReturn {
   // Filtra ANTES de consolidar — mesmo cliente que mandou pros 2 números
   // precisa virar 2 threads separados na UI, não uma fusão.
   const threadsFiltradas = useMemo(() => {
+    const cutoff = Date.now() - ACTIVE_WINDOW_DAYS * 86400000
     const base = threadsRaw.filter((t) => {
       if (!isValidBrPhone(t.contato_phone)) return false
       const canon = normalizarPhoneBR(t.contato_phone)
       if (selfSet.has(canon)) return false
+      if (!showInactive) {
+        // Vida ativa: esconde arquivadas e threads sem atividade recente.
+        if (t.status === 'arquivada') return false
+        if (new Date(t.ultima_atividade).getTime() < cutoff) return false
+      }
       return true
     })
     if (!inboxPhone) return base
     return base.filter((t) => t.inbox_phone === inboxPhone)
-  }, [threadsRaw, inboxPhone, selfSet])
+  }, [threadsRaw, inboxPhone, selfSet, showInactive])
 
   const threads = useMemo(() => consolidarPorPhone(threadsFiltradas), [threadsFiltradas])
 

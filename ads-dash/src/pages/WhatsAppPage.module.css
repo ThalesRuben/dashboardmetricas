@@ -81,6 +81,37 @@
   color: var(--section-whatsapp);
 }
 
+/* Toggle "Ativas 30d" / "Mostrar todas" — segmentado, único rail,
+   divisor fino no meio. Herda o visual do inboxChip pra bater com os
+   chips de inbox do cabeçalho. */
+.activeToggle {
+  display: inline-flex;
+  align-items: stretch;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle, transparent);
+  border-radius: 999px;
+  padding: 2px;
+  gap: 2px;
+}
+.activeChip {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.activeChip:hover {
+  color: var(--text-default);
+}
+.activeChipOn {
+  background: color-mix(in srgb, var(--section-whatsapp) 14%, var(--bg-elevated));
+  color: var(--section-whatsapp);
+}
+
 .kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

@@ -68,10 +68,15 @@ export default function WhatsAppPage() {
   // null = "Todos os números" (agregado). String = filtra por aquele inbox_phone.
   const [inboxPhone, setInboxPhone] = useState<string | null>(null)
   const [range, setRange] = useState<{ from: Date; to: Date; presetKey?: string } | null>(defaultRange)
+  // Vida ativa (default) vs histórico completo. "Ativas 30d" esconde
+  // arquivadas e threads sem msg nos últimos 30 dias — bate com o
+  // arquivamento manual de 2026-10-22. "Mostrar todas" libera tudo pra
+  // consulta pontual sem perder o default limpo pros atendentes.
+  const [showInactive, setShowInactive] = useState(false)
   const { data, loading, usingMock } = useWhatsAppMetrics(inboxPhone, range)
   const { inboxes } = useWhatsAppInboxes()
   const selfInboxPhones = useMemo(() => inboxes.map((i) => i.inbox_phone), [inboxes])
-  const { threads, reloadThreads } = useInbox({ inboxPhone, selfInboxPhones })
+  const { threads, reloadThreads } = useInbox({ inboxPhone, selfInboxPhones, showInactive })
   const [tab, setTab] = useState('inbox')
 
   // Estado do drawer CRM (usado pela aba "CRM" e "Follow-ups")
@@ -181,6 +186,7 @@ export default function WhatsAppPage() {
         actions={
           <div className={styles.headerActions}>
             <DateRangePicker value={range} onChange={setRange} presets={WHATSAPP_PRESETS} />
+            <ActiveToggle value={showInactive} onChange={setShowInactive} />
             <span className={styles.connected}>
               <span className={styles.dot} />
               Conectado
@@ -252,7 +258,7 @@ export default function WhatsAppPage() {
 
       <Tabs items={tabs} activeId={tab} onChange={setTab} accentColor="var(--section-whatsapp)" />
 
-      {tab === 'inbox' && <Inbox />}
+      {tab === 'inbox' && <Inbox showInactive={showInactive} />}
 
       {tab === 'crm' && (
         <CrmKanban
@@ -351,6 +357,38 @@ export default function WhatsAppPage() {
 
 function Banner({ children }) {
   return <div className={styles.banner}>ⓘ {children}</div>
+}
+
+function ActiveToggle({
+  value, onChange,
+}: {
+  value: boolean
+  onChange: (v: boolean) => void
+}) {
+  // value=false → mostra só ativas 30d (default). value=true → todas.
+  return (
+    <div className={styles.activeToggle} role="tablist" aria-label="Filtrar por atividade recente">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={!value}
+        className={`${styles.activeChip} ${!value ? styles.activeChipOn : ''}`}
+        onClick={() => onChange(false)}
+      >
+        Ativas 30d
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={value}
+        className={`${styles.activeChip} ${value ? styles.activeChipOn : ''}`}
+        onClick={() => onChange(true)}
+        title="Inclui arquivadas e threads sem atividade recente"
+      >
+        Mostrar todas
+      </button>
+    </div>
+  )
 }
 
 function InboxFilter({

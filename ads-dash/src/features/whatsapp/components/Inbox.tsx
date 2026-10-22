@@ -37,7 +37,12 @@ const STATUS_TONE: Record<WhatsAppThreadStatusReal, string> = {
   arquivada: 'subtle',
 }
 
-export default function Inbox() {
+interface InboxProps {
+  /** Repassado pro useInbox — see WhatsAppPage ActiveToggle. */
+  showInactive?: boolean
+}
+
+export default function Inbox({ showInactive = false }: InboxProps) {
   const { inboxes } = useWhatsAppInboxes()
   const selfInboxPhones = useMemo(() => inboxes.map((i) => i.inbox_phone), [inboxes])
   const {
@@ -49,7 +54,7 @@ export default function Inbox() {
     erroEnvio,
     enviar,
     realtime,
-  } = useInbox({ selfInboxPhones })
+  } = useInbox({ selfInboxPhones, showInactive })
   const [filter, setFilter] = useState<Filter>('todas')
 
   const filtered = useMemo(() => {
