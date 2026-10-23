@@ -1,109 +1,5 @@
 .page { max-width: 1000px; }
 
-/* ============================================================
-   PILOT THEME — "Blonde Signature" (Opção 3 do audit 2026-10-22)
-   Escopado só na /bible. Override local de tokens via CSS vars.
-   Nenhuma outra página do app é afetada.
-
-   Paleta:
-     fundo creme off-white #FFF9F0 (não puro — quente)
-     accent marrom quente #8B4513 (não neutro, carrega luxo)
-     texto grafite quente #1A1613 (não preto puro — mais editorial)
-     bordas marrom translúcido (12% opacity) — não cinza
-   Tipografia:
-     Montserrat 700/800 pra headings (feminine edge, display)
-     Lora pra body (serif editorial, respira)
-   Shape:
-     radii 14px / 20px (suaves, não Bootstrap)
-     spacing generoso
-   ============================================================ */
-.pilotTheme {
-  /* ---- paleta ---- */
-  --bg: #FFF9F0;
-  --bg-card: #FFFFFF;
-  --bg-elevated: #FEFBF4;
-  --bg-input: #FAF4E8;
-  --bg-hover: #F7EFDF;
-
-  --text: #1A1613;
-  --text-muted: #4A4038;
-  --text-subtle: #7A6E64;
-  --text-faint: #B8A89C;
-
-  --accent: #8B4513;
-  --accent-amber: #8B4513;
-  --accent-bright: #A0582A;
-  --accent-red: #B04A3B;
-
-  --border: rgba(139, 69, 19, 0.12);
-  --border-soft: rgba(139, 69, 19, 0.08);
-  --border-strong: rgba(139, 69, 19, 0.25);
-  --border-subtle: rgba(139, 69, 19, 0.06);
-
-  --radius-sm: 6px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-
-  --shadow-card: 0 1px 3px rgba(139, 69, 19, 0.06), 0 4px 20px rgba(139, 69, 19, 0.04);
-
-  /* full-bleed dentro do .content do Layout (-26px -30px -60px bate com padding atual) */
-  margin: -26px -30px -60px;
-  padding: 72px 48px 100px;
-  max-width: none;
-  background: var(--bg);
-  color: var(--text);
-  min-height: calc(100vh - var(--topbar-h));
-  font-family: 'Lora', Georgia, 'Times New Roman', serif;
-  font-size: 15px;
-  line-height: 1.7;
-}
-.pilotTheme .pilotContainer {
-  max-width: 920px;
-  margin: 0 auto;
-}
-
-/* Headings respiram em Montserrat */
-.pilotTheme h1,
-.pilotTheme h2,
-.pilotTheme h3,
-.pilotTheme h4,
-.pilotTheme h5 {
-  font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
-  letter-spacing: -0.025em;
-  color: var(--text);
-  font-weight: 700;
-}
-
-/* PageHeader herda os overrides via var(--text) e similares.
-   Mas o kicker/subtitle do PageHeader são font-mono por default —
-   mantemos pra contraste, só ajustando cor. */
-.pilotTheme :global([class*="PageHeader_kicker"]),
-.pilotTheme :global([class*="PageHeader_title"]),
-.pilotTheme :global([class*="PageHeader_subtitle"]) {
-  color: inherit;
-}
-.pilotTheme :global([class*="PageHeader_title"]) {
-  font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-}
-
-/* Tabs do pilot — fundo claro, accent marrom */
-.pilotTheme :global([class*="Tabs_tab"]) {
-  color: var(--text-muted);
-}
-.pilotTheme :global([class*="Tabs_tabActive"]) {
-  color: var(--accent);
-}
-
-/* Mobile — menos padding full-bleed */
-@media (max-width: 960px) {
-  .pilotTheme {
-    margin: -16px;
-    padding: 48px 20px 60px;
-  }
-}
-
 /* o container "print-only" não aparece em tela */
 .printable { display: none; }
 
@@ -314,24 +210,12 @@
   margin-bottom: var(--space-4);
 }
 
-.blocks { display: flex; flex-direction: column; gap: var(--space-5); }
+.blocks { display: flex; flex-direction: column; gap: var(--space-4); }
 
 .lead {
-  font-size: 15.5px;
-  line-height: 1.75;
+  font-size: 14.5px;
+  line-height: 1.65;
   color: var(--text);
-}
-
-/* No pilot theme, o lead vira editorial (serif grande, respira) */
-.pilotTheme .lead {
-  font-family: 'Lora', Georgia, serif;
-  font-size: 19px;
-  line-height: 1.7;
-  letter-spacing: -0.005em;
-  font-style: italic;
-  color: var(--text);
-  padding: 8px 0 16px;
-  max-width: 68ch;
 }
 
 /* callout — regra de ouro */
@@ -346,26 +230,6 @@
 .calloutMark { color: var(--accent-amber); flex-shrink: 0; }
 .callout p { font-size: 13.5px; line-height: 1.6; color: var(--text); }
 
-/* No pilot theme, callout vira placa de ouro — mais presente, com shadow */
-.pilotTheme .callout {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius-md);
-  padding: 22px 28px;
-  box-shadow: var(--shadow-card);
-  gap: 16px;
-}
-.pilotTheme .callout p {
-  font-family: 'Lora', Georgia, serif;
-  font-size: 16px;
-  line-height: 1.65;
-}
-.pilotTheme .calloutMark {
-  font-size: 20px;
-  margin-top: -2px;
-}
-
 /* card genérico */
 .card {
   background: var(--bg-elevated);
@@ -378,24 +242,6 @@
   font-weight: 600;
   color: var(--text);
   margin-bottom: 12px;
-}
-
-/* No pilot theme, card tem bg branco + border marrom sutil + sombra floating */
-.pilotTheme .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 28px 32px;
-  box-shadow: var(--shadow-card);
-}
-.pilotTheme .cardTitle {
-  font-family: 'Montserrat', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 18px;
 }
 
 /* pilares do conceito */
@@ -418,42 +264,6 @@
 }
 .pillarText { font-size: 12.5px; line-height: 1.55; color: var(--text-muted); }
 
-/* No pilot theme, pilares viram cards editoriais com número ordinal */
-.pilotTheme .pillars {
-  gap: 20px;
-}
-.pilotTheme .pillar {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-top: 3px solid var(--accent);
-  border-radius: var(--radius-md);
-  padding: 24px 24px 22px;
-  box-shadow: var(--shadow-card);
-  position: relative;
-  overflow: hidden;
-}
-.pilotTheme .pillar::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-bright) 50%, transparent 100%);
-}
-.pilotTheme .pillarTitle {
-  font-family: 'Montserrat', sans-serif;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  color: var(--text);
-  margin-bottom: 10px;
-}
-.pilotTheme .pillarText {
-  font-family: 'Lora', Georgia, serif;
-  font-size: 14px;
-  line-height: 1.65;
-  color: var(--text-muted);
-}
-
 /* links pros painéis conectados */
 .links {
   display: grid;
@@ -473,36 +283,6 @@
 .linkCard:hover { border-color: var(--accent-amber); }
 .linkLabel { font-size: 13px; font-weight: 600; color: var(--text); }
 .linkDesc { font-size: 11.5px; color: var(--text-subtle); }
-
-/* No pilot theme, link cards com transition + lift suave */
-.pilotTheme .linkCard {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px 20px;
-  box-shadow: var(--shadow-card);
-  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 180ms ease-out,
-              border-color 180ms ease-out;
-}
-.pilotTheme .linkCard:hover {
-  transform: translateY(-2px);
-  border-color: var(--accent);
-  box-shadow: 0 4px 16px rgba(139, 69, 19, 0.1), 0 1px 4px rgba(139, 69, 19, 0.08);
-}
-.pilotTheme .linkLabel {
-  font-family: 'Montserrat', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: -0.01em;
-}
-.pilotTheme .linkDesc {
-  font-family: 'Lora', Georgia, serif;
-  font-size: 12.5px;
-  color: var(--text-subtle);
-  font-style: italic;
-}
 
 .list { list-style: none; display: flex; flex-direction: column; gap: 9px; }
 .list li {
