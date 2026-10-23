@@ -6,85 +6,65 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root, [data-theme="dark"], [data-theme="light"] {
-  /* ============================================================
-     Blonde Signature (Opção 3 do audit 2026-10-22) — tokens globais
-     ---------------------------------------------------------------
-     Paleta:
-       fundo creme off-white #FFF9F0 — quente, não puro branco
-       accent marrom quente #8B4513 — "sela de luxo", única cor forte
-       texto grafite warm #1A1613 — editorial, não preto puro
-       bordas marrom translúcido 12% — não cinza
-
-     Reduzimos a paleta de accents de 7 cores (cyan/magenta/amber/
-     purple/blue/red/green) pra 3: marrom principal + 1 success verde
-     warm + 1 danger terracotta. Social (Meta, Instagram, WhatsApp,
-     Google) mantém cores oficiais pra brand recognition.
-     ============================================================ */
-
   /* ---- fundo ---- */
-  --bg:            #FFF9F0;    /* creme off-white quente */
-  --bg-elevated:   #FEFBF4;    /* um tom acima — pra cards elevados */
-  --bg-card:       #FFFFFF;    /* branco puro — cards principais */
-  --bg-hover:      #F7EFDF;    /* bege sutil hover */
-  --bg-input:      #FAF4E8;    /* bege input — ligeiramente escurecido */
-  --bg-tile:       #FFFFFF;
+  --bg:            #0a0d12;
+  --bg-elevated:   #11151c;
+  --bg-card:       #11151c;   /* alias — código antigo */
+  --bg-hover:      #161f2a;
+  --bg-input:      #0a0d12;
+  --bg-tile:       #11151c;
 
-  /* ---- borda — marrom translúcido, não cinza ---- */
-  --border:        rgba(139, 69, 19, 0.12);
-  --border-soft:   rgba(139, 69, 19, 0.08);
-  --border-strong: rgba(139, 69, 19, 0.25);
-  --border-subtle: rgba(139, 69, 19, 0.06);
+  /* ---- borda ---- */
+  --border:        #1a2230;
+  --border-soft:   #141b25;
+  --border-strong: #2a3344;
 
-  /* ---- texto grafite warm ---- */
-  --text:          #1A1613;    /* grafite com toque marrom */
-  --text-muted:    #4A4038;    /* marrom escuro suave */
-  --text-subtle:   #7A6E64;    /* bege escuro */
-  --text-faint:    #B8A89C;    /* bege médio */
+  /* ---- texto ---- */
+  --text:          #e6e9ef;
+  --text-muted:    #b4b2a9;
+  --text-subtle:   #888780;
+  --text-faint:    #5b6075;
 
-  /* ---- cores semânticas (paleta reduzida) ---- */
-  --accent-amber:   #8B4513;   /* alias — marrom luxo é o novo "âmbar" */
-  --accent-cyan:    #8B4513;   /* alias — mesmo tom */
-  --accent-magenta: #B04A3B;   /* terracotta pra destaques quentes */
-  --accent-purple:  #6B4B2E;   /* marrom profundo pra variação */
-  --accent-blue:    #4D7FA3;   /* azul-cerúleo sofisticado */
-  --accent-red:     #B04A3B;   /* terracotta */
-  --accent-green:   #6B8E4E;   /* verde-oliva (warm, não neon) */
+  /* ---- cores semânticas (paleta) ---- */
+  --accent-cyan:    #5dcaa5;
+  --accent-magenta: #d4537e;
+  --accent-amber:   #ef9f27;
+  --accent-purple:  #7f77dd;
+  --accent-blue:    #85b7eb;
+  --accent-red:     #f09595;
+  --accent-green:   #5dcaa5;
 
-  /* principal + aliases */
-  --accent:        #8B4513;    /* marrom quente — primária única */
-  --accent-bright: #A0582A;    /* marrom brilhante — hover/press states */
-  --accent-dim:    #6B3410;    /* marrom escuro — borders/pressed */
-  --accent-glow:   rgba(139, 69, 19, 0.35);
-  --accent-tint:   rgba(139, 69, 19, 0.08);
+  /* aliases pra manter código antigo funcionando */
+  --accent:        var(--accent-cyan);
+  --accent-bright: #7ddcb8;
+  --accent-dim:    #2f8a73;
+  --accent-glow:   rgba(93,202,165,0.45);
+  --accent-tint:   rgba(93,202,165,0.10);
   --magenta:       var(--accent-magenta);
-  --magenta-tint:  rgba(176, 74, 59, 0.10);
-  --amber:         var(--accent);
-  --amber-tint:    rgba(139, 69, 19, 0.10);
-  --online:        var(--accent-green);
+  --magenta-tint:  rgba(212,83,126,0.12);
+  --amber:         var(--accent-amber);
+  --amber-tint:    rgba(239,159,39,0.12);
+  --online:        var(--accent-cyan);
   --violet:        var(--accent-purple);
 
-  /* ---- cores por seção — tudo marrom, menos as de brand recognition ----
-     Audit alertou: "não usar 20 cores de accent diferentes". Agora todas
-     apontam pro accent principal, EXCETO as redes sociais que mantêm
-     cores oficiais do canal (reconhecimento é mais importante que
-     uniformidade). */
-  --section-dashboard:    var(--accent);
+  /* ---- cores por seção (identidade visual da rota) ---- */
+  --section-dashboard:   var(--accent-cyan);
   --section-integrations: var(--text-subtle);
-  --section-reports:      var(--accent);
-  --section-instagram:    #E1306C;  /* Instagram oficial */
-  --section-tiktok:       #1A1613;  /* TikTok preto (vira grafite warm) */
-  --section-youtube:      #CC0000;  /* YouTube vermelho — tonal darker */
-  --section-whatsapp:     #25D366;  /* WhatsApp verde oficial */
-  --section-competitors:  var(--accent);
-  --section-ambassadors:  var(--accent);
-  --section-seo:          var(--accent);
-  --section-ia:           var(--accent-purple);
-  --section-alerts:       var(--accent-magenta);
-  --section-metas:        var(--accent);
-  --section-cultura:      var(--accent-purple);
-  --section-settings:     var(--text-subtle);
-  --section-system:       var(--text-subtle);
-  --section-demandas:     var(--accent);
+  --section-reports:     var(--accent-cyan);
+  --section-instagram:   var(--accent-magenta);
+  --section-tiktok:      #cccccc;
+  --section-youtube:     #cccccc;
+  --section-whatsapp:    var(--accent-cyan);
+  --section-competitors: var(--accent-amber);
+  --section-ambassadors: var(--accent-magenta);
+  --section-seo:         var(--accent-cyan);
+  --section-ia:          var(--accent-purple);
+  --section-alerts:      var(--accent-amber);
+  --section-metas:       var(--accent-cyan);
+  --section-cultura:     var(--accent-purple);
+  --section-settings:    var(--text-subtle);
+  --section-system:      var(--text-subtle);
+  --section-demandas:    var(--accent-cyan);
 
   /* ---- brand (aliases — código existente) ---- */
   --color-brand:        var(--accent);
@@ -93,19 +73,19 @@
   --brand-fg-on-tinted: var(--accent);
   --brand-bg-tinted:    var(--accent-tint);
 
-  /* ---- plataformas (ads) — mantêm cores oficiais ---- */
-  --color-meta:   #1877F2;   /* Meta azul oficial */
-  --color-google: #4285F4;   /* Google azul oficial */
-  --color-ctwa:   var(--accent);
+  /* ---- plataformas (ads) ---- */
+  --color-meta:   var(--accent-blue);
+  --color-google: var(--accent-cyan);
+  --color-ctwa:   var(--accent-amber);
   --color-api:    var(--accent-purple);
 
-  /* ---- estados — tons warm, não neon tech ---- */
-  --color-success:    var(--accent-green);
-  --color-success-bg: rgba(107, 142, 78, 0.12);
-  --color-warning:    #C68F1E;        /* dourado quente */
-  --color-warning-bg: rgba(198, 143, 30, 0.12);
+  /* ---- estados ---- */
+  --color-success:    var(--accent-cyan);
+  --color-success-bg: rgba(93,202,165,0.12);
+  --color-warning:    var(--accent-amber);
+  --color-warning-bg: rgba(239,159,39,0.12);
   --color-danger:     var(--accent-red);
-  --color-danger-bg:  rgba(176, 74, 59, 0.10);
+  --color-danger-bg:  rgba(240,149,149,0.12);
 
   /* ---- espaçamento ---- */
   --space-1: 4px;
@@ -122,24 +102,19 @@
   --radius-md: 12px;
   --radius-lg: 16px;
 
-  /* ---- tipografia ----
-     Inter continua como sans body — denso, data-heavy screens pedem
-     clareza. Montserrat vira display pra headings (brand voice).
-     Lora é serif editorial pra brand moments (lead quotes, bíblia). */
-  --font:         'Inter', system-ui, -apple-system, sans-serif;
-  --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Montserrat', 'Inter', system-ui, sans-serif;
-  --font-serif:   'Lora', Georgia, 'Times New Roman', serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* ---- tipografia ---- */
+  --font:      'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* ---- layout ---- */
   --sidebar-w: 232px;
   --topbar-h:  46px;
 
   /* ---- diversos ---- */
-  --grid-line:   rgba(139, 69, 19, 0.04);
-  --shadow-card: 0 1px 3px rgba(139, 69, 19, 0.06), 0 4px 20px rgba(139, 69, 19, 0.04);
-  --scrollbar:   rgba(139, 69, 19, 0.2);
+  --grid-line:   rgba(255,255,255,0.03);
+  --shadow-card: 0 0 0 1px var(--border);
+  --scrollbar:   #2a3344;
 }
 
 html, body { background: var(--bg); }
@@ -158,25 +133,17 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; colo
 
 /* Tracking tipográfico size-specific — Apple HIG via skill apple-design.
    Headings grandes respiram menos (-0.02em), body/small respira mais.
-   Headings globais em Montserrat (display) com peso 700/800. */
-h1, h2, h3 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-h4, h5, h6 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: -0.015em;
-}
-h1 { font-weight: 800; letter-spacing: -0.03em; }
+   Headings isolados por padrão (sem reset de margem default do browser)
+   pra componentes que ainda usam h1/h2/h3 inline manterem o ritmo. */
+h1, h2, h3 { letter-spacing: -0.02em; }
+h4, h5, h6 { letter-spacing: -0.01em; }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 0; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
-::selection { background: var(--accent); color: #FFFFFF; }
+::selection { background: var(--accent); color: #04130f; }
 
 /* ============================================================
    Utilitários compartilhados (uso restrito — não espalhar)
@@ -225,12 +192,12 @@ h1 { font-weight: 800; letter-spacing: -0.03em; }
 .cc-btn--solid {
   background: var(--accent);
   border-color: var(--accent);
-  color: #FFFFFF;
+  color: #04130f;
 }
 .cc-btn--solid:hover {
   background: var(--accent-bright);
   border-color: var(--accent-bright);
-  color: #FFFFFF;
+  color: #04130f;
 }
 .cc-btn--danger:hover {
   color: var(--magenta);
@@ -261,7 +228,7 @@ h1 { font-weight: 800; letter-spacing: -0.03em; }
 .btn--primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #FFFFFF;
+  color: #04130f;
   font-weight: 600;
 }
 .btn--primary:hover {
