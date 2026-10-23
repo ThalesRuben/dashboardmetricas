@@ -1,43 +1,65 @@
+/* ============================================================
+   PageHeader — redesign v3 "precision tool"
+   Compacto 1-row quando possível, kicker inline em vez de acima,
+   border-bottom sutil, title 15-16px (era 20px).
+   Afeta todas as 16 páginas que usam PageHeader.
+   ============================================================ */
+
 .head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   flex-wrap: wrap;
-  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
 }
 
-.left { min-width: 0; flex: 1 1 280px; }
-
-.kicker {
+.left {
+  min-width: 0;
+  flex: 1 1 280px;
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Kicker agora inline ANTES do título, pequeno — herda cor da section */
+.kicker {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
 }
-.num { /* herda cor do kicker */ }
-.sep { opacity: 0.7; }
+.num { opacity: 0.8; }
+.sep { opacity: 0.5; }
 
 .title {
   font-family: var(--font-sans);
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
   color: var(--text);
-  line-height: 1.2;
+  line-height: 1.3;
   overflow-wrap: anywhere;
 }
 
 .subtitle {
-  font-size: 13px;
+  flex-basis: 100%;
+  font-size: 12.5px;
   color: var(--text-subtle);
-  margin-top: 4px;
+  margin-top: 2px;
   overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 
 .actions {
@@ -50,5 +72,6 @@
 }
 
 @media (max-width: 600px) {
-  .title { font-size: 18px; }
+  .title { font-size: 14px; }
+  .kicker { font-size: 9px; padding: 2px 6px; }
 }

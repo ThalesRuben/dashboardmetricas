@@ -10,6 +10,7 @@ import { detectAnomalies } from '@/lib/anomalies'
 import { fmtNumber, fmtRoas, fmtDelta, fmtBRL, fmtPct } from '@/shared/lib/format'
 import { buildMetricExplain } from '@/shared/lib/metricDefinitions'
 import Tabs from '@/components/ui/Tabs'
+import KpiCard from '@/shared/ui/KpiCard'
 import WeeklyBriefing from '@/components/ui/WeeklyBriefing'
 import HealthScore from '@/components/ui/HealthScore'
 import QuarterlyGoals from '@/components/ui/QuarterlyGoals'
@@ -26,7 +27,6 @@ import PeriodComparison from '@/components/ui/PeriodComparison'
 import MetricExplainer from '@/shared/ui/MetricExplainer'
 import JourneyTimeline from '@/components/ui/JourneyTimeline'
 import BriefingModal from '@/components/ui/BriefingModal'
-import Sparkline from '@/shared/ui/Sparkline'
 import styles from './DashboardPage.module.css'
 
 const TABS = [
@@ -159,38 +159,42 @@ export default function DashboardPage() {
             )}
           </section>
 
-          {/* 3 KPIs secundários inline — mais discretos que o hero */}
+          {/* 4 KPIs secundários inline (KpiCard atualizado globalmente) */}
           <section className={styles.secondaryRow}>
-            <SecondaryKpi
+            <KpiCard
               label="ROAS"
               value={fmtRoas(summary.roas)}
               delta={renderDelta(summary.roas, prevSummary?.roas, '%')}
               up={summary.roas >= (prevSummary?.roas || 0)}
+              neutral={!prevSummary?.roas}
               serie={serieFor('roas')}
               onClick={() => setExplainKey('roas')}
-              mono
+              accentColor="var(--section-dashboard)"
             />
-            <SecondaryKpi
+            <KpiCard
               label="Conversas"
               value={fmtNumber(summary.mensagens)}
               delta={renderDelta(summary.mensagens, prevSummary?.mensagens)}
               up={summary.mensagens >= (prevSummary?.mensagens || 0)}
+              neutral={!prevSummary?.mensagens}
               serie={serieFor('mensagens')}
               onClick={() => setExplainKey('mensagens')}
             />
-            <SecondaryKpi
+            <KpiCard
               label="Agendamentos"
               value={fmtNumber(summary.agendamentos)}
               delta={renderDelta(summary.agendamentos, prevSummary?.agendamentos)}
               up={summary.agendamentos >= (prevSummary?.agendamentos || 0)}
+              neutral={!prevSummary?.agendamentos}
               serie={serieFor('agendamentos')}
               onClick={() => setExplainKey('agendamentos')}
             />
-            <SecondaryKpi
+            <KpiCard
               label="Vendas"
               value={fmtNumber(summary.vendas)}
               delta={renderDelta(summary.vendas, prevSummary?.vendas)}
               up={summary.vendas >= (prevSummary?.vendas || 0)}
+              neutral={!prevSummary?.vendas}
               serie={serieFor('vendas')}
               onClick={() => setExplainKey('vendas')}
             />
@@ -298,28 +302,6 @@ function SourcePill({ usingMock }) {
       <span className={styles.sourceDot} />
       {usingMock ? 'simulado' : 'ao vivo'}
     </span>
-  )
-}
-
-function SecondaryKpi({ label, value, delta, up, serie, onClick, mono }) {
-  const hasSerie = serie && serie.some(v => v > 0)
-  return (
-    <button type="button" className={styles.secondaryKpi} onClick={onClick}>
-      <span className={styles.secondaryLabel}>{label}</span>
-      <span className={`${styles.secondaryValue} ${mono ? styles.secondaryValueMono : ''}`}>
-        {value}
-      </span>
-      {delta && (
-        <span className={`${styles.secondaryDelta} ${up ? styles.deltaUp : styles.deltaDown}`}>
-          {delta}
-        </span>
-      )}
-      {hasSerie && (
-        <div className={styles.secondarySpark}>
-          <Sparkline data={serie} color={up ? 'var(--color-success)' : 'var(--text-faint)'} />
-        </div>
-      )}
-    </button>
   )
 }
 

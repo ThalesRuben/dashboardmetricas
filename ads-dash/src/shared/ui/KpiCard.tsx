@@ -53,7 +53,7 @@ export default function KpiCard({
       </div>
       {serie && serie.length > 1 && (
         <div className={styles.spark}>
-          <Sparkline serie={serie} color={sparkColor} width={140} height={22} />
+          <Sparkline serie={serie} color={sparkColor} width={72} height={32} />
         </div>
       )}
     </Tag>
