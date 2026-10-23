@@ -27,3 +27,7 @@ docs/knowledge-graph/.obsidian/cache
 .vercel
 .claude/skills/
 .tmp-cron-instagram.sql
+
+# dev runtime logs
+debug.log
+*.log
