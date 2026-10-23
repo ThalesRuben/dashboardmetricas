@@ -19,15 +19,24 @@
 
 -- ============================================================
 -- 1) View: whatsapp_threads filtrada por phone BR
+--
+-- `security_invoker = true` é CRÍTICO — sem isso a view com
+-- `grant select to anon` ignora o RLS de whatsapp_threads, expondo
+-- threads de todos os tenants. Com invoker, cada SELECT respeita o
+-- RLS do caller. (Catch do operador 2026-10-23 ao aplicar em prod.)
+--
+-- Nota: a migration 0049 refina o filtro pra incluir LIDs com status
+-- 'agendado'/'venda' (fósseis operacionais).
 -- ============================================================
-create or replace view public.whatsapp_threads_br as
+create or replace view public.whatsapp_threads_br
+with (security_invoker = true) as
   select t.*
     from public.whatsapp_threads t
     join public.whatsapp_contatos c on c.id = t.contato_id
    where c.phone ~ '^55[0-9]{10,11}$';
 
 comment on view public.whatsapp_threads_br is
-  'Threads de contatos com phone BR válido (12 ou 13 dígitos iniciando em 55). Exclui provisórios LID e lixo histórico. Usar em dashboards/RPCs.';
+  'Threads de contatos com phone BR válido (12 ou 13 dígitos iniciando em 55). Exclui provisórios LID e lixo histórico. Usar em dashboards/RPCs. security_invoker=true respeita RLS de whatsapp_threads.';
 
 grant select on public.whatsapp_threads_br to anon, authenticated, service_role;
 
