@@ -59,20 +59,30 @@ Deno.serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
+  const t0 = Date.now()
   const { data, error } = await supabase.rpc('ingest_whatsapp_msg', { p_body: body })
+  const elapsed_ms = Date.now() - t0
 
   if (error) {
-    console.log(JSON.stringify({ tag: 'ingest-rpc-error', msg: error.message }))
+    console.log(JSON.stringify({ tag: 'ingest-rpc-error', elapsed_ms, msg: error.message }))
     return json({ error: error.message }, 500)
   }
 
-  // RPC sinaliza payload rejeitado com { error, ignored: true } → 400.
-  // Qualquer outro error (sem ignored) → 500.
+  // Log mínimo pra manter observabilidade na view de Edge Logs — `raise
+  // notice` da RPC só vai pro log do Postgres (acessível mas separado).
+  // Payload do result é pequeno e sem PII (só UUIDs).
   const result = (data ?? {}) as Record<string, unknown>
   if (result.error) {
+    console.log(JSON.stringify({ tag: 'ingest-reject', elapsed_ms, result }))
     const status = result.ignored ? 400 : 500
     return json(result, status)
   }
+  console.log(JSON.stringify({
+    tag: result.deduped ? 'ingest-dedup' : 'ingest-ok',
+    elapsed_ms,
+    thread_id: result.thread_id,
+    contato_id: result.contato_id,
+  }))
   return json(result, 200)
 })
 

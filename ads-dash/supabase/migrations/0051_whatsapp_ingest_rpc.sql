@@ -307,7 +307,7 @@ begin
     tenant_id, thread_id, autor, texto, msg_id_externo, hora, status
   ) values (
     v_tenant_id, v_thread_id,
-    case when v_direction = 'in' then 'cliente' else 'atendente' end,
+    (case when v_direction = 'in' then 'cliente' else 'atendente' end)::whatsapp_msg_autor,
     v_texto, v_msg_id, v_hora, 'enviada'
   )
   returning id into v_msg_pk;
@@ -322,7 +322,17 @@ begin
 end;
 $$;
 
-grant execute on function public.ingest_whatsapp_msg(jsonb)
-  to anon, authenticated, service_role;
+-- SEGURANÇA: só service_role pode chamar.
+--
+-- security definer sem GRANT explícito é callable por PUBLIC por default.
+-- Como a function escreve em qualquer tenant, se anon tivesse acesso,
+-- qualquer um com a chave pública (que fica no front) escreveria msgs
+-- em qualquer tenant. REVOKE de PUBLIC + GRANT só pra service_role
+-- fecha a porta — Edge Function usa service_role key, segue funcionando.
+-- (Catch do operador 2026-10-23.)
+revoke all on function public.ingest_whatsapp_msg(jsonb) from public;
+revoke all on function public.ingest_whatsapp_msg(jsonb) from anon;
+revoke all on function public.ingest_whatsapp_msg(jsonb) from authenticated;
+grant execute on function public.ingest_whatsapp_msg(jsonb) to service_role;
 
 notify pgrst, 'reload schema';
