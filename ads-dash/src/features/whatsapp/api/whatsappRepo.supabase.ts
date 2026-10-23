@@ -57,13 +57,13 @@ export const supabaseWhatsAppRepo: WhatsAppRepo = {
   },
 
   async listarThreads(limit = 50) {
-    // Junção embarcada do Postgrest: contato + última mensagem.
+    // Junção embarcada do Postgrest: contato (com lid) + última mensagem.
     const { data, error } = await supabase
       .from('whatsapp_threads')
       .select(`
         id, contato_id, status, origem, nao_lidas, inbox_phone,
         ultima_atividade, ultima_msg_cliente_em,
-        whatsapp_contatos!inner ( nome, phone ),
+        whatsapp_contatos!inner ( nome, phone, lid ),
         whatsapp_msgs ( texto, hora )
       `)
       .order('ultima_atividade', { ascending: false })
@@ -80,6 +80,7 @@ export const supabaseWhatsAppRepo: WhatsAppRepo = {
         contato_id: row.contato_id,
         contato_nome: row.whatsapp_contatos?.nome ?? null,
         contato_phone: row.whatsapp_contatos?.phone ?? '',
+        contato_lid: row.whatsapp_contatos?.lid ?? null,
         status: row.status,
         origem: row.origem,
         nao_lidas: row.nao_lidas ?? 0,

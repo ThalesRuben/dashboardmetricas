@@ -1,22 +1,17 @@
 -- 0049_whatsapp_threads_br_lid_fossils.sql
--- Pós-0048: a view `whatsapp_threads_br` filtrava por phone BR estrito,
--- escondendo 19 threads 'agendado' que estavam em contatos LID órfãos
--- — agendamentos reais fossilizados em thread paralela ao cliente.
+-- Pós-0048: a view `whatsapp_threads_br` filtrava phone BR estrito,
+-- escondendo (a) threads 'agendado' em contatos LID órfãos pre-15/10
+-- e (b) clientes internacionais reais (ex.: italiano 39...).
 --
--- Causa raiz: pre-15/10, cada envio outbound da Z-API vinha com
--- `phone: <lid>@lid`. O ingest antigo criava contato órfão com phone=LID
--- e thread separada. Quando o atendente respondia "te espero amanhã às
--- 14h", o trg_whatsapp_msgs_auto_agendado marcava o status da thread
--- órfã como 'agendado'. O cliente real existia em outra thread (com
--- phone BR) que NUNCA fundiu com a LID porque o par só começou a ser
--- gravado em 15/10 via chat_lid no inbox-ingest novo. Essas 19 threads
--- representam agendamentos operacionais reais — não dá pra fundir
--- (histórico n8n cobre só 7,7 dias).
---
--- Fix: inclui threads de contatos com `lid` quando status in
--- ('agendado', 'venda'). Threads 'aberta'/'lead' em LID puro continuam
--- fora (ruído de provisório recém-criado, ainda vai fundir pelo runtime
--- quando o cliente responder).
+-- Fix: usa `phone != lid` como signal de "contato real" em vez de
+-- regex BR estrito. Lógica:
+--   - lid is null                → nunca viu LID observação → é phone real
+--   - phone != lid               → phone foi gravado via inbound (real) OU
+--                                  é internacional desmarcado pela 0047
+--   - lid = phone AND status
+--     in ('agendado','venda')    → fóssil LID com valor cruzado (manter)
+--   - lid = phone AND status
+--     in ('aberta','lead')       → provisional puro (excluir, ruído)
 --
 -- Mantém security_invoker = true (introduzido pelo operador em prod ao
 -- aplicar 0048 — correção crítica de RLS que não pode ser perdida).
@@ -27,12 +22,13 @@ with (security_invoker = true) as
     from public.whatsapp_threads t
     join public.whatsapp_contatos c on c.id = t.contato_id
    where (
-     c.phone ~ '^55[0-9]{10,11}$'
-     or (c.lid is not null and t.status in ('agendado', 'venda'))
+     c.lid is null                             -- phone real, nunca viu LID
+     or c.phone <> c.lid                       -- phone real diferente do LID (BR ou int'l)
+     or t.status in ('agendado', 'venda')      -- fóssil LID com valor cruzado
    );
 
 comment on view public.whatsapp_threads_br is
-  'Threads de contatos com phone BR válido + fósseis LID (threads órfãs com agendado/venda confirmados pelo auto-trigger). Exclui provisórios LID puros (sem valor cruzado). security_invoker=true pra respeitar RLS de whatsapp_threads.';
+  'Threads de contatos reais (phone != lid) + fósseis LID com agendado/venda. Exclui provisórios LID puros (phone=lid, status=aberta/lead) que são ruído de outbound ainda não fundido. security_invoker=true respeita RLS.';
 
 grant select on public.whatsapp_threads_br to anon, authenticated, service_role;
 

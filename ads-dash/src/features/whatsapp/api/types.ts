@@ -145,6 +145,7 @@ export interface WhatsAppThreadReal {
   contato_id: string;
   contato_nome: string | null;
   contato_phone: string;
+  contato_lid: string | null;          // LID do contato (null = nunca viu LID). Permite distinguir real de provisional.
   status: WhatsAppThreadStatusReal;
   origem: string;
   nao_lidas: number;

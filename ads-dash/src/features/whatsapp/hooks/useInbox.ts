@@ -3,12 +3,26 @@ import { supabase } from '@/shared/lib/supabase'
 import { whatsappRepo } from '../api/whatsappRepo'
 import { getDataSource } from '@/shared/lib/api/createRepo'
 import { normalizarPhoneBR } from '../lib/phone'
-import { isValidBrPhone } from '../lib/preview'
 import type {
   WhatsAppThreadReal,
   WhatsAppMsgReal,
   ReplyResultado,
 } from '../api/types'
+
+// Signal "contato real" vs "LID provisional":
+//   - sem lid                → nunca viu LID, phone é real por definição
+//   - phone diferente do lid → inbound já gravou phone real (BR ou int'l)
+//   - lid igual a phone      → provisional puro (outbound @lid, cliente
+//                              ainda não respondeu)
+// Fósseis LID com status 'agendado'/'venda' são incluídos no backend
+// (view whatsapp_threads_br); aqui também aceita pra consistência.
+function isRealContact(t: WhatsAppThreadReal): boolean {
+  const lid = t.contato_lid
+  if (!lid) return true
+  if (t.contato_phone !== lid) return true
+  if (t.status === 'agendado' || t.status === 'venda') return true
+  return false
+}
 
 // Teto no front enquanto o CRM-board não tem paginação real server-side.
 // 300 (anterior) truncava o kanban visivelmente; 2000 cobre volume de salão
@@ -117,7 +131,10 @@ export function useInbox(options: UseInboxOptions = {}): UseInboxReturn {
   const threadsFiltradas = useMemo(() => {
     const cutoff = Date.now() - ACTIVE_WINDOW_DAYS * 86400000
     const base = threadsRaw.filter((t) => {
-      if (!isValidBrPhone(t.contato_phone)) return false
+      // "Real contact" — inclui BR, internacionais e fósseis LID.
+      // Exclui só provisionais puros (phone=lid, status aberta/lead).
+      if (!isRealContact(t)) return false
+      // Self-number guard (não lista o próprio número do salão como contato).
       const canon = normalizarPhoneBR(t.contato_phone)
       if (selfSet.has(canon)) return false
       if (!showInactive) {

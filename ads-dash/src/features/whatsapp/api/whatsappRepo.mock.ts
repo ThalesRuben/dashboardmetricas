@@ -277,6 +277,7 @@ export const mockWhatsAppRepo: WhatsAppRepo = {
       contato_id: c.id || crypto.randomUUID(),
       contato_nome: c.nome,
       contato_phone: (c.telefone || '').replace(/\D/g, ''),
+      contato_lid: null,
       status: c.status as any,
       origem: c.origem,
       nao_lidas: c.nao_lidas || 0,

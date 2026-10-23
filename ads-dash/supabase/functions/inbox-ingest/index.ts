@@ -232,11 +232,31 @@ Deno.serve(async (req) => {
           .insert({ tenant_id, phone: lid, lid, nome: body.nome || null })
           .select('id, nome')
           .single()
-        if (ne || !novo) {
-          return json({ error: 'falha ao criar contato LID: ' + (ne?.message || '') }, 500)
+        if (ne) {
+          // Race: entre nosso lookup inicial e esse insert, outro request
+          // (ex.: inbound caminho B do mesmo cliente) pode ter gravado o
+          // mesmo `lid` no contato real. Isso dispara unique violation no
+          // índice (tenant_id, lid). Retry do lookup — se agora acha,
+          // usa; senão é erro real.
+          const { data: retry } = await supabase
+            .from('whatsapp_contatos')
+            .select('id, nome')
+            .eq('tenant_id', tenant_id)
+            .eq('lid', lid)
+            .maybeSingle()
+          if (retry) {
+            contato_id = retry.id
+            contato_nome = retry.nome
+            console.log(JSON.stringify({ tag: 'ingest-race-resolved', lid, strategy: 'retry-by-lid' }))
+          } else {
+            return json({ error: 'falha ao criar contato LID: ' + ne.message }, 500)
+          }
+        } else if (!novo) {
+          return json({ error: 'falha ao criar contato LID: resposta vazia' }, 500)
+        } else {
+          contato_id = novo.id
+          contato_nome = novo.nome
         }
-        contato_id = novo.id
-        contato_nome = novo.nome
       }
     }
   } else {
