@@ -3,16 +3,13 @@ import { useAuth } from '@/app/providers/AuthContext'
 import { useMetrics } from '@/features/ads/hooks/useMetrics'
 import { useInstagramMetrics } from '@/features/organic/instagram/hooks/useInstagramMetrics'
 import { useWhatsAppMetrics } from '@/features/whatsapp'
-import { MetasBanner } from '@/features/metas'
+import { useMetas } from '@/features/metas/hooks/useMetas'
 import { useDailyMetrics, previousRange, deltaPct } from '@/features/ads/hooks/useDailyMetrics'
 import { detectHype, HYPE_LEVELS } from '@/features/organic/instagram/lib/hypeDetector'
 import { detectAnomalies } from '@/lib/anomalies'
-import { fmtNumber, fmtRoas, fmtDelta } from '@/shared/lib/format'
+import { fmtNumber, fmtRoas, fmtDelta, fmtBRL, fmtPct } from '@/shared/lib/format'
 import { buildMetricExplain } from '@/shared/lib/metricDefinitions'
-import PageHeader from '@/components/ui/PageHeader'
 import Tabs from '@/components/ui/Tabs'
-import HeroBlock from '@/components/ui/HeroBlock'
-import KpiCard from '@/shared/ui/KpiCard'
 import WeeklyBriefing from '@/components/ui/WeeklyBriefing'
 import HealthScore from '@/components/ui/HealthScore'
 import QuarterlyGoals from '@/components/ui/QuarterlyGoals'
@@ -29,7 +26,7 @@ import PeriodComparison from '@/components/ui/PeriodComparison'
 import MetricExplainer from '@/shared/ui/MetricExplainer'
 import JourneyTimeline from '@/components/ui/JourneyTimeline'
 import BriefingModal from '@/components/ui/BriefingModal'
-import BibleBadge from '@/components/ui/BibleBadge'
+import Sparkline from '@/shared/ui/Sparkline'
 import styles from './DashboardPage.module.css'
 
 const TABS = [
@@ -63,11 +60,19 @@ export default function DashboardPage() {
   const { data } = useMetrics(period)
   const { data: ig } = useInstagramMetrics()
   const { data: wa } = useWhatsAppMetrics()
+  const { metas } = useMetas({ periodo: 'mes' })
   const { topHype, hypePosts } = detectHype(ig?.posts, ig?.account)
   const anomalies = useMemo(() => detectAnomalies(dailyDays), [dailyDays])
 
   const firstName = (profile?.full_name || user?.email?.split('@')[0] || '').split(' ')[0]
   const attentionCount = anomalies.length + (topHype ? 1 : 0)
+
+  // Hero data — Faturamento do mês atual, da tabela de metas.
+  const faturamento = metas.find(m => m.kpi === 'faturamento')
+  const investimento = metas.find(m => m.kpi === 'investimento_ads')
+  const faturamentoPct = faturamento && faturamento.valor_meta > 0
+    ? (faturamento.valor_realizado / faturamento.valor_meta) * 100
+    : 0
 
   const serieFor = key => (dailyDays || []).map(d => Number(d[key]) || 0)
   const explain = useMemo(
@@ -81,81 +86,127 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.page}>
-      <PageHeader
-        section="dashboard"
-        title={greeting(firstName)}
-        actions={
-          <>
-            <button className="btn" onClick={() => setShowBriefing(true)}>Briefing 1 página</button>
-            <DateRangePicker value={range} onChange={setRange} />
-          </>
-        }
-      />
-
-      <MetasBanner />
-
-      <div className={styles.sourceChip}>
-        <span className={`${styles.sourceDot} ${usingMock ? styles.sourceDotMock : styles.sourceDotLive}`} />
-        {usingMock
-          ? 'dados simulados · fora do range com sync Meta Ads'
-          : 'dados reais · Meta Ads sincronizados'}
-      </div>
+      {/* Topbar compacto — 1 linha, saudação pequena, ações à direita */}
+      <header className={styles.topBar}>
+        <div className={styles.topBarLeft}>
+          <h1 className={styles.pageTitle}>{greeting(firstName)}</h1>
+          <SourcePill usingMock={usingMock} />
+        </div>
+        <div className={styles.topBarActions}>
+          <button className={styles.ghostBtn} onClick={() => setShowBriefing(true)}>
+            Briefing <kbd className={styles.kbd}>B</kbd>
+          </button>
+          <DateRangePicker value={range} onChange={setRange} />
+        </div>
+      </header>
 
       <Tabs items={tabsWithBadges} activeId={tab} onChange={setTab} accentColor="var(--section-dashboard)" />
 
       {tab === 'atencao' && summary && (
         <>
-          <div className={styles.bibleStrip}>
-            <BibleBadge to="/bible#conceito">
-              Estas métricas validam o conceito <strong>luxo + experiência</strong> da marca
-            </BibleBadge>
-          </div>
-          <HeroBlock
-            left={<WeeklyBriefing summary={summary} prev={prevSummary} ig={ig} />}
-            right={<HealthScore summary={summary} prev={prevSummary} ig={ig} whatsapp={wa} />}
-          />
+          {/* HERO — Faturamento do mês com progress bar da meta */}
+          <section className={styles.hero}>
+            <div className={styles.heroPrimary}>
+              <span className={styles.heroLabel}>Faturamento · mês atual</span>
+              <div className={styles.heroValueWrap}>
+                <span className={styles.heroValue}>
+                  {faturamento ? fmtBRL(faturamento.valor_realizado) : 'R$ 0'}
+                </span>
+                <span className={`${styles.heroDelta} ${deltaClass(faturamentoPct)}`}>
+                  {faturamentoPct >= 100 ? '▲' : '▸'} {faturamentoPct.toFixed(0)}% da meta
+                </span>
+              </div>
+              {faturamento && faturamento.valor_meta > 0 && (
+                <div className={styles.metaProgress}>
+                  <div className={styles.metaProgressTrack}>
+                    <div
+                      className={styles.metaProgressFill}
+                      style={{ width: `${Math.min(100, faturamentoPct)}%` }}
+                    />
+                    {faturamentoPct > 100 && (
+                      <div
+                        className={styles.metaProgressOverflow}
+                        style={{ width: `${Math.min(100, faturamentoPct - 100)}%` }}
+                      />
+                    )}
+                  </div>
+                  <div className={styles.metaProgressRow}>
+                    <span className={styles.metaRealizado}>
+                      {fmtBRL(faturamento.valor_realizado)}
+                    </span>
+                    <span className={styles.metaAlvo}>
+                      meta <strong>{fmtBRL(faturamento.valor_meta)}</strong>
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
 
-          <section className={styles.kpis}>
-            <KpiCard
+            {investimento && investimento.valor_meta > 0 && (
+              <div className={styles.heroSide}>
+                <span className={styles.heroSideLabel}>Investimento</span>
+                <span className={styles.heroSideValue}>{fmtBRL(investimento.valor_realizado)}</span>
+                <span className={styles.heroSideSub}>
+                  de {fmtBRL(investimento.valor_meta)} orçado
+                </span>
+                <div className={styles.heroSideBar}>
+                  <div
+                    className={styles.heroSideBarFill}
+                    style={{ width: `${Math.min(100, (investimento.valor_realizado / investimento.valor_meta) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* 3 KPIs secundários inline — mais discretos que o hero */}
+          <section className={styles.secondaryRow}>
+            <SecondaryKpi
               label="ROAS"
               value={fmtRoas(summary.roas)}
               delta={renderDelta(summary.roas, prevSummary?.roas, '%')}
               up={summary.roas >= (prevSummary?.roas || 0)}
-              neutral={!prevSummary?.roas}
               serie={serieFor('roas')}
               onClick={() => setExplainKey('roas')}
-              accentColor="var(--section-dashboard)"
+              mono
             />
-            <KpiCard
-              label="Mensagens (WhatsApp)"
+            <SecondaryKpi
+              label="Conversas"
               value={fmtNumber(summary.mensagens)}
               delta={renderDelta(summary.mensagens, prevSummary?.mensagens)}
               up={summary.mensagens >= (prevSummary?.mensagens || 0)}
-              neutral={!prevSummary?.mensagens}
               serie={serieFor('mensagens')}
               onClick={() => setExplainKey('mensagens')}
             />
-            <KpiCard
+            <SecondaryKpi
               label="Agendamentos"
               value={fmtNumber(summary.agendamentos)}
               delta={renderDelta(summary.agendamentos, prevSummary?.agendamentos)}
               up={summary.agendamentos >= (prevSummary?.agendamentos || 0)}
-              neutral={!prevSummary?.agendamentos}
               serie={serieFor('agendamentos')}
               onClick={() => setExplainKey('agendamentos')}
             />
-            <KpiCard
+            <SecondaryKpi
               label="Vendas"
               value={fmtNumber(summary.vendas)}
               delta={renderDelta(summary.vendas, prevSummary?.vendas)}
               up={summary.vendas >= (prevSummary?.vendas || 0)}
-              neutral={!prevSummary?.vendas}
               serie={serieFor('vendas')}
               onClick={() => setExplainKey('vendas')}
             />
           </section>
 
           <AttentionList anomalies={anomalies} hype={topHype} hypeCount={hypePosts.length} />
+
+          {/* Briefing + Health Score abaixo, auxiliares */}
+          <section className={styles.auxGrid}>
+            <div className={styles.auxCard}>
+              <WeeklyBriefing summary={summary} prev={prevSummary} ig={ig} />
+            </div>
+            <div className={styles.auxCard}>
+              <HealthScore summary={summary} prev={prevSummary} ig={ig} whatsapp={wa} />
+            </div>
+          </section>
         </>
       )}
 
@@ -235,6 +286,43 @@ function renderDelta(curr, prev, suffix = '') {
   return `${fmtDelta(pct, suffix || '%')} vs ant.`
 }
 
+function deltaClass(pct) {
+  if (pct >= 100) return styles.deltaUp
+  if (pct >= 75) return styles.deltaOk
+  return styles.deltaWarn
+}
+
+function SourcePill({ usingMock }) {
+  return (
+    <span className={`${styles.sourcePill} ${usingMock ? styles.sourcePillMock : styles.sourcePillLive}`}>
+      <span className={styles.sourceDot} />
+      {usingMock ? 'simulado' : 'ao vivo'}
+    </span>
+  )
+}
+
+function SecondaryKpi({ label, value, delta, up, serie, onClick, mono }) {
+  const hasSerie = serie && serie.some(v => v > 0)
+  return (
+    <button type="button" className={styles.secondaryKpi} onClick={onClick}>
+      <span className={styles.secondaryLabel}>{label}</span>
+      <span className={`${styles.secondaryValue} ${mono ? styles.secondaryValueMono : ''}`}>
+        {value}
+      </span>
+      {delta && (
+        <span className={`${styles.secondaryDelta} ${up ? styles.deltaUp : styles.deltaDown}`}>
+          {delta}
+        </span>
+      )}
+      {hasSerie && (
+        <div className={styles.secondarySpark}>
+          <Sparkline data={serie} color={up ? 'var(--color-success)' : 'var(--text-faint)'} />
+        </div>
+      )}
+    </button>
+  )
+}
+
 function ChartTile({ title, children }) {
   return (
     <div className={styles.chartTile}>
@@ -267,16 +355,22 @@ function AttentionList({ anomalies, hype, hypeCount }) {
 
   if (items.length === 0) {
     return (
-      <section className={styles.section}>
-        <h2 className={styles.h2}>Atenção agora</h2>
-        <p className={styles.calm}>Sem nada urgente. Operação dentro do padrão.</p>
+      <section className={styles.attentionSection}>
+        <div className={styles.attentionHead}>
+          <h2 className={styles.h2}>Atenção agora</h2>
+          <span className={styles.attentionCount}>tudo em dia</span>
+        </div>
+        <p className={styles.calm}>Sem anomalias nos últimos {dailyDaysLabel()}. Operação dentro do padrão.</p>
       </section>
     )
   }
 
   return (
-    <section className={styles.section}>
-      <h2 className={styles.h2}>Atenção agora</h2>
+    <section className={styles.attentionSection}>
+      <div className={styles.attentionHead}>
+        <h2 className={styles.h2}>Atenção agora</h2>
+        <span className={styles.attentionCount}>{items.length} item{items.length > 1 ? 's' : ''}</span>
+      </div>
       <div className={styles.attentionList}>
         {items.map(it => (
           <div key={it.key} className={styles.attentionRow}>
@@ -290,6 +384,10 @@ function AttentionList({ anomalies, hype, hypeCount }) {
       </div>
     </section>
   )
+}
+
+function dailyDaysLabel() {
+  return '7d'
 }
 
 function mapRangeToPeriod(range) {
