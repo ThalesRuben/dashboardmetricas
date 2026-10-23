@@ -14,30 +14,32 @@ export default function MarketingBiblePage() {
   const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
 
   return (
-    <div className={styles.page}>
-      <PageHeader
-        section="bible"
-        title="Bíblia do Marketing"
-        subtitle="O padrão The Blonde Concept — regras de conteúdo por canal, cronograma e percepção de marca"
-        actions={
-          <button className="btn btn--primary" onClick={() => window.print()}>
-            ⤓ Exportar PDF
-          </button>
-        }
-      />
-
-      <div className={styles.screenView}>
-        <Tabs
-          items={BIBLE.map(s => ({ id: s.id, label: s.label }))}
-          activeId={tab}
-          onChange={setTab}
-          accentColor="var(--accent-amber)"
+    <div className={`${styles.page} ${styles.pilotTheme}`}>
+      <div className={styles.pilotContainer}>
+        <PageHeader
+          section="bible"
+          title="Bíblia do Marketing"
+          subtitle="O padrão The Blonde Concept — regras de conteúdo por canal, cronograma e percepção de marca"
+          actions={
+            <button className="btn btn--primary" onClick={() => window.print()}>
+              ⤓ Exportar PDF
+            </button>
+          }
         />
 
-        {section.tag && <p className={styles.sectionTag}>{section.tag}</p>}
+        <div className={styles.screenView}>
+          <Tabs
+            items={BIBLE.map(s => ({ id: s.id, label: s.label }))}
+            activeId={tab}
+            onChange={setTab}
+            accentColor="var(--accent-amber)"
+          />
 
-        <div className={styles.blocks}>
-          {section.blocks.map((b, i) => <Block key={i} b={b} />)}
+          {section.tag && <p className={styles.sectionTag}>{section.tag}</p>}
+
+          <div className={styles.blocks}>
+            {section.blocks.map((b, i) => <Block key={i} b={b} />)}
+          </div>
         </div>
       </div>
 
