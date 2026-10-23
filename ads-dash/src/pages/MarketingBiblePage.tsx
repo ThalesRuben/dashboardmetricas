@@ -14,8 +14,8 @@ export default function MarketingBiblePage() {
   const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
 
   return (
-    <div className={`${styles.page} ${styles.pilotTheme}`}>
-      <div className={styles.pilotContainer}>
+    <div className={styles.page}>
+      <div>
         <PageHeader
           section="bible"
           title="Bíblia do Marketing"
