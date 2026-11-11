@@ -9,6 +9,7 @@ import {
   Inbox,
   DisparoMassa,
   InboxReportCard,
+  CommercialReportPanel,
   CrmKanban,
   CrmThreadDrawer,
   FollowupsFila,
@@ -172,6 +173,7 @@ export default function WhatsAppPage() {
     { id: 'templates', label: 'Templates' },
     { id: 'funil',     label: 'Funil' },
     { id: 'origem',    label: 'Origem & motivos' },
+    { id: 'relatorio', label: 'Relatório IA' },
   ]
 
   // DisparoMassa ainda fala o tipo legado WhatsAppConversa — adapta as threads.
@@ -323,6 +325,15 @@ export default function WhatsAppPage() {
             </ChartTile>
           </section>
         </>
+      )}
+
+      {tab === 'relatorio' && (
+        <CommercialReportPanel
+          inboxPhone={inboxPhone}
+          inboxLabel={inboxPhone ? (INBOX_LABELS[inboxPhone] || formatarPhoneBR(inboxPhone)) : 'Todos os números'}
+          period={range ? { from: range.from, to: range.to } : { from: new Date(Date.now() - 29 * 86400000), to: new Date() }}
+          kpis={r}
+        />
       )}
 
       {tab === 'origem' && (

@@ -8,6 +8,7 @@ export { useInbox } from './hooks/useInbox';
 export { default as Inbox } from './components/Inbox';
 export { default as DisparoMassa } from './components/DisparoMassa';
 export { default as InboxReportCard } from './components/InboxReportCard';
+export { default as CommercialReportPanel } from './components/CommercialReportPanel';
 export { default as CrmKanban } from './components/CrmKanban';
 export { default as CrmThreadDrawer } from './components/CrmThreadDrawer';
 export { default as FollowupsFila } from './components/FollowupsFila';
