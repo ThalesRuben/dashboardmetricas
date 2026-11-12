@@ -3,6 +3,8 @@ import { supabase } from '@/shared/lib/supabase'
 import { useAiBrain } from '@/features/ai'
 import type { WhatsAppResumo } from '../api/types'
 
+export type CommercialReportHorizonte = 'diario' | 'semanal' | 'quinzenal' | 'mensal'
+
 export interface CommercialReportPeriod {
   from: Date
   to: Date
@@ -25,15 +27,67 @@ interface SampleThread {
   msgs: SampleMsg[]
 }
 
+export type PrioridadeNivel = 'alta' | 'media' | 'baixa'
+
+export type PlaybookCategoria =
+  | 'velocidade_sla'
+  | 'qualificacao'
+  | 'follow_up'
+  | 'objecoes'
+  | 'upsell_cross'
+  | 'reativacao'
+  | 'prospeccao'
+  | 'qualidade'
+
+export interface PlaybookJogada {
+  categoria: PlaybookCategoria
+  jogada: string
+  como_executar: string
+  quando: string
+  dono_sugerido: string
+  kpi_afetado: string
+  prioridade: PrioridadeNivel
+}
+
+export interface MetaHorizonte {
+  kpi: string
+  meta: string
+  atual: string
+  gap: string
+}
+
+export interface RitualGestao {
+  ritual: string
+  frequencia: string
+  duracao: string
+  pauta: string
+}
+
+export interface ScriptRecomendado {
+  situacao: string
+  script: string
+  observacao: string
+}
+
+export interface FollowUpImediato {
+  contato: string
+  telefone: string | null
+  motivo: string
+  acao_sugerida: string
+  janela_ideal: string
+}
+
 export interface CommercialReportResult {
   modelo?: string
   gerado_em?: string
+  horizonte?: CommercialReportHorizonte
   resumo?: string
+  diagnostico_executivo?: string
   pontos_fortes?: string[]
   pontos_melhoria?: Array<{
     titulo: string
     descricao: string
-    prioridade: 'alta' | 'media' | 'baixa'
+    prioridade: PrioridadeNivel
   }>
   padroes?: Array<{
     padrao: string
@@ -43,6 +97,11 @@ export interface CommercialReportResult {
     acao: string
     impacto_esperado: string
   }>
+  metas_horizonte?: MetaHorizonte[]
+  playbook_comercial?: PlaybookJogada[]
+  rituais_gestao?: RitualGestao[]
+  scripts_recomendados?: ScriptRecomendado[]
+  follow_ups_imediatos?: FollowUpImediato[]
   amostra_contagem?: {
     vendas: number
     agendadas: number
@@ -58,6 +117,7 @@ export interface UseCommercialReportReturn {
   run: (opts: {
     inboxPhone: string | null
     period: CommercialReportPeriod
+    horizonte: CommercialReportHorizonte
     kpis: WhatsAppResumo
   }) => Promise<void>
   clear: () => void
@@ -108,7 +168,7 @@ export function useCommercialReport(): UseCommercialReportReturn {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<CommercialReportResult | null>(null)
 
-  const run = useCallback(async ({ inboxPhone, period, kpis }) => {
+  const run = useCallback(async ({ inboxPhone, period, horizonte, kpis }) => {
     setRunning(true)
     setError(null)
     try {
@@ -215,6 +275,7 @@ export function useCommercialReport(): UseCommercialReportReturn {
         {
           body: {
             periodo: { from: fromISO, to: toISO },
+            horizonte,
             inbox_phone: inboxPhone,
             kpis,
             amostras,

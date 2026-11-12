@@ -227,20 +227,20 @@ export default function WhatsAppPage() {
           <KpiCard
             label="Conversas"
             value={fmtNumber(r.conversas)}
-            delta={`${r.conversas_delta >= 0 ? '+' : ''}${r.conversas_delta}% vs ant.`}
+            delta={fmtDelta(r.conversas_delta)}
             up={r.conversas_delta > 0}
             accentColor="var(--section-whatsapp)"
           />
           <KpiCard
             label="Agendamentos"
             value={fmtNumber(r.agendamentos)}
-            delta={`${r.agendamentos_delta >= 0 ? '+' : ''}${r.agendamentos_delta}% vs ant.`}
+            delta={fmtDelta(r.agendamentos_delta)}
             up={r.agendamentos_delta > 0}
           />
           <KpiCard
             label="Conversão"
             value={fmtPct(r.taxa_conversao)}
-            delta={null}
+            delta="agendamentos / conversas"
             neutral
           />
           <KpiCard
@@ -331,8 +331,6 @@ export default function WhatsAppPage() {
         <CommercialReportPanel
           inboxPhone={inboxPhone}
           inboxLabel={inboxPhone ? (INBOX_LABELS[inboxPhone] || formatarPhoneBR(inboxPhone)) : 'Todos os números'}
-          period={range ? { from: range.from, to: range.to } : { from: new Date(Date.now() - 29 * 86400000), to: new Date() }}
-          kpis={r}
         />
       )}
 
@@ -478,6 +476,16 @@ function ThreadRow({ t, onOpen }: { t: WhatsAppThreadReal; onOpen: () => void })
       </div>
     </div>
   )
+}
+
+// Delta % legível. RPC já cap em ±999, mas acima de 500 é ruído pra UX —
+// mostra ">500%" / "<-500%" pra não poluir o card.
+function fmtDelta(delta: number): string {
+  if (!Number.isFinite(delta) || delta === 0) return 'estável vs ant.'
+  if (delta >= 500)  return '+500%+ vs ant.'
+  if (delta <= -500) return '-500%+ vs ant.'
+  const sign = delta > 0 ? '+' : ''
+  return `${sign}${delta}% vs ant.`
 }
 
 function fmtHoraCurta(iso: string): string {

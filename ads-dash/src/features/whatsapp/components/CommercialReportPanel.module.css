@@ -51,6 +51,52 @@
   border: 1px solid var(--border);
 }
 
+/* --- Tabs de horizonte (diário/semanal/quinzenal/mensal) --- */
+.horizonteTabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+.horizonteChip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.horizonteChip:hover:not(:disabled) {
+  background: rgba(93, 202, 165, 0.06);
+  color: var(--text);
+}
+.horizonteChip:disabled { opacity: 0.5; cursor: not-allowed; }
+.horizonteChipOn {
+  background: rgba(93, 202, 165, 0.14);
+  border-color: rgba(93, 202, 165, 0.5);
+  color: var(--text);
+}
+.horizonteLabel {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.horizonteHint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-subtle);
+  letter-spacing: 0.03em;
+}
+
 .contagem {
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -292,6 +338,254 @@
   border-top: 1px dashed var(--border-soft);
 }
 
+.diagnostico {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg-input);
+  border-left: 3px solid var(--section-whatsapp, #5dcaa5);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 10px 14px;
+  margin: 0;
+}
+
+/* --- Metas do horizonte --- */
+.metasGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+.metaCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.metaKpi {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.metaValores {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.metaAtual {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.metaAlvo {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.metaGap {
+  font-size: 11px;
+  color: var(--section-whatsapp, #5dcaa5);
+  font-style: italic;
+}
+
+/* --- Playbook comercial --- */
+.playbook {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.playbookGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.playbookCat {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.playbookJogadas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+}
+.jogada {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+  border-left-width: 3px;
+  border-radius: var(--radius-sm);
+}
+.jogadaHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.jogadaTitle {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+.jogadaDesc {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 0;
+}
+.jogadaMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10.5px;
+  color: var(--text-subtle);
+  padding-top: 4px;
+  border-top: 1px dashed var(--border-soft);
+}
+.jogadaMeta strong {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* --- Rituais de gestão --- */
+.rituais {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ritual {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.ritualHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ritualNome {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+.ritualFreq {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--section-whatsapp, #5dcaa5);
+  letter-spacing: 0.03em;
+}
+.ritualPauta {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* --- Scripts prontos --- */
+.scripts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.script {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.scriptSituacao {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--section-whatsapp, #5dcaa5);
+  font-weight: 700;
+}
+.scriptTexto {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.scriptObs {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* --- Follow-ups imediatos --- */
+.followups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
+.followup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: rgba(239, 159, 39, 0.08);
+  border: 1px solid rgba(239, 159, 39, 0.3);
+  border-radius: var(--radius-sm);
+}
+.followupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.followupNome {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+.followupTel {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.followupMotivo {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.followupAcao {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 600;
+}
+.followupJanela {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #ef9f27;
+  letter-spacing: 0.03em;
+}
+
 /* --- Print: layout A4 limpo --- */
 @media print {
   @page { size: A4; margin: 18mm; }
@@ -299,17 +593,28 @@
   .actions, .btn, .btnGhost { display: none !important; }
   .wrap { gap: 10mm; }
   .summary,
+  .diagnostico,
   .impItem,
   .pattern,
   .actionItem,
   .strengths li,
+  .metaCard,
+  .jogada,
+  .ritual,
+  .script,
+  .scriptTexto,
+  .followup,
   .loading {
     background: #fff !important;
     border-color: #ccc !important;
     color: #111 !important;
     break-inside: avoid;
   }
-  .impDesc, .patternExamples li, .actionImpact, .subtitle, .meta { color: #333 !important; }
-  .sectionTitle { color: #666 !important; }
-  .title { color: #111 !important; }
+  .impDesc, .patternExamples li, .actionImpact, .subtitle, .meta,
+  .jogadaDesc, .jogadaMeta, .ritualPauta, .followupMotivo, .scriptObs,
+  .metaAtual, .metaGap { color: #333 !important; }
+  .sectionTitle, .playbookCat, .scriptSituacao, .metaKpi, .ritualFreq,
+  .followupJanela { color: #666 !important; }
+  .title, .metaAlvo, .followupNome, .ritualNome, .jogadaTitle { color: #111 !important; }
+  .horizonteTabs { display: none !important; }
 }
