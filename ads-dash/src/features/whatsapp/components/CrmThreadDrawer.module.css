@@ -67,6 +67,134 @@
   font-weight: 600;
 }
 
+/* --- CTA rápido de Registrar venda --- */
+.quickVendaWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.05));
+}
+.quickVendaBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #5dcaa5 0%, #4ab791 100%);
+  color: #04130f;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.quickVendaBtn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.quickVendaIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(4, 19, 15, 0.2);
+  font-size: 12px;
+  font-weight: 800;
+}
+.quickVendaLabel { letter-spacing: 0.01em; }
+.quickVendaHist {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.1));
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.quickVendaHist:hover {
+  color: var(--text);
+  border-color: var(--section-whatsapp, #5dcaa5);
+}
+
+.quickVendaForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 20px;
+  background: rgba(93, 202, 165, 0.06);
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.05));
+}
+.quickVendaInput {
+  width: 100%;
+  background: var(--bg-input, rgba(255,255,255,0.04));
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.1));
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  outline: none;
+}
+.quickVendaInput:focus { border-color: var(--section-whatsapp, #5dcaa5); }
+.quickVendaRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.quickVendaPrefix {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-left: 2px;
+}
+.quickVendaInputValor {
+  flex: 1;
+  background: var(--bg-input, rgba(255,255,255,0.04));
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.1));
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+}
+.quickVendaInputValor:focus { border-color: var(--section-whatsapp, #5dcaa5); }
+.quickVendaSalvar {
+  background: var(--section-whatsapp, #5dcaa5);
+  color: #04130f;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.quickVendaSalvar:hover:not(:disabled) { filter: brightness(1.1); }
+.quickVendaSalvar:disabled { opacity: 0.4; cursor: not-allowed; }
+.quickVendaCancelar {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.quickVendaCancelar:hover { color: var(--text); }
+.quickVendaHint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--section-whatsapp, #5dcaa5);
+}
+
 .tabs {
   display: flex; gap: 4px;
   padding: 0 20px;

@@ -53,6 +53,15 @@ export default function CrmThreadDrawer({ thread, onClose, onChangeStatus }: Pro
           ))}
         </div>
 
+        {thread.status !== 'arquivada' && (
+          <QuickVendaCTA
+            threadId={thread.id}
+            statusAtual={thread.status}
+            onConcluida={() => onChangeStatus('venda')}
+            onAbrirHistorico={() => setTab('vendas')}
+          />
+        )}
+
         <nav className={styles.tabs}>
           {(['notas', 'tags', 'followups', 'vendas'] as Tab[]).map(t => (
             <button
@@ -78,6 +87,119 @@ export default function CrmThreadDrawer({ thread, onClose, onChangeStatus }: Pro
       </aside>
     </div>
   );
+}
+
+// CTA grande entre status e tabs. Resolve o problema de que Receita/Ticket
+// médio do dashboard dependem de alguém registrar venda — hoje o caminho
+// era descer até a 4ª tab e preencher 3 campos. Agora é 1 clique + 2
+// campos + salvar + status vira 'venda' automaticamente.
+function QuickVendaCTA({
+  threadId, statusAtual, onConcluida, onAbrirHistorico,
+}: {
+  threadId: string
+  statusAtual: WhatsAppThreadStatusReal
+  onConcluida: () => void
+  onAbrirHistorico: () => void
+}) {
+  const { vendas, registrar } = useCrmVendas(threadId)
+  const [aberto, setAberto] = useState(false)
+  const [servico, setServico] = useState('')
+  const [valor, setValor] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const [ok, setOk] = useState(false)
+
+  const totalCents = vendas.reduce((a, v) => a + v.valor_cents, 0)
+
+  async function salvar() {
+    const num = parseFloat(valor.replace(',', '.'))
+    if (!servico.trim() || !num || num <= 0 || salvando) return
+    setSalvando(true)
+    try {
+      await registrar({
+        servico: servico.trim(),
+        valor_cents: Math.round(num * 100),
+      })
+      setServico(''); setValor('')
+      setOk(true)
+      // Só promove pra 'venda' se ainda não estiver — evita registrar
+      // automática de novo o kanban.
+      if (statusAtual !== 'venda') onConcluida()
+      setTimeout(() => { setOk(false); setAberto(false) }, 1500)
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  if (!aberto) {
+    return (
+      <div className={styles.quickVendaWrap}>
+        <button
+          type="button"
+          className={styles.quickVendaBtn}
+          onClick={() => setAberto(true)}
+        >
+          <span className={styles.quickVendaIcon}>✓</span>
+          <span className={styles.quickVendaLabel}>
+            {statusAtual === 'venda' ? 'Registrar outra venda' : 'Cliente compareceu — registrar venda'}
+          </span>
+        </button>
+        {vendas.length > 0 && (
+          <button
+            type="button"
+            className={styles.quickVendaHist}
+            onClick={onAbrirHistorico}
+            title="Ver histórico de vendas"
+          >
+            {fmtMoeda(totalCents)} em {vendas.length} venda{vendas.length > 1 ? 's' : ''}
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.quickVendaForm}>
+      <input
+        className={styles.quickVendaInput}
+        placeholder="Serviço (ex: mechas + corte)"
+        value={servico}
+        onChange={e => setServico(e.target.value)}
+        autoFocus
+        disabled={salvando}
+      />
+      <div className={styles.quickVendaRow}>
+        <span className={styles.quickVendaPrefix}>R$</span>
+        <input
+          className={styles.quickVendaInputValor}
+          placeholder="0,00"
+          inputMode="decimal"
+          value={valor}
+          onChange={e => setValor(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); salvar() } }}
+          disabled={salvando}
+        />
+        <button
+          type="button"
+          className={styles.quickVendaSalvar}
+          onClick={salvar}
+          disabled={!servico.trim() || !valor || salvando}
+        >
+          {ok ? '✓ salvo' : salvando ? 'salvando…' : 'Salvar'}
+        </button>
+        <button
+          type="button"
+          className={styles.quickVendaCancelar}
+          onClick={() => { setAberto(false); setServico(''); setValor('') }}
+          disabled={salvando}
+        >
+          cancelar
+        </button>
+      </div>
+      {ok && statusAtual !== 'venda' && (
+        <p className={styles.quickVendaHint}>Status movido pra <strong>Venda</strong> automaticamente.</p>
+      )}
+    </div>
+  )
 }
 
 function NotasTab({ threadId }: { threadId: string }) {
