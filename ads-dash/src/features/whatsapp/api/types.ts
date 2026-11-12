@@ -20,6 +20,9 @@ export interface WhatsAppResumo {
   // "agendamentos" (que conta thread.status): esse só sobe quando o
   // atendente registra a venda com valor na ficha do cliente.
   vendas_registradas?: number;
+  // Receita (R$) somada de crm_vendas no período + delta% vs anterior.
+  receita_total?: number;
+  receita_delta?: number;
 }
 
 export interface WhatsAppFunilEtapa {

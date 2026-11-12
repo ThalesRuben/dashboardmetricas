@@ -19,7 +19,7 @@ const INBOX_LABELS: Record<string, string> = {
   '5531991340420': 'Fabio',
 }
 
-type Filter = 'todas' | 'nao_lidas' | 'leads' | 'agendados'
+type Filter = 'todas' | 'urgentes' | 'nao_lidas' | 'leads' | 'agendados'
 
 const STATUS_LABEL: Record<WhatsAppThreadStatusReal, string> = {
   lead:      'Lead',
@@ -58,11 +58,19 @@ export default function Inbox({ showInactive = false }: InboxProps) {
   const [filter, setFilter] = useState<Filter>('todas')
 
   const filtered = useMemo(() => {
+    // "Urgentes" = o que antes vivia na aba "Precisam de você": leads
+    // recém-criados sem resposta OU qualquer thread com não lidas.
+    if (filter === 'urgentes')  return threads.filter((t) => (t.nao_lidas || 0) > 0 || t.status === 'lead')
     if (filter === 'nao_lidas') return threads.filter((t) => (t.nao_lidas || 0) > 0)
     if (filter === 'leads')     return threads.filter((t) => t.status === 'lead')
     if (filter === 'agendados') return threads.filter((t) => t.status === 'agendado')
     return threads
   }, [threads, filter])
+
+  const urgentesTotal = useMemo(
+    () => threads.filter((t) => (t.nao_lidas || 0) > 0 || t.status === 'lead').length,
+    [threads],
+  )
 
   // Auto-seleciona primeira da lista filtrada
   useEffect(() => {
@@ -87,16 +95,20 @@ export default function Inbox({ showInactive = false }: InboxProps) {
           {realtime && <span className={styles.headBadge} style={{ marginLeft: 6 }}>ao vivo</span>}
         </div>
         <div className={styles.filters}>
-          {(['todas', 'nao_lidas', 'leads', 'agendados'] as Filter[]).map((f) => (
-            <button
-              key={f}
-              className={`${styles.filterChip} ${filter === f ? styles.filterChipOn : ''}`}
-              onClick={() => setFilter(f)}
-              type="button"
-            >
-              {filterLabel(f)}
-            </button>
-          ))}
+          {(['todas', 'urgentes', 'nao_lidas', 'leads', 'agendados'] as Filter[]).map((f) => {
+            const badge = f === 'urgentes' && urgentesTotal > 0 ? urgentesTotal : null
+            return (
+              <button
+                key={f}
+                className={`${styles.filterChip} ${filter === f ? styles.filterChipOn : ''}`}
+                onClick={() => setFilter(f)}
+                type="button"
+              >
+                {filterLabel(f)}
+                {badge !== null && <span className={styles.filterBadge}>{badge}</span>}
+              </button>
+            )
+          })}
         </div>
         <ul className={styles.list}>
           {filtered.length === 0 && (
@@ -186,6 +198,7 @@ export default function Inbox({ showInactive = false }: InboxProps) {
 
 function filterLabel(f: Filter) {
   if (f === 'todas')     return 'Todas'
+  if (f === 'urgentes')  return 'Urgentes'
   if (f === 'nao_lidas') return 'Não lidas'
   if (f === 'leads')     return 'Leads'
   return 'Agendados'

@@ -70,6 +70,22 @@
   border-color: var(--accent);
   background: var(--accent-tint);
 }
+.filterBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: #ef5656;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+}
 
 .list {
   list-style: none;

@@ -12,8 +12,6 @@ export { default as CommercialReportPanel } from './components/CommercialReportP
 export { default as CrmKanban } from './components/CrmKanban';
 export { default as CrmThreadDrawer } from './components/CrmThreadDrawer';
 export { default as FollowupsFila } from './components/FollowupsFila';
-export { default as NumerosPanel } from './components/NumerosPanel';
-export { default as TemplatesPanel } from './components/TemplatesPanel';
 export {
   useCrmNotas,
   useCrmTags,

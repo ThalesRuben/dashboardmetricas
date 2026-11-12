@@ -13,8 +13,6 @@ import {
   CrmKanban,
   CrmThreadDrawer,
   FollowupsFila,
-  NumerosPanel,
-  TemplatesPanel,
   formatarPhoneBR,
   prettyPreview,
   displayName,
@@ -27,7 +25,7 @@ import type {
   WhatsAppConversaStatus,
   CrmCardExtras,
 } from '@/features/whatsapp'
-import { fmtNumber, fmtPct } from '@/shared/lib/format'
+import { fmtNumber, fmtPct, fmtBRL } from '@/shared/lib/format'
 import PageHeader from '@/components/ui/PageHeader'
 import Tabs from '@/components/ui/Tabs'
 import KpiCard from '@/shared/ui/KpiCard'
@@ -48,14 +46,6 @@ function defaultRange() {
   const to = new Date(); to.setHours(23, 59, 59, 999)
   const from = new Date(to); from.setDate(from.getDate() - 29); from.setHours(0, 0, 0, 0)
   return { from, to, presetKey: '30' }
-}
-
-const STATUS: Record<WhatsAppThreadStatusReal, { label: string; tone: string; urgent: boolean }> = {
-  lead:      { label: 'Lead',      tone: 'amber',   urgent: true  },
-  aberta:    { label: 'Aberta',    tone: 'plain',   urgent: true  },
-  agendado:  { label: 'Agendado',  tone: 'accent',  urgent: false },
-  venda:     { label: 'Venda',     tone: 'success', urgent: false },
-  arquivada: { label: 'Arquivada', tone: 'subtle',  urgent: false },
 }
 
 // Rótulos amigáveis dos números WhatsApp Business. Edite aqui pra renomear.
@@ -164,15 +154,11 @@ export default function WhatsAppPage() {
     : undefined
 
   const tabs = [
-    { id: 'inbox',     label: 'Inbox', badge: naoLidasTotal || undefined },
+    { id: 'inbox',     label: 'Inbox', badge: naoLidasTotal || urgentes.length || undefined },
     { id: 'crm',       label: 'CRM', badge: threads.length || undefined },
     { id: 'followups', label: 'Follow-ups', badge: followupsBadge },
-    { id: 'precisam',  label: 'Precisam de você', badge: urgentes.length || undefined },
     { id: 'disparo',   label: 'Disparo em massa' },
-    { id: 'numeros',   label: 'Números' },
-    { id: 'templates', label: 'Templates' },
-    { id: 'funil',     label: 'Funil' },
-    { id: 'origem',    label: 'Origem & motivos' },
+    { id: 'analytics', label: 'Analytics' },
     { id: 'relatorio', label: 'Relatório IA' },
   ]
 
@@ -225,11 +211,19 @@ export default function WhatsAppPage() {
       ) : (
         <section className={styles.kpis}>
           <KpiCard
+            label="Receita"
+            value={fmtBRL(r.receita_total ?? 0)}
+            delta={(r.vendas_registradas ?? 0) > 0
+              ? `${fmtNumber(r.vendas_registradas ?? 0)} venda${(r.vendas_registradas ?? 0) > 1 ? 's' : ''} · ${fmtDelta(r.receita_delta ?? 0)}`
+              : 'registre vendas no CRM'}
+            up={(r.receita_delta ?? 0) > 0}
+            accentColor="var(--section-whatsapp)"
+          />
+          <KpiCard
             label="Conversas"
             value={fmtNumber(r.conversas)}
             delta={fmtDelta(r.conversas_delta)}
             up={r.conversas_delta > 0}
-            accentColor="var(--section-whatsapp)"
           />
           <KpiCard
             label="Agendamentos"
@@ -247,7 +241,7 @@ export default function WhatsAppPage() {
             label="T. até 1ª resposta"
             value={`${r.tempo_resposta_min} min`}
             delta={`${fmtPct(r.pct_sla_resposta)} em ≤10min`}
-            up={r.tempo_resposta_min <= 10}
+            up={r.pct_sla_resposta >= 60}
           />
           <KpiCard
             label="T. médio por turno"
@@ -283,28 +277,11 @@ export default function WhatsAppPage() {
         />
       )}
 
-      {tab === 'precisam' && (
-        urgentes.length === 0 ? (
-          <p className={styles.empty}>Fila vazia. Nada precisa de você agora.</p>
-        ) : (
-          <div className={styles.queue}>
-            <p className={styles.queueHint}>
-              {urgentes.length} conversa{urgentes.length > 1 ? 's' : ''} esperando você. Responda em até 10 min pra manter a meta de conversão.
-            </p>
-            {urgentes.map((t) => <ThreadRow key={t.id} t={t} onOpen={() => setTab('inbox')} />)}
-          </div>
-        )
-      )}
-
       {tab === 'disparo' && (
         <DisparoMassa conversas={conversasLegado} />
       )}
 
-      {tab === 'numeros' && <NumerosPanel />}
-
-      {tab === 'templates' && <TemplatesPanel />}
-
-      {tab === 'funil' && (
+      {tab === 'analytics' && (
         <>
           <section className={styles.section}>
             <h2 className={styles.h2}>Funil de atendimento</h2>
@@ -324,6 +301,18 @@ export default function WhatsAppPage() {
               <SocialLineChart serie={data.serie_conversao} color="#5dcaa5" />
             </ChartTile>
           </section>
+          <div className={styles.split}>
+            <Card title="Origem das conversas">
+              {(data.origens || []).map(o => (
+                <BarRow key={o.origem} label={o.origem} value={fmtNumber(o.conversas)} pct={o.pct} />
+              ))}
+            </Card>
+            <Card title="Motivos de contato">
+              {(data.motivos || []).map(m => (
+                <BarRow key={m.motivo} label={m.motivo} value={fmtPct(m.pct)} pct={m.pct} tone={m.tag === 'quente' ? 'magenta' : m.tag === 'morno' ? 'amber' : 'subtle'} />
+              ))}
+            </Card>
+          </div>
         </>
       )}
 
@@ -332,21 +321,6 @@ export default function WhatsAppPage() {
           inboxPhone={inboxPhone}
           inboxLabel={inboxPhone ? (INBOX_LABELS[inboxPhone] || formatarPhoneBR(inboxPhone)) : 'Todos os números'}
         />
-      )}
-
-      {tab === 'origem' && (
-        <div className={styles.split}>
-          <Card title="Origem das conversas">
-            {(data.origens || []).map(o => (
-              <BarRow key={o.origem} label={o.origem} value={fmtNumber(o.conversas)} pct={o.pct} />
-            ))}
-          </Card>
-          <Card title="Motivos de contato">
-            {(data.motivos || []).map(m => (
-              <BarRow key={m.motivo} label={m.motivo} value={fmtPct(m.pct)} pct={m.pct} tone={m.tag === 'quente' ? 'magenta' : m.tag === 'morno' ? 'amber' : 'subtle'} />
-            ))}
-          </Card>
-        </div>
       )}
 
       {drawerThread && (
@@ -439,41 +413,6 @@ function InboxFilter({
           </button>
         )
       })}
-    </div>
-  )
-}
-
-function ThreadRow({ t, onOpen }: { t: WhatsAppThreadReal; onOpen: () => void }) {
-  const s = STATUS[t.status] || STATUS.aberta
-  const nome = displayName(t.contato_nome, t.contato_phone)
-  const preview = prettyPreview(t.ultima_msg_preview) || 'Sem mensagens ainda.'
-  // Tempo esperando — se temos última msg do cliente E ainda tem não lidas,
-  // mostra "esperando há X min" pra apoiar a priorização.
-  const esperaMin = (() => {
-    if (!t.ultima_msg_cliente_em || (t.nao_lidas || 0) === 0) return null
-    const diff = Date.now() - new Date(t.ultima_msg_cliente_em).getTime()
-    const mins = Math.round(diff / 60000)
-    if (mins < 1) return null
-    if (mins < 60) return `${mins} min`
-    const horas = Math.round(mins / 60)
-    if (horas < 24) return `${horas} h`
-    return `${Math.round(horas / 24)}d`
-  })()
-  return (
-    <div className={styles.convRow} onClick={onOpen} role="button" tabIndex={0}>
-      <span className={styles.convAvatar}>{nome.slice(0, 1).toUpperCase()}</span>
-      <div className={styles.convBody}>
-        <div className={styles.convTop}>
-          <span className={styles.convNome}>{nome}</span>
-          <span className={`${styles.convTag} ${styles['t_' + s.tone]}`}>{s.label}</span>
-        </div>
-        <p className={styles.convResumo}>{preview}</p>
-        <span className={styles.convMeta}>
-          {fmtHoraCurta(t.ultima_atividade)}
-          {esperaMin && ` · esperando há ${esperaMin}`}
-          {(t.nao_lidas || 0) > 0 && ` · ${t.nao_lidas} não lida${t.nao_lidas > 1 ? 's' : ''}`}
-        </span>
-      </div>
     </div>
   )
 }
