@@ -12,6 +12,10 @@ export { default as CommercialReportPanel } from './components/CommercialReportP
 export { default as CrmKanban } from './components/CrmKanban';
 export { default as CrmThreadDrawer } from './components/CrmThreadDrawer';
 export { default as FollowupsFila } from './components/FollowupsFila';
+export { default as ReativacaoSugestoes } from './components/ReativacaoSugestoes';
+export { useCoachRascunhos } from './hooks/useCoachRascunhos';
+export { coachRascunhosRepo } from './api/coachRascunhosRepo';
+export type { CoachRascunho } from './api/coachRascunhosRepo';
 export {
   useCrmNotas,
   useCrmTags,

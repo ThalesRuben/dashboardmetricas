@@ -6,6 +6,7 @@ import {
   useCrmSummary,
   useFollowupsPendentes,
   useSetThreadStatus,
+  useCoachRascunhos,
   Inbox,
   DisparoMassa,
   InboxReportCard,
@@ -13,6 +14,7 @@ import {
   CrmKanban,
   CrmThreadDrawer,
   FollowupsFila,
+  ReativacaoSugestoes,
   formatarPhoneBR,
   prettyPreview,
   displayName,
@@ -80,6 +82,7 @@ export default function WhatsAppPage() {
   )
   const { summary: crmSummary, refresh: refreshSummary } = useCrmSummary(rangeParaSummary)
   const { followups: followupsPend, marcarFeito: marcarFollowupFeito, refresh: refreshFollowups } = useFollowupsPendentes()
+  const { rascunhos: coachRascunhos } = useCoachRascunhos()
   const setThreadStatus = useSetThreadStatus()
 
   // Extras (tags, próximo followup, última venda) por thread — carrega quando abre CRM.
@@ -154,12 +157,13 @@ export default function WhatsAppPage() {
     : undefined
 
   const tabs = [
-    { id: 'inbox',     label: 'Inbox', badge: naoLidasTotal || urgentes.length || undefined },
-    { id: 'crm',       label: 'CRM', badge: threads.length || undefined },
-    { id: 'followups', label: 'Follow-ups', badge: followupsBadge },
-    { id: 'disparo',   label: 'Disparo em massa' },
-    { id: 'analytics', label: 'Analytics' },
-    { id: 'relatorio', label: 'Relatório IA' },
+    { id: 'inbox',       label: 'Inbox', badge: naoLidasTotal || urgentes.length || undefined },
+    { id: 'crm',         label: 'CRM', badge: threads.length || undefined },
+    { id: 'reativacoes', label: 'Reativações IA', badge: coachRascunhos.length || undefined },
+    { id: 'followups',   label: 'Follow-ups', badge: followupsBadge },
+    { id: 'disparo',     label: 'Disparo em massa' },
+    { id: 'analytics',   label: 'Analytics' },
+    { id: 'relatorio',   label: 'Relatório IA' },
   ]
 
   // DisparoMassa ainda fala o tipo legado WhatsAppConversa — adapta as threads.
@@ -265,6 +269,8 @@ export default function WhatsAppPage() {
           onMover={handleMoverStatus}
         />
       )}
+
+      {tab === 'reativacoes' && <ReativacaoSugestoes />}
 
       {tab === 'followups' && (
         <FollowupsFila

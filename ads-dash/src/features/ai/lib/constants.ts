@@ -16,6 +16,7 @@ export const DEFAULT_BRAIN: AiBrain = {
   diferenciais: 'Localização nobre em BH, ambiente de luxo, experiência sensorial (café, acolhimento), equipe especialista em loiro, resultado impecável de capa de revista.',
   evitar: 'Preço como argumento, promessas exageradas, estética amadora, conteúdo "mais do mesmo", qualquer coisa que tire a percepção premium da marca.',
   palavras_chave: 'luxo, experiência, loiro de referência, mechas, alto padrão, transformação, autoestima, sofisticação, BH',
+  reativacao_auto_ativa: true,
 }
 
 export const BRAIN_FIELDS: BrainField[] = [

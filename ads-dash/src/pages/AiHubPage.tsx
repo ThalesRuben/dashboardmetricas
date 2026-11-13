@@ -254,6 +254,19 @@ function BrainTab({ brain, save, loading, toast }) {
             />
           </label>
         ))}
+        <label className={styles.field} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <input
+            type="checkbox"
+            checked={draft.reativacao_auto_ativa !== false}
+            onChange={e => setDraft(d => ({ ...d, reativacao_auto_ativa: e.target.checked }))}
+          />
+          <span>
+            <span className={styles.fieldLabel}>Gerar rascunhos de reativação automaticamente</span>
+            <span className={styles.fieldHint}>
+              2x/dia a IA varre leads dormentes (≥ 48h sem resposta) e gera sugestões de mensagem na aba Reativações. Nada é enviado sem aprovação humana. Desligue aqui pra pausar tudo.
+            </span>
+          </span>
+        </label>
       </div>
       <button className="cc-btn cc-btn--solid" onClick={handleSave} disabled={saving}>
         {saving ? 'Salvando...' : '▸ Salvar diretriz'}
