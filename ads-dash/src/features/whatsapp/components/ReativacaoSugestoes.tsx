@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '@/shared/lib/supabase';
+import { invokeFunction } from '@/shared/lib/supabase';
 import { useToast } from '@/app/providers/ToastContext';
 import { coachRascunhosRepo, type CoachRascunho } from '../api/coachRascunhosRepo';
 import { useCoachRascunhos } from '../hooks/useCoachRascunhos';
@@ -74,13 +74,23 @@ export default function ReativacaoSugestoes() {
     if (!texto) { toast.error('Texto vazio.'); return; }
     setBusyId(r.id);
     try {
-      const { data, error } = await supabase.functions.invoke<any>('inbox-reply', {
-        body: { thread_id: r.thread_id, texto },
+      const { data, error } = await invokeFunction<any>('inbox-reply', {
+        thread_id: r.thread_id,
+        texto,
       });
       if (error) {
-        const msg = (error as any).message || 'Falha no envio.';
-        await coachRascunhosRepo.marcarFalho(r.id, msg).catch(() => {});
-        toast.error(`Erro ao enviar: ${msg}`);
+        // supabase.functions.invoke só expõe uma msg genérica — tenta puxar o
+        // corpo JSON da resposta pra ver o motivo real (Z-API, 404, etc).
+        const ctx = (error as any).context;
+        let detalhe = (error as any).message || 'Falha no envio.';
+        if (ctx?.response) {
+          try {
+            const corpo = await ctx.response.json();
+            detalhe = corpo?.detalhe || corpo?.error || corpo?.message || detalhe;
+          } catch { /* mantém detalhe genérico */ }
+        }
+        await coachRascunhosRepo.marcarFalho(r.id, detalhe).catch(() => {});
+        toast.error(`Erro ao enviar: ${detalhe}`);
         return;
       }
       await coachRascunhosRepo.marcarEnviado(r.id, texto, data?.msg_id ?? null);
