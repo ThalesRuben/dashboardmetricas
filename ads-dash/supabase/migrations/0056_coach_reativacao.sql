@@ -93,8 +93,8 @@ alter table public.whatsapp_no_auto
 -- ============================================================
 create or replace function public.coach_reativacao_candidatas(
   p_tenant_id     uuid,
-  p_min_horas     int default 48,             -- minimo de inatividade
-  p_max_horas     int default 24 * 14,        -- maximo (não ressuscitar > 14d)
+  p_min_horas     int default 24,             -- minimo de inatividade (≥ 24h sem resposta)
+  p_max_horas     int default 24 * 7,         -- maximo (não ressuscitar > 7d — vira retrabalho)
   p_dedup_horas   int default 48,             -- não gera 2 rascunhos no mesmo thread em 48h
   p_limit         int default 50
 ) returns table (
@@ -129,7 +129,7 @@ create or replace function public.coach_reativacao_candidatas(
        where r.thread_id = t.id
          and r.gerado_em > now() - make_interval(hours => p_dedup_horas)
     )
-  order by t.ultima_atividade asc
+  order by t.ultima_atividade desc    -- mais recentes primeiro (leads mais quentes)
   limit p_limit;
 $$;
 

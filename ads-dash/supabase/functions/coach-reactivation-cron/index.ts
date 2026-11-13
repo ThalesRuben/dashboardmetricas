@@ -199,11 +199,13 @@ Deno.serve(async (req) => {
     return json({ ok: true, aborted: true, motivo: 'reativacao_auto_ativa=false' })
   }
 
-  // 2) Busca candidatas
+  // 2) Busca candidatas — ordem por mais recentes primeiro (RPC já ordena desc)
+  //    min=24h: pega leads que sumiram ontem, decisão rápida
+  //    max=7d: não ressuscita conversa antiga (vira retrabalho)
   const { data: candidatas, error: errCand } = await admin.rpc('coach_reativacao_candidatas', {
     p_tenant_id: tenantId,
-    p_min_horas: 48,
-    p_max_horas: 24 * 14,
+    p_min_horas: 24,
+    p_max_horas: 24 * 7,
     p_dedup_horas: 48,
     p_limit: MAX_THREADS_POR_RUN,
   })
