@@ -178,6 +178,103 @@
   font-style: italic;
 }
 
+.verConversa {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.verConversa:hover {
+  background: var(--bg-input);
+  color: var(--text);
+}
+
+.transcricao {
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  max-height: 360px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.transcricaoLoading {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 11px;
+  text-align: center;
+  padding: 10px 0;
+}
+.transcricaoInfo {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-subtle);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+
+.msgList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.msg {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px 10px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  align-items: start;
+}
+.msgCliente {
+  background: rgba(93, 202, 165, 0.06);
+  border-left: 2px solid rgba(93, 202, 165, 0.6);
+}
+.msgAtendente {
+  background: rgba(239, 159, 39, 0.06);
+  border-left: 2px solid rgba(239, 159, 39, 0.5);
+}
+.msgAutor {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-subtle);
+  padding-top: 2px;
+}
+.msgCliente .msgAutor { color: #5dcaa5; }
+.msgAtendente .msgAutor { color: #ef9f27; }
+.msgTexto {
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.msgHora {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-subtle);
+  padding-top: 2px;
+  white-space: nowrap;
+}
+
 .textarea {
   width: 100%;
   background: var(--accent-tint);

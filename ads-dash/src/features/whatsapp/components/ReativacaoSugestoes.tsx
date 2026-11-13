@@ -3,7 +3,18 @@ import { supabase } from '@/shared/lib/supabase';
 import { useToast } from '@/app/providers/ToastContext';
 import { coachRascunhosRepo, type CoachRascunho } from '../api/coachRascunhosRepo';
 import { useCoachRascunhos } from '../hooks/useCoachRascunhos';
+import { whatsappRepo } from '../api/whatsappRepo';
+import type { WhatsAppMsgReal } from '../api/types';
 import styles from './ReativacaoSugestoes.module.css';
+
+function fmtMsgTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  });
+}
 
 function fmtAgo(iso: string): string {
   if (!iso) return '—';
@@ -30,6 +41,29 @@ export default function ReativacaoSugestoes() {
   const { rascunhos, loading, erro, recarregar, removerLocal } = useCoachRascunhos();
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [transcricoes, setTranscricoes] = useState<Record<string, WhatsAppMsgReal[]>>({});
+  const [carregandoTranscricao, setCarregandoTranscricao] = useState<Record<string, boolean>>({});
+  const [abertos, setAbertos] = useState<Record<string, boolean>>({});
+
+  async function toggleTranscricao(r: CoachRascunho) {
+    const jaAberto = abertos[r.id];
+    if (jaAberto) {
+      setAbertos((a) => ({ ...a, [r.id]: false }));
+      return;
+    }
+    setAbertos((a) => ({ ...a, [r.id]: true }));
+    // Carrega só na primeira vez
+    if (transcricoes[r.id]) return;
+    setCarregandoTranscricao((c) => ({ ...c, [r.id]: true }));
+    try {
+      const msgs = await whatsappRepo.listarMsgs(r.thread_id, 200);
+      setTranscricoes((t) => ({ ...t, [r.id]: msgs }));
+    } catch {
+      toast.error('Falha ao carregar conversa.');
+    } finally {
+      setCarregandoTranscricao((c) => ({ ...c, [r.id]: false }));
+    }
+  }
 
   function textoDe(r: CoachRascunho): string {
     return edits[r.id] ?? r.mensagem_sugerida;
@@ -147,6 +181,45 @@ export default function ReativacaoSugestoes() {
             </header>
 
             {r.resumo_ia && <p className={styles.resumo}>{r.resumo_ia}</p>}
+
+            <button
+              type="button"
+              className={styles.verConversa}
+              onClick={() => toggleTranscricao(r)}
+              aria-expanded={!!abertos[r.id]}
+            >
+              {abertos[r.id] ? '▾ Esconder conversa' : '▸ Ver conversa completa'}
+            </button>
+
+            {abertos[r.id] && (
+              <div className={styles.transcricao}>
+                {carregandoTranscricao[r.id] ? (
+                  <p className={styles.transcricaoLoading}>Carregando mensagens...</p>
+                ) : (transcricoes[r.id] ?? []).length === 0 ? (
+                  <p className={styles.transcricaoLoading}>Sem mensagens.</p>
+                ) : (
+                  <>
+                    <p className={styles.transcricaoInfo}>
+                      {(transcricoes[r.id] ?? []).length} mensagens · ordem cronológica
+                    </p>
+                    <ol className={styles.msgList}>
+                      {(transcricoes[r.id] ?? []).map((m) => (
+                        <li
+                          key={m.id}
+                          className={`${styles.msg} ${m.autor === 'cliente' ? styles.msgCliente : styles.msgAtendente}`}
+                        >
+                          <span className={styles.msgAutor}>
+                            {m.autor === 'cliente' ? 'Cliente' : 'Atendente'}
+                          </span>
+                          <span className={styles.msgTexto}>{m.texto || '[sem texto]'}</span>
+                          <span className={styles.msgHora}>{fmtMsgTime(m.hora)}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </>
+                )}
+              </div>
+            )}
 
             <textarea
               className={styles.textarea}
