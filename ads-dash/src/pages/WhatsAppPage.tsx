@@ -189,7 +189,7 @@ export default function WhatsAppPage() {
 
       {semDadoReal && <Banner>Dados de demonstração. Aguardando primeira mensagem real.</Banner>}
 
-      {inboxes.length > 1 && (
+      {(inboxes.length > 1 || (tab === 'disparo' && inboxes.length > 0)) && (
         <InboxFilter
           inboxes={inboxes}
           selected={inboxPhone}
@@ -284,7 +284,7 @@ export default function WhatsAppPage() {
       )}
 
       {tab === 'disparo' && (
-        <DisparoMassa conversas={conversasLegado} />
+        <DisparoMassa conversas={conversasLegado} inboxPhone={inboxPhone} />
       )}
 
       {tab === 'analytics' && (

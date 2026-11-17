@@ -296,6 +296,11 @@
   align-items: center;
 }
 
+.actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .btnGhost {
   background: transparent;
   color: var(--text-subtle);

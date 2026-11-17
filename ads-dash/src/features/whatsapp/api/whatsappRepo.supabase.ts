@@ -37,11 +37,18 @@ export const supabaseWhatsAppRepo: WhatsAppRepo = {
   },
 
   async enviarDisparo(input) {
+    const { data: tenantId, error: tenantError } = await supabase.rpc('current_user_first_tenant');
+    if (tenantError || !tenantId) throw new Error('Não foi possível identificar a empresa para este envio. Atualize a página e tente novamente.');
     const { data, error } = await invokeFunction<WhatsAppDisparoResultado>(
       'whatsapp-send',
-      input as unknown as Record<string, unknown>,
+      { ...input, tenant_id: tenantId },
     );
-    if (error) throw new Error(error.message);
+    if (error) {
+      const ctx = (error as any).context;
+      const response = ctx instanceof Response ? ctx : ctx?.response;
+      const corpo = response ? await response.clone().json().catch(() => null) : null;
+      throw new Error(corpo?.detalhe || corpo?.error || error.message);
+    }
     if (!data) throw new Error('Resposta vazia da function whatsapp-send');
     return data;
   },
@@ -119,8 +126,9 @@ export const supabaseWhatsAppRepo: WhatsAppRepo = {
     if (error) {
       // Tenta extrair payload de erro retornado pela function
       const ctx = (error as any).context;
-      const corpo = ctx?.response ? await (async () => {
-        try { return await ctx.response.json(); } catch { return null; }
+      const response = ctx instanceof Response ? ctx : ctx?.response;
+      const corpo = response ? await (async () => {
+        try { return await response.clone().json(); } catch { return null; }
       })() : null;
       if (corpo?.error === 'fora_da_janela_24h') {
         return { ok: false, fora_da_janela: true, erro: corpo.message };

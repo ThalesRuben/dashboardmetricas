@@ -5,6 +5,7 @@ import { coachRascunhosRepo, type CoachRascunho } from '../api/coachRascunhosRep
 import { useCoachRascunhos } from '../hooks/useCoachRascunhos';
 import { whatsappRepo } from '../api/whatsappRepo';
 import type { WhatsAppMsgReal } from '../api/types';
+import { formatarPhoneBR } from '../lib/phone';
 import styles from './ReativacaoSugestoes.module.css';
 
 function fmtMsgTime(iso: string): string {
@@ -70,6 +71,7 @@ export default function ReativacaoSugestoes() {
   }
 
   async function aprovarEEnviar(r: CoachRascunho) {
+    if (!r.inbox_phone) { toast.error('Conversa sem número de atendimento. Corrija o vínculo antes de enviar.'); return; }
     const texto = textoDe(r).trim();
     if (!texto) { toast.error('Texto vazio.'); return; }
     setBusyId(r.id);
@@ -83,9 +85,10 @@ export default function ReativacaoSugestoes() {
         // corpo JSON da resposta pra ver o motivo real (Z-API, 404, etc).
         const ctx = (error as any).context;
         let detalhe = (error as any).message || 'Falha no envio.';
-        if (ctx?.response) {
+        const response = ctx instanceof Response ? ctx : ctx?.response;
+        if (response) {
           try {
-            const corpo = await ctx.response.json();
+            const corpo = await response.clone().json();
             detalhe = corpo?.detalhe || corpo?.error || corpo?.message || detalhe;
           } catch { /* mantém detalhe genérico */ }
         }
@@ -93,9 +96,13 @@ export default function ReativacaoSugestoes() {
         toast.error(`Erro ao enviar: ${detalhe}`);
         return;
       }
+      if (!data?.ok || data.sem_config) {
+        toast.error('O envio não foi confirmado. Verifique a configuração da linha.');
+        return;
+      }
       await coachRascunhosRepo.marcarEnviado(r.id, texto, data?.msg_id ?? null);
       removerLocal(r.id);
-      toast.success(`Mensagem enviada pra ${r.contato_nome || r.contato_phone}.`);
+      toast.success(`Mensagem enviada pra ${r.contato_nome || r.contato_phone} pelo número ${formatarPhoneBR(data.inbox_phone || r.inbox_phone)}.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Falha ao aprovar.');
     } finally {
@@ -190,6 +197,12 @@ export default function ReativacaoSugestoes() {
               </div>
             </header>
 
+            <p className={styles.hint}>
+              {r.inbox_phone
+                ? <>Remetente: <strong>{formatarPhoneBR(r.inbox_phone)}</strong> · mesmo número do atendimento.</>
+                : 'Envio bloqueado: conversa sem número de atendimento vinculado.'}
+            </p>
+
             {r.resumo_ia && <p className={styles.resumo}>{r.resumo_ia}</p>}
 
             <button
@@ -243,7 +256,7 @@ export default function ReativacaoSugestoes() {
               <button
                 className="cc-btn cc-btn--solid"
                 onClick={() => aprovarEEnviar(r)}
-                disabled={busyId === r.id}
+                disabled={busyId === r.id || !r.inbox_phone}
               >
                 {busyId === r.id ? 'Enviando...' : '▸ Aprovar e enviar'}
               </button>

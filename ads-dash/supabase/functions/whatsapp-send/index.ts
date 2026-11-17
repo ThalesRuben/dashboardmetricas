@@ -13,11 +13,13 @@
 //   ZAPI_INSTANCE_ID
 //   ZAPI_TOKEN
 //   ZAPI_CLIENT_TOKEN
+//   ZAPI_INSTANCE_TOKENS  JSON { "instance_id": "token" } para outras linhas
 //   INTERNAL_API_KEY      opcional
 //
 // Body esperado:
 //   {
-//     "tenant_id": "uuid",                  // opcional
+//     "tenant_id": "uuid",                  // obrigatório
+//     "inbox_phone": "5531990842381",        // linha selecionada explicitamente
 //     "rotulo": "promocao-junho",           // identifica o disparo no histórico
 //     "mensagem": "Oi {{1}}, hoje temos...",// texto com placeholders {{n}}
 //     "variables": ["Marina"],              // valores padrão (usados se recipient não trouxer params)
@@ -29,12 +31,10 @@
 //   }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { resolveZapiSender, sendZapiText, SenderError, type ZapiSender } from '../_shared/zapi-sender.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const ZAPI_INSTANCE     = Deno.env.get('ZAPI_INSTANCE_ID')
-const ZAPI_TOKEN        = Deno.env.get('ZAPI_TOKEN')
-const ZAPI_CLIENT_TOKEN = Deno.env.get('ZAPI_CLIENT_TOKEN')
 const INTERNAL_KEY      = Deno.env.get('INTERNAL_API_KEY')
 
 const corsHeaders = {
@@ -45,7 +45,8 @@ const corsHeaders = {
 
 interface Recipient { phone: string; params?: string[] }
 interface SendBody {
-  tenant_id?: string
+  tenant_id: string
+  inbox_phone: string
   rotulo: string
   mensagem: string
   variables?: string[]
@@ -67,27 +68,37 @@ Deno.serve(async (req) => {
     return json({ error: 'JSON inválido' }, 400)
   }
 
-  if (!body.mensagem) return json({ error: 'mensagem é obrigatória' }, 400)
+  if (!body || typeof body.tenant_id !== 'string' || !body.tenant_id) return json({ error: 'tenant_id é obrigatório' }, 400)
+  if (typeof body.inbox_phone !== 'string' || !body.inbox_phone) return json({ error: 'Selecione o número remetente antes do disparo.' }, 400)
+  if (typeof body.mensagem !== 'string' || !body.mensagem.trim()) return json({ error: 'mensagem é obrigatória' }, 400)
   if (!body.rotulo)   return json({ error: 'rotulo é obrigatório' }, 400)
   if (!Array.isArray(body.recipients) || body.recipients.length === 0) {
     return json({ error: 'recipients vazio' }, 400)
   }
 
-  const dryRun = !!body.dry_run
-  const semConfig = !ZAPI_INSTANCE || !ZAPI_TOKEN || !ZAPI_CLIENT_TOKEN
-  const efetivoDry = dryRun || semConfig
+  const dryRun = body.dry_run === true
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
+  let sender: ZapiSender | undefined
+  if (!dryRun) {
+    try {
+      sender = await resolveZapiSender(supabase, body.tenant_id, body.inbox_phone)
+    } catch (e) {
+      return json({ error: 'remetente_indisponivel', detalhe: e instanceof Error ? e.message : 'Falha ao verificar remetente.' },
+        e instanceof SenderError ? e.status : 503)
+    }
+  }
 
   const resultados: Array<{ phone: string; ok: boolean; id?: string; error?: string }> = []
 
   for (const r of body.recipients) {
     const params = r.params || body.variables || []
     const texto  = aplicarVars(body.mensagem, params)
-    if (efetivoDry) {
+    if (dryRun) {
       resultados.push({ phone: r.phone, ok: true, id: 'dry-run' })
       continue
     }
     try {
-      const id = await zapiSendText(r.phone, texto)
+      const id = await sendZapiText(sender!, r.phone, texto)
       resultados.push({ phone: r.phone, ok: true, id })
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -99,8 +110,7 @@ Deno.serve(async (req) => {
   const falhas   = resultados.length - enviados
 
   // Persiste o disparo (mantém o schema atual da tabela: template_name vira rotulo).
-  if (!semConfig && body.tenant_id) {
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
+  if (!dryRun) {
     const { error } = await supabase.from('whatsapp_disparos').insert({
       tenant_id: body.tenant_id,
       template_name: body.rotulo,
@@ -110,7 +120,7 @@ Deno.serve(async (req) => {
       enviados,
       falhas,
       status: falhas === 0 ? 'concluido' : (enviados === 0 ? 'erro' : 'concluido'),
-      detalhes: { mensagem: body.mensagem, resultados },
+      detalhes: { mensagem: body.mensagem, inbox_phone: sender!.inboxPhone, zapi_instance_id: sender!.instanceId, resultados },
     })
     if (error) {
       return json({
@@ -122,9 +132,9 @@ Deno.serve(async (req) => {
   }
 
   return json({
-    message: efetivoDry ? 'Dry-run concluído (nada foi enviado).' : 'Disparo concluído.',
-    dry_run: efetivoDry,
-    sem_config: semConfig,
+    message: dryRun ? 'Dry-run concluído (nada foi enviado).' : 'Disparo concluído.',
+    dry_run: dryRun,
+    sem_config: false,
     total: resultados.length,
     enviados,
     falhas,
@@ -137,26 +147,6 @@ function aplicarVars(template: string, params: string[]): string {
     const i = Number(idx) - 1
     return params[i] != null ? String(params[i]) : ''
   })
-}
-
-async function zapiSendText(phone: string, message: string): Promise<string> {
-  const url = `https://api.z-api.io/instances/${ZAPI_INSTANCE}/token/${ZAPI_TOKEN}/send-text`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Client-Token': ZAPI_CLIENT_TOKEN!,
-    },
-    body: JSON.stringify({
-      phone: phone.replace(/\D/g, ''),
-      message,
-    }),
-  })
-  const out = await res.json().catch(() => ({}))
-  if (!res.ok || out.error) {
-    throw new Error(`Z-API ${res.status}: ${out.error || out.message || JSON.stringify(out)}`)
-  }
-  return out.messageId || out.zaapId || out.id || 'sent'
 }
 
 function json(obj: unknown, status = 200) {

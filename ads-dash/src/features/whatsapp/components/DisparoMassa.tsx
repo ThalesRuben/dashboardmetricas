@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useWhatsAppDisparos } from '../hooks/useWhatsAppDisparos'
 import { useWhatsAppInboxes } from '../hooks/useWhatsAppInboxes'
 import { normalizarPhoneBR, formatarPhoneBR } from '../lib/phone'
@@ -16,6 +16,7 @@ type Publico = 'leads' | 'agendados' | 'todos' | 'colar'
 
 interface Props {
   conversas: WhatsAppConversa[]
+  inboxPhone: string | null
 }
 
 const PUBLICO_LABEL: Record<Publico, string> = {
@@ -28,7 +29,7 @@ const PUBLICO_LABEL: Record<Publico, string> = {
 const EXEMPLO_MSG =
   'Oi {{1}}! Aqui é do The Blonde Concept ✨ Temos horários disponíveis essa semana — quer dar uma olhada?'
 
-export default function DisparoMassa({ conversas }: Props) {
+export default function DisparoMassa({ conversas, inboxPhone }: Props) {
   const { historico, ultimoResultado, enviando, erro, disparar } = useWhatsAppDisparos()
   const { inboxes } = useWhatsAppInboxes()
   const selfSet = useMemo(
@@ -41,7 +42,9 @@ export default function DisparoMassa({ conversas }: Props) {
   const [rotulo, setRotulo] = useState('')
   const [mensagem, setMensagem] = useState('')
   const [varsRaw, setVarsRaw] = useState('')
-  const [confirmar, setConfirmar] = useState(false)
+  const [confirmadoPara, setConfirmadoPara] = useState<string | null>(null)
+  const confirmar = !!inboxPhone && confirmadoPara === inboxPhone
+  useEffect(() => { setConfirmadoPara(null) }, [inboxPhone])
 
   const variables = useMemo(
     () => varsRaw.split('|').map(s => s.trim()).filter(Boolean),
@@ -81,6 +84,7 @@ export default function DisparoMassa({ conversas }: Props) {
   const previewMsg = aplicarVars(mensagem || EXEMPLO_MSG, previewParams)
 
   const podeDisparar =
+    !!inboxPhone &&
     rotulo.trim().length > 0 &&
     mensagem.trim().length > 0 &&
     validos.length > 0 &&
@@ -88,14 +92,15 @@ export default function DisparoMassa({ conversas }: Props) {
 
   async function onDisparar() {
     if (!podeDisparar) return
-    if (!confirmar) { setConfirmar(true); return }
+    if (!confirmar) { setConfirmadoPara(inboxPhone); return }
     await disparar({
+      inbox_phone: inboxPhone!,
       rotulo: rotulo.trim(),
       mensagem: mensagem.trim(),
       variables,
       recipients: validos,
     })
-    setConfirmar(false)
+    setConfirmadoPara(null)
   }
 
   return (
@@ -110,7 +115,7 @@ export default function DisparoMassa({ conversas }: Props) {
                 key={p}
                 type="button"
                 className={`${styles.chip} ${publico === p ? styles.chipOn : ''}`}
-                onClick={() => { setPublico(p); setConfirmar(false) }}
+                onClick={() => { setPublico(p); setConfirmadoPara(null) }}
               >
                 {PUBLICO_LABEL[p]}
               </button>
@@ -122,7 +127,7 @@ export default function DisparoMassa({ conversas }: Props) {
               rows={6}
               placeholder="Cole um número por linha. Ex: 5531984321100"
               value={colado}
-              onChange={e => { setColado(e.target.value); setConfirmar(false) }}
+              onChange={e => { setColado(e.target.value); setConfirmadoPara(null) }}
             />
           ) : (
             <p className={styles.hint}>
@@ -150,7 +155,7 @@ export default function DisparoMassa({ conversas }: Props) {
             className={styles.input}
             placeholder="ex: promo-junho"
             value={rotulo}
-            onChange={e => { setRotulo(e.target.value); setConfirmar(false) }}
+            onChange={e => { setRotulo(e.target.value); setConfirmadoPara(null) }}
           />
           <label className={styles.label}>Texto da mensagem</label>
           <textarea
@@ -158,7 +163,7 @@ export default function DisparoMassa({ conversas }: Props) {
             rows={5}
             placeholder={EXEMPLO_MSG}
             value={mensagem}
-            onChange={e => { setMensagem(e.target.value); setConfirmar(false) }}
+            onChange={e => { setMensagem(e.target.value); setConfirmadoPara(null) }}
           />
           <label className={styles.label}>
             Variáveis padrão (separadas pelo caractere pipe <strong>|</strong>)
@@ -167,7 +172,7 @@ export default function DisparoMassa({ conversas }: Props) {
             className={styles.input}
             placeholder="ex: cliente | sábado às 14h"
             value={varsRaw}
-            onChange={e => setVarsRaw(e.target.value)}
+            onChange={e => { setVarsRaw(e.target.value); setConfirmadoPara(null) }}
           />
           <p className={styles.hint}>
             Use <code>{'{{1}}'}</code>, <code>{'{{2}}'}</code>… na mensagem.
@@ -183,7 +188,14 @@ export default function DisparoMassa({ conversas }: Props) {
         {/* coluna 3: preview + ação */}
         <section className={styles.card}>
           <h3 className={styles.title}>3. Preview & disparo</h3>
+          {!inboxPhone && (
+            <p className={styles.hint} role="status">
+              Selecione um número de atendimento no filtro acima para definir o remetente e o público do disparo.
+            </p>
+          )}
           <div className={styles.preview}>
+            <span className={styles.pvLabel}>Remetente</span>
+            <span className={styles.pvValue}>{inboxPhone ? formatarPhoneBR(inboxPhone) : 'Selecione uma linha acima'}</span>
             <span className={styles.pvLabel}>Rótulo</span>
             <span className={styles.pvValue}>{rotulo || '—'}</span>
             <span className={styles.pvLabel}>Destinatários</span>
@@ -194,7 +206,7 @@ export default function DisparoMassa({ conversas }: Props) {
 
           {confirmar && (
             <div className={styles.confirm}>
-              Confirmar envio para <strong>{validos.length}</strong> número{validos.length > 1 ? 's' : ''} via Z-API?
+              Confirmar envio pelo número <strong>{formatarPhoneBR(inboxPhone)}</strong> para <strong>{validos.length}</strong> destinatário{validos.length > 1 ? 's' : ''}?
               {validos.length > 0 && (
                 <div style={{ marginTop: 6, fontSize: 11, opacity: 0.8 }}>
                   Primeiros 3: {validos.slice(0, 3).map((r) => formatarPhoneBR(r.phone)).join(' · ')}

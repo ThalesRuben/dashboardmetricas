@@ -65,11 +65,39 @@ livre, e o disparo em massa só precisa de mensagem + variáveis.
 ### Secrets necessários (Supabase → Functions → Secrets)
 
 ```
-ZAPI_INSTANCE_ID            # id da instância Z-API
-ZAPI_TOKEN                  # token da instância (mesma tela)
+ZAPI_INSTANCE_ID            # id da instância Z-API legada/principal
+ZAPI_TOKEN                  # token apenas dessa instância
 ZAPI_CLIENT_TOKEN           # Account Security Token (vai no header Client-Token)
+ZAPI_INSTANCE_TOKENS        # JSON { "id-da-outra-instancia": "token-dessa-instancia" }
 INTERNAL_API_KEY            # secret arbitrário; n8n manda no header
 DEFAULT_TENANT_SLUG         # opcional; default = 'the-blonde-concept'
+```
+
+### Remetente por linha de atendimento
+
+`inbox-reply` usa `whatsapp_threads.inbox_phone` como remetente. Cadastre cada
+linha na aba **Números**, com `provider=zapi`, número correto, instância própria
+e cadastro ativo. Os tokens das instâncias adicionais ficam apenas no secret
+`ZAPI_INSTANCE_TOKENS`; o token global nunca é reutilizado em outra instância.
+O `ZAPI_CLIENT_TOKEN` é o token de segurança da conta Z-API dessas instâncias.
+
+Antes de enviar, o servidor consulta `GET /device` da instância e confere se
+o telefone conectado corresponde ao número de atendimento. Sem cadastro,
+a instância global continua disponível somente se essa mesma verificação
+confirmar a linha. Linha inativa, credenciais ausentes, número divergente ou
+conversa sem `inbox_phone` bloqueiam o envio; não há simulação automática
+marcada como mensagem enviada.
+
+No **Disparo em massa**, selecione uma linha no filtro de números. O front
+envia `tenant_id` e `inbox_phone`; o servidor verifica o remetente antes de
+enviar ao primeiro destinatário. O histórico guarda número e instância em
+`detalhes`, sem tokens. `dry_run: true` é uma simulação explícita e não grava
+histórico de mensagens enviadas.
+
+Verificação local sem rede nem mensagens reais:
+
+```bash
+node --test scripts/verify-whatsapp-routing.mjs
 ```
 
 ### Deploy das functions
