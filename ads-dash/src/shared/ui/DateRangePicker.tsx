@@ -40,11 +40,14 @@ function fmt(d: Date | null | undefined): string {
 
 function toInput(d: Date | null | undefined): string {
   if (!d) return ''
-  return d.toISOString().slice(0, 10)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
-function fromPreset(key: string): DateRange | null {
-  const preset = PRESETS.find(p => p.key === key)
+function fromPreset(key: string, presets: PresetItem[] = PRESETS): DateRange | null {
+  const preset = presets.find(p => p.key === key)
   if (!preset || !preset.days) return null
   const to = new Date()
   to.setHours(23, 59, 59, 999)
@@ -79,7 +82,7 @@ export default function DateRangePicker({ value, onChange, presets = PRESETS }: 
       setCustomTo(toInput(value?.to))
       return
     }
-    const range = fromPreset(key)
+    const range = fromPreset(key, presets)
     onChange?.(range)
     setOpen(false)
   }
@@ -87,7 +90,7 @@ export default function DateRangePicker({ value, onChange, presets = PRESETS }: 
   function applyCustom() {
     if (!customFrom || !customTo) return
     const from = new Date(customFrom + 'T00:00:00')
-    const to   = new Date(customTo   + 'T23:59:59')
+    const to   = new Date(customTo   + 'T23:59:59.999')
     if (from > to) return
     onChange?.({ from, to, presetKey: 'custom' })
     setOpen(false)

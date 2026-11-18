@@ -63,6 +63,8 @@ permanece disponível para compatibilidade e reversão.
 - **Respondidas:** mensagem válida do atendente posterior à mensagem do
   cliente, na mesma linha e no mesmo período. Mensagens com erro e
   simulações são excluídas.
+  O indicador "sem 1ª resposta" conta contatos que não tiveram resposta no
+  período; não é a fila atual de mensagens pendentes após uma resposta anterior.
 - **Tempos:** medianas em minutos corridos. Mensagens consecutivas do
   cliente formam um turno; respostas após 24 horas continuam na amostra.
   Ausência de amostra retorna `null`, exibido como `—`.
@@ -71,6 +73,9 @@ permanece disponível para compatibilidade e reversão.
   estimativas pelas mensagens, sem integração com a agenda. Não representam
   número de horários, serviços ou comparecimentos. A classificação não
   modifica o status das conversas.
+  A migration `20261118030200_whatsapp_confirmation_assertions.sql` exclui
+  convites comerciais, regras de caução, condições futuras e cancelamentos
+  negados. Exige afirmação de confirmação ou ação concluída do atendente.
 - **Conversão estimada:** conversas com confirmação detectada / conversas
   recebidas, usando a mesma base e período.
 - **Vendas e receita:** registros do CRM, com datas no fuso de São Paulo.
@@ -87,6 +92,7 @@ Regressão em PostgreSQL isolado, com dados fictícios e sem acesso à rede:
 ```bash
 npm install --prefix .vercel/whatsapp-metrics-tests --no-save --package-lock=false @electric-sql/pglite@0.5.16
 node --test scripts/verify-whatsapp-metrics.mjs
+node --test scripts/verify-whatsapp-date-range.mjs
 ```
 
 Três edge functions trabalham juntas:

@@ -43,7 +43,7 @@ export default function InboxReportCard({ inboxPhone, label, threads, onOpen, ra
   const respondidas = r.respondidas ?? data.funil.find(f => f.etapa === 'Respondidas')?.valor ?? 0
   const pendentes = r.sem_resposta ?? Math.max(0, r.conversas - respondidas)
   const status = r.conversas === 0 ? 'Sem mensagens'
-    : pendentes > 0 ? `${fmtNumber(pendentes)} sem resposta` : 'Todas respondidas'
+    : pendentes > 0 ? `${fmtNumber(pendentes)} sem 1ª resposta` : 'Todas com 1ª resposta'
   const entradaMin = Number.isFinite(r.tempo_resposta_min) ? r.tempo_resposta_min : null
   const turnoMin = Number.isFinite(r.tempo_resposta_turno_min) ? r.tempo_resposta_turno_min : null
   const turnoOk = turnoMin !== null && turnoMin >= 0 && turnoMin <= 15

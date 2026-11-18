@@ -61,6 +61,9 @@ before(async () => {
   const migration = baseline ? '0055_whatsapp_summary_receita.sql'
     : readdirSync('supabase/migrations').find(f => f.endsWith('_whatsapp_message_metrics.sql'))
   await db.exec(readFileSync('supabase/migrations/' + migration, 'utf8'))
+  if (!baseline) {
+    await db.exec(readFileSync('supabase/migrations/20261118030200_whatsapp_confirmation_assertions.sql', 'utf8'))
+  }
   await db.query("select set_config('app.test_tenant',$1,false)", [tenant])
 
   // One customer, split across old/new threads and phone formats. Three incoming
@@ -146,6 +149,25 @@ test('line and tenant isolation keep the same customer separate', async () => {
   assert.equal(resumo.respondidas, 1)
   assert.equal(resumo.agendamentos, 0)
   assert.equal((await report(null)).resumo.conversas, 4)
+})
+
+test('commercial offers and deposit policies do not inflate the report even with old scheduled statuses', async () => {
+  await db.exec('begin')
+  try {
+    const before = (await report()).resumo
+    const offer = await thread('5531987654340', A, { status: 'agendado' })
+    await msg(offer, 'cliente', '2020-06-20T10:00:00Z', 'Bom dia')
+    await msg(offer, 'atendente', '2020-06-20T10:05:00Z', 'Se você já pretende realizar seu procedimento, o ideal é deixarmos seu horário reservado com antecedência. Qual período seria melhor para você?')
+    const policy = await thread('5531987654341', A, { status: 'agendado' })
+    await msg(policy, 'cliente', '2020-06-20T11:00:00Z', 'Quero saber o valor')
+    await msg(policy, 'atendente', '2020-06-20T11:05:00Z', 'A caução dá direito a 1 reagendamento, desde que solicitado com antecedência mínima de 24 horas do horário agendado, dentro do prazo de 30 dias.')
+    const after = (await report()).resumo
+    assert.equal(after.conversas, before.conversas + 2)
+    assert.equal(after.respondidas, before.respondidas + 2)
+    assert.equal(after.agendamentos, before.agendamentos)
+  } finally {
+    await db.exec('rollback')
+  }
 })
 test('an immediate response is a real zero-minute sample', async () => {
   const { resumo } = await report(B)
@@ -233,6 +255,16 @@ for (const [text, expected] of [
   ['Agendamento confirmado! Podemos ajudar com mais alguma coisa?', 'confirmacao'],
   ['Agendei você para sexta às 14h.', 'confirmacao'],
   ['Seu horário foi cancelado.', 'cancelamento'],
+  ['Olá, boa tarde. Tudo bem? 💛\n\nPassando para saber se ficou alguma dúvida sobre o seu atendimento. Nossa agenda de final de ano já está com bastante procura e os horários mais disputados começam a ficar limitados.\n\nSe você já pretende realizar seu procedimento, o ideal é deixarmos seu horário reservado com antecedência. Qual período seria melhor para você?', null],
+  ['Para confirmar o agendamento de mechas, solicitamos um caução de R$ 150,00. Assim que a transferência for realizada, favor enviar o comprovante para confirmação do horário. O valor será abatido no pagamento no dia do procedimento.\n\nEm caso de cancelamento, desistência ou não comparecimento, a caução poderá ser retida para compensação da reserva da agenda, dos custos operacionais e da indisponibilidade do horário reservado.\nA caução dá direito a 1 reagendamento, desde que solicitado com antecedência mínima de 24 horas do horário agendado, dentro do prazo de 30 dias, com o mesmo profissional e sujeito à disponibilidade da agenda.', null],
+  ['O ideal é deixarmos seu horário reservado com antecedência.', null],
+  ['A caução poderá ser retida em caso de indisponibilidade do horário reservado.', null],
+  ['Reagendamento solicitado com 24 horas de antecedência do horário agendado.', null],
+  ['Seu horário não foi cancelado.', null],
+  ['Caso seu horário seja cancelado, entre em contato.', null],
+  ['Seu horário será confirmado após recebermos o comprovante.', null],
+  ['Recebemos o comprovante. Seu horário está confirmado para sexta às 14h.', 'confirmacao'],
+  ['Reservei seu horário para sexta às 14h.', 'confirmacao'],
 ]) {
   test(`appointment text: ${text}`, { skip: baseline }, async () => {
     const result = await db.query('select public.classificar_agendamento_whatsapp($1) as event', [text])
