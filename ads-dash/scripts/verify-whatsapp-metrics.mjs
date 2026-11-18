@@ -63,6 +63,7 @@ before(async () => {
   await db.exec(readFileSync('supabase/migrations/' + migration, 'utf8'))
   if (!baseline) {
     await db.exec(readFileSync('supabase/migrations/20261118030200_whatsapp_confirmation_assertions.sql', 'utf8'))
+    await db.exec(readFileSync('supabase/migrations/20261118173000_whatsapp_booking_message_formats.sql', 'utf8'))
   }
   await db.query("select set_config('app.test_tenant',$1,false)", [tenant])
 
@@ -143,6 +144,25 @@ test('appointment estimates ignore old status and later cancellations', async ()
   assert.equal(resumo.taxa_conversao, 33.3)
   assert.equal(fontes.agendamentos, 'confirmacao_em_mensagens')
 })
+test('actual booking templates, rescheduling and cancellation reconcile per contact', async () => {
+  await db.exec('begin')
+  try {
+    const initial = (await report()).resumo.agendamentos
+    const booking = await thread('5531987654390', A)
+    await msg(booking, 'cliente', '2020-06-20T10:00:00Z', 'Quero cortar o cabelo')
+    await msg(booking, 'atendente', '2020-06-20T10:01:00Z', '*Agendado corte para sábado (21/11) às 14h30 com o Fábio Oliver*')
+    assert.equal((await report()).resumo.agendamentos, initial + 1)
+    await msg(booking, 'atendente', '2020-06-20T11:00:00Z', '*Remarcado para o dia 25/11 ás 17h*')
+    assert.equal((await report()).resumo.agendamentos, initial + 1, 'Rescheduling must not count a second contact')
+    await msg(booking, 'atendente', '2020-06-20T12:00:00Z', 'Seu horário foi cancelado.')
+    assert.equal((await report()).resumo.agendamentos, initial)
+    await msg(booking, 'atendente', '2020-06-20T13:00:00Z', '*Agendado mechas dia 26/11 (quinta-feira) as 10h com Fábio Oliver*')
+    assert.equal((await report()).resumo.agendamentos, initial + 1)
+  } finally {
+    await db.exec('rollback')
+  }
+})
+
 test('line and tenant isolation keep the same customer separate', async () => {
   const { resumo } = await report(B)
   assert.equal(resumo.conversas, 1)
@@ -265,6 +285,17 @@ for (const [text, expected] of [
   ['Seu horário será confirmado após recebermos o comprovante.', null],
   ['Recebemos o comprovante. Seu horário está confirmado para sexta às 14h.', 'confirmacao'],
   ['Reservei seu horário para sexta às 14h.', 'confirmacao'],
+  ['*Agendado coloração de raiz e mechas dia 26/11 (quinta-feira) as 10h com Fábio Oliver* ✨💛', 'confirmacao'],
+  ['*Agendado corte masculino hoje as 16h com nosso profissional Rafael Martuchello* ✨💛', 'confirmacao'],
+  ['*Agendado sobrancelhas para o dia 09/12 (quarta feira) ás 12h com a profissional Sandy Pinheiro*', 'confirmacao'],
+  ['*Agendado corte para sábado (21/11) às 14h30 com o Fábio Oliver*', 'confirmacao'],
+  ['*Remarcado para o dia 25/11 ás 17h*', 'confirmacao'],
+  ['*remarcado para terça feira as 12h com a profissional*', 'confirmacao'],
+  ['Agendado!', 'confirmacao'],
+  ['Agendado quando você fizer o pagamento para sexta às 14h.', null],
+  ['Agendado para sexta às 14h?', null],
+  ['Posso deixar agendado mechas dia 26/11 às 10h?', null],
+  ['A política se aplica ao procedimento agendado para sexta às 14h.', null],
 ]) {
   test(`appointment text: ${text}`, { skip: baseline }, async () => {
     const result = await db.query('select public.classificar_agendamento_whatsapp($1) as event', [text])

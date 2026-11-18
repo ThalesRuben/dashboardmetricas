@@ -76,6 +76,11 @@ permanece disponível para compatibilidade e reversão.
   A migration `20261118030200_whatsapp_confirmation_assertions.sql` exclui
   convites comerciais, regras de caução, condições futuras e cancelamentos
   negados. Exige afirmação de confirmação ou ação concluída do atendente.
+  A migração `20261118173000_whatsapp_booking_message_formats.sql` reconhece
+  também os formatos reais "Agendado [serviço] dia [data] às [hora] com
+  [profissional]", "Agendado!" e "Remarcado para o dia...", inclusive com
+  formatação do WhatsApp. Remarcações continuam contando uma vez por contato
+  e linha; cancelamentos posteriores removem a confirmação detectada.
 - **Conversão estimada:** conversas com confirmação detectada / conversas
   recebidas, usando a mesma base e período.
 - **Vendas e receita:** registros do CRM, com datas no fuso de São Paulo.
