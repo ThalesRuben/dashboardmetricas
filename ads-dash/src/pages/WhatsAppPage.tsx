@@ -66,7 +66,7 @@ export default function WhatsAppPage() {
   // arquivamento manual de 2026-10-22. "Mostrar todas" libera tudo pra
   // consulta pontual sem perder o default limpo pros atendentes.
   const [showInactive, setShowInactive] = useState(false)
-  const { data, loading, usingMock } = useWhatsAppMetrics(inboxPhone, range)
+  const { data, loading, usingMock, erro: erroMetricas, refresh: refreshMetricas } = useWhatsAppMetrics(inboxPhone, range)
   const { inboxes } = useWhatsAppInboxes()
   const selfInboxPhones = useMemo(() => inboxes.map((i) => i.inbox_phone), [inboxes])
   const { threads, reloadThreads } = useInbox({ inboxPhone, selfInboxPhones, showInactive })
@@ -143,6 +143,14 @@ export default function WhatsAppPage() {
     [threads],
   )
 
+  if (erroMetricas && !data) {
+    return (
+      <div className={styles.page}>
+        <p role="alert">Não foi possível carregar as métricas do WhatsApp.</p>
+        <button type="button" className="cc-btn" onClick={() => void refreshMetricas()}>Tentar novamente</button>
+      </div>
+    )
+  }
   if (loading || !data) {
     return <div className={styles.page}><div className={styles.loading}>Carregando WhatsApp...</div></div>
   }
@@ -174,7 +182,7 @@ export default function WhatsAppPage() {
       <PageHeader
         section="whatsapp"
         title="WhatsApp"
-        subtitle={`${fmtNumber(r.conversas)} conversas no período · tempo mediano de resposta ${r.tempo_resposta_min} min`}
+        subtitle={`${fmtNumber(r.conversas)} conversas recebidas no período · 1ª resposta: ${Number.isFinite(r.tempo_resposta_min) ? `${r.tempo_resposta_min} min (mediana)` : 'sem amostra'}`}
         actions={
           <div className={styles.headerActions}>
             <DateRangePicker value={range} onChange={setRange} presets={WHATSAPP_PRESETS} />
@@ -188,6 +196,12 @@ export default function WhatsAppPage() {
       />
 
       {semDadoReal && <Banner>Dados de demonstração. Aguardando primeira mensagem real.</Banner>}
+      {erroMetricas && (
+        <div className={styles.banner} role="alert">
+          Falha ao atualizar as métricas. Exibindo os dados da última consulta.{' '}
+          <button type="button" className="cc-btn" onClick={() => void refreshMetricas()}>Tentar novamente</button>
+        </div>
+      )}
 
       {(inboxes.length > 1 || (tab === 'disparo' && inboxes.length > 0)) && (
         <InboxFilter
@@ -224,34 +238,34 @@ export default function WhatsAppPage() {
             accentColor="var(--section-whatsapp)"
           />
           <KpiCard
-            label="Conversas"
+            label="Conversas recebidas"
             value={fmtNumber(r.conversas)}
             delta={fmtDelta(r.conversas_delta)}
             up={r.conversas_delta > 0}
           />
           <KpiCard
-            label="Agendamentos"
+            label="Agend. detectados"
             value={fmtNumber(r.agendamentos)}
             delta={fmtDelta(r.agendamentos_delta)}
             up={r.agendamentos_delta > 0}
           />
           <KpiCard
-            label="Conversão"
+            label="Conv. estimada"
             value={fmtPct(r.taxa_conversao)}
-            delta="agendamentos / conversas"
+            delta="confirmações nas mensagens / conversas"
             neutral
           />
           <KpiCard
             label="T. até 1ª resposta"
-            value={`${r.tempo_resposta_min} min`}
+            value={Number.isFinite(r.tempo_resposta_min) ? `${r.tempo_resposta_min} min` : '—'}
             delta={`${fmtPct(r.pct_sla_resposta)} em ≤10min`}
             up={r.pct_sla_resposta >= 60}
           />
           <KpiCard
-            label="T. médio por turno"
-            value={`${r.tempo_resposta_turno_min} min`}
+            label="T. por turno (mediana)"
+            value={Number.isFinite(r.tempo_resposta_turno_min) ? `${r.tempo_resposta_turno_min} min` : '—'}
             delta="entre msgs do cliente e resposta"
-            up={r.tempo_resposta_turno_min > 0 && r.tempo_resposta_turno_min <= 15}
+            up={Number.isFinite(r.tempo_resposta_turno_min) && r.tempo_resposta_turno_min > 0 && r.tempo_resposta_turno_min <= 15}
           />
         </section>
       )}

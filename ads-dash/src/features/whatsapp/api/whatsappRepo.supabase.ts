@@ -1,10 +1,10 @@
-// Implementação Supabase — payload mais recente da tabela whatsapp_metrics
-// é mesclado sobre o mock para preencher lacunas.
+// Implementação Supabase — métricas calculadas a partir das mensagens reais.
 
 import { supabase, invokeFunction } from '@/shared/lib/supabase';
 import type { WhatsAppRepo } from './whatsappRepo';
 import type {
   WhatsAppDisparoResultado,
+  WhatsAppSummary,
   WhatsAppDisparoHistorico,
   WhatsAppThreadReal,
   WhatsAppMsgReal,
@@ -17,17 +17,19 @@ import type {
   WhatsAppTemplateSyncResult,
   ReplyResultado,
 } from './types';
-import { MOCK_WHATSAPP } from './whatsappRepo.mock';
 
 export const supabaseWhatsAppRepo: WhatsAppRepo = {
   async getSummary(inboxPhone?: string | null, range?: { from: Date; to: Date } | null) {
-    const { data, error } = await supabase.rpc('get_whatsapp_summary', {
+    const { data, error } = await supabase.rpc('get_whatsapp_message_summary', {
       p_inbox_phone: inboxPhone ?? null,
       p_from: range?.from ? range.from.toISOString() : null,
       p_to:   range?.to   ? range.to.toISOString()   : null,
     });
-    if (error || !data) return null;
-    return { ...MOCK_WHATSAPP, ...(data as any) };
+    if (error) throw new Error(error.message);
+    if (!data?.resumo || data.fontes?.conversas !== 'mensagens_recebidas') {
+      throw new Error('O relatório de mensagens não retornou dados válidos.');
+    }
+    return data as WhatsAppSummary;
   },
 
   async listarInboxes(): Promise<WhatsAppInbox[]> {

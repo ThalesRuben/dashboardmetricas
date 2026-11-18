@@ -50,6 +50,45 @@ supabase gen types typescript --local > ../src/shared/lib/supabase/types.gen.ts
 
 ## WhatsApp — inbox + disparo
 
+### Métricas pelas mensagens
+
+O frontend consulta `get_whatsapp_message_summary(inbox, from, to)`.
+A migration `20261117234606_whatsapp_message_metrics.sql` deve ser aplicada
+antes de publicar esse frontend. A função anterior `get_whatsapp_summary`
+permanece disponível para compatibilidade e reversão.
+
+- **Conversas recebidas:** um contato normalizado por linha, com mensagem
+  recebida no período. Clientes antigos que voltam a escrever entram na
+  contagem. Arquivar uma conversa não apaga sua atividade passada.
+- **Respondidas:** mensagem válida do atendente posterior à mensagem do
+  cliente, na mesma linha e no mesmo período. Mensagens com erro e
+  simulações são excluídas.
+- **Tempos:** medianas em minutos corridos. Mensagens consecutivas do
+  cliente formam um turno; respostas após 24 horas continuam na amostra.
+  Ausência de amostra retorna `null`, exibido como `—`.
+- **Agendamentos detectados:** contatos recebidos com confirmação explícita
+  do atendente no período e sem cancelamento posterior detectado. São
+  estimativas pelas mensagens, sem integração com a agenda. Não representam
+  número de horários, serviços ou comparecimentos. A classificação não
+  modifica o status das conversas.
+- **Conversão estimada:** conversas com confirmação detectada / conversas
+  recebidas, usando a mesma base e período.
+- **Vendas e receita:** registros do CRM, com datas no fuso de São Paulo.
+
+A função usa permissões do chamador e o tenant do usuário autenticado.
+O painel atualiza a consulta a cada minuto enquanto a aba está visível e ao
+voltar à aba. Falhas iniciais exibem erro e opção de tentar novamente. Na
+atualização em segundo plano, a tela e os últimos dados reais são preservados
+com aviso de atualização indisponível. Dados de demonstração só aparecem no
+modo explicitamente configurado como mock.
+
+Regressão em PostgreSQL isolado, com dados fictícios e sem acesso à rede:
+
+```bash
+npm install --prefix .vercel/whatsapp-metrics-tests --no-save --package-lock=false @electric-sql/pglite@0.5.16
+node --test scripts/verify-whatsapp-metrics.mjs
+```
+
 Três edge functions trabalham juntas:
 
 | function          | quem chama        | função                                              |

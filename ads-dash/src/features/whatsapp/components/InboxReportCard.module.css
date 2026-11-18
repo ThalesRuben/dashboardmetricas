@@ -29,6 +29,8 @@
 }
 .statusOk   { color: var(--color-success); background: var(--color-success-bg, rgba(46, 204, 113, 0.1)); }
 .statusWarn { color: var(--color-warning); background: var(--color-warning-bg, rgba(241, 196, 15, 0.12)); }
+.statusEmpty { color: var(--text-muted); background: var(--bg-input); }
+.sourceNote { font-family: var(--font-sans); font-size: 11px; color: var(--text-muted); line-height: 1.45; margin: 0; }
 
 .loading { font-family: var(--font-sans); font-size: 12px; color: var(--text-subtle); margin: 0; }
 
@@ -61,11 +63,11 @@
 }
 
 .funil { display: flex; flex-direction: column; gap: 5px; }
-.funilRow { display: grid; grid-template-columns: 80px 1fr 56px; gap: 8px; align-items: center; }
+.funilRow { display: grid; grid-template-columns: minmax(80px, 110px) minmax(24px, 1fr) auto; gap: 8px; align-items: center; }
 .funilLabel { font-family: var(--font-sans); font-size: 11px; color: var(--text-muted); }
 .funilTrack { height: 7px; background: rgba(255, 255, 255, 0.05); border-radius: 4px; overflow: hidden; }
 .funilFill  { display: block; height: 100%; background: var(--section-whatsapp); border-radius: 4px; transition: width 0.3s ease; }
-.funilVal   { font-family: var(--font-mono, var(--font-sans)); font-size: 11px; color: var(--text-default); font-variant-numeric: tabular-nums; text-align: right; }
+.funilVal   { font-family: var(--font-mono, var(--font-sans)); font-size: 11px; color: var(--text-default); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 
 .foot { display: flex; justify-content: flex-end; }
 .openCta { font-family: var(--font-sans); font-size: 12px; color: var(--section-whatsapp); }

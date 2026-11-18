@@ -12,7 +12,20 @@ export interface InboxReportCardProps {
 }
 
 export default function InboxReportCard({ inboxPhone, label, threads, onOpen, range }: InboxReportCardProps) {
-  const { data, loading } = useWhatsAppMetrics(inboxPhone, range)
+  const { data, loading, erro, usingMock, refresh } = useWhatsAppMetrics(inboxPhone, range)
+
+  if (erro && !data) {
+    return (
+      <article className={styles.card}>
+        <header className={styles.head}>
+          <h3 className={styles.title}>{label}</h3>
+          <span className={styles.phone}>{formatarPhoneBR(inboxPhone)}</span>
+        </header>
+        <p className={styles.loading} role="alert">Não foi possível carregar os dados desta linha.</p>
+        <button type="button" className="cc-btn" onClick={() => void refresh()}>Tentar novamente</button>
+      </article>
+    )
+  }
 
   if (loading || !data) {
     return (
@@ -27,21 +40,21 @@ export default function InboxReportCard({ inboxPhone, label, threads, onOpen, ra
   }
 
   const r = data.resumo
-  // Status honesto: "no ritmo" exige SLA + conversão de fato. Antes o badge
-  // ficava "no ritmo" com conversão 0% desde que o tempo de resposta fosse
-  // zero (ou seja, 0 msgs respondidas também passava).
-  const slaOk    = r.tempo_resposta_min > 0 && r.tempo_resposta_min <= 10
-  const temVenda = r.taxa_conversao > 0 || r.agendamentos > 0
-  const dentroMeta = slaOk && temVenda
-  const turnoOk = r.tempo_resposta_turno_min > 0 && r.tempo_resposta_turno_min <= 15
+  const respondidas = r.respondidas ?? data.funil.find(f => f.etapa === 'Respondidas')?.valor ?? 0
+  const pendentes = r.sem_resposta ?? Math.max(0, r.conversas - respondidas)
+  const status = r.conversas === 0 ? 'Sem mensagens'
+    : pendentes > 0 ? `${fmtNumber(pendentes)} sem resposta` : 'Todas respondidas'
+  const entradaMin = Number.isFinite(r.tempo_resposta_min) ? r.tempo_resposta_min : null
+  const turnoMin = Number.isFinite(r.tempo_resposta_turno_min) ? r.tempo_resposta_turno_min : null
+  const turnoOk = turnoMin !== null && turnoMin >= 0 && turnoMin <= 15
 
   // Funil complementar aos KPIs — mostra as etapas que NÃO repetem os KPIs
   // de cima (Leads, Respostas e Vendas). Conversas/Agendamentos/Conversão
   // já estão na linha de KPIs.
   const etapas = [
-    { label: 'Leads',       valor: r.leads },
-    { label: 'Respondidas', valor: 0, custom: `${fmtPct(r.taxa_resposta || 0)}` },
-    { label: 'Vendas',      valor: 0, custom: fmtNumber((data.funil.find((f) => f.etapa.toLowerCase().includes('venda'))?.valor) || 0) },
+    { label: 'Interesse detectado', valor: r.leads, texto: fmtNumber(r.leads) },
+    { label: 'Respondidas', valor: respondidas, texto: `${fmtNumber(respondidas)} · ${fmtPct(r.taxa_resposta)}` },
+    { label: 'Vendas registradas', valor: r.vendas_registradas ?? 0, texto: fmtNumber(r.vendas_registradas ?? 0) },
   ]
   const topo = Math.max(1, r.conversas || 1)
 
@@ -51,46 +64,51 @@ export default function InboxReportCard({ inboxPhone, label, threads, onOpen, ra
       role="button"
       tabIndex={0}
       onClick={() => onOpen(inboxPhone)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpen(inboxPhone) }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(inboxPhone) } }}
     >
       <header className={styles.head}>
         <div className={styles.headLeft}>
           <h3 className={styles.title}>{label}</h3>
-          <span className={styles.phone}>{formatarPhoneBR(inboxPhone)} · {threads} thread{threads === 1 ? '' : 's'}</span>
+          <span className={styles.phone}>{formatarPhoneBR(inboxPhone)} · {fmtNumber(threads)} registros no histórico</span>
         </div>
-        <span className={`${styles.statusTag} ${dentroMeta ? styles.statusOk : styles.statusWarn}`}>
-          {dentroMeta ? 'no ritmo' : 'lento'}
+        <span className={`${styles.statusTag} ${r.conversas === 0 ? styles.statusEmpty : pendentes === 0 ? styles.statusOk : styles.statusWarn}`}>
+          {status}
         </span>
       </header>
 
       <div className={styles.kpis}>
-        <Kpi label="Conversas"     value={fmtNumber(r.conversas)} />
-        <Kpi label="Agendamentos"  value={fmtNumber(r.agendamentos)} />
-        <Kpi label="Conversão"     value={fmtPct(r.taxa_conversao)} />
+        <Kpi label="Conversas recebidas" value={fmtNumber(r.conversas)} />
+        <Kpi label="Agend. detectados" value={fmtNumber(r.agendamentos)} sub="estimativa pelas mensagens" />
+        <Kpi label="Conv. estimada" value={fmtPct(r.taxa_conversao)} />
         <Kpi
-          label="T. entrada"
-          value={`${r.tempo_resposta_min}m`}
+          label="T. 1ª resposta"
+          value={entradaMin !== null ? `${entradaMin}m` : '—'}
           sub={`${fmtPct(r.pct_sla_resposta)} ≤10m`}
-          tone={dentroMeta ? 'ok' : 'warn'}
+          tone={entradaMin === null ? undefined : entradaMin <= 10 ? 'ok' : 'warn'}
         />
         <Kpi
-          label="T. médio turno"
-          value={`${r.tempo_resposta_turno_min}m`}
-          sub="entre msgs"
-          tone={turnoOk ? 'ok' : 'warn'}
+          label="T. por turno"
+          value={turnoMin !== null ? `${turnoMin}m` : '—'}
+          sub="mediana · tempo corrido"
+          tone={turnoMin === null ? undefined : turnoOk ? 'ok' : 'warn'}
         />
       </div>
 
+      <p className={styles.sourceNote}>
+        {usingMock ? 'Dados de demonstração.' : 'Contatos únicos que enviaram mensagens no período, por linha.'}
+      </p>
+      {erro && <p className={styles.sourceNote} role="alert">Falha ao atualizar. Exibindo os dados da última consulta.</p>}
+
       <div className={styles.funil}>
         {etapas.map((e, i) => {
-          const pct = e.custom ? 100 : Math.round((e.valor / topo) * 100)
+          const pct = Math.max(0, Math.min(100, (e.valor / topo) * 100))
           return (
             <div key={e.label} className={styles.funilRow}>
               <span className={styles.funilLabel}>{e.label}</span>
               <span className={styles.funilTrack}>
-                <span className={styles.funilFill} style={{ width: `${Math.max(8, pct)}%`, opacity: 1 - i * 0.15 }} />
+                <span className={styles.funilFill} style={{ width: `${pct}%`, opacity: 1 - i * 0.15 }} />
               </span>
-              <span className={styles.funilVal}>{e.custom || fmtNumber(e.valor)}</span>
+              <span className={styles.funilVal}>{e.texto}</span>
             </div>
           )
         })}

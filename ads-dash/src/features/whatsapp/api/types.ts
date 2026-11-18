@@ -8,12 +8,15 @@ export interface WhatsAppResumo {
   agendamentos: number;
   agendamentos_delta: number;
   taxa_resposta: number;
-  // Tempo até PRIMEIRA resposta do atendente em threads criadas no período (mediana).
-  tempo_resposta_min: number;
+  // Mediana até a primeira resposta após a mensagem recebida no período.
+  tempo_resposta_min: number | null;
   pct_sla_resposta: number;
-  // Tempo médio POR TURNO — mediana entre cada msg do cliente e a próxima
-  // resposta do atendente na mesma thread. Detecta "some no meio da conversa".
-  tempo_resposta_turno_min: number;
+  // Mediana por turno de cliente (mensagens consecutivas contam uma vez).
+  tempo_resposta_turno_min: number | null;
+  respondidas?: number;
+  sem_resposta?: number;
+  amostra_respostas?: number;
+  amostra_turnos?: number;
   taxa_conversao: number;
   ticket_medio: number;
   // Vendas reais registradas em crm_vendas no período. Diferente de
@@ -80,6 +83,12 @@ export interface WhatsAppSummary {
   motivos: WhatsAppMotivo[];
   origens: WhatsAppOrigem[];
   conversas_recentes: WhatsAppConversa[];
+  periodo?: { from: string; to: string };
+  fontes?: {
+    conversas: 'mensagens_recebidas';
+    agendamentos: 'confirmacao_em_mensagens';
+    vendas: 'crm';
+  };
 }
 
 export interface WhatsAppDisparoRecipient {
