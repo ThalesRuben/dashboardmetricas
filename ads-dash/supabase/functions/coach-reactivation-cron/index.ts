@@ -180,17 +180,17 @@ REGRAS (leia a conversa INTEIRA antes de decidir):
 10. proxima_resposta: 1-3 frases, direto, tom acolhedor, sem floreios, sem desculpar demais. Se ja_resolvido=true, string vazia.
 
 11. OBJEÇÃO — leia a transcrição inteira e identifique o motivo real do lead ter esfriado. Classifique em um dos tipos:
-   - "preco": cliente achou caro, comparou valor, pediu desconto, sumiu depois do preço ser enviado.
+   - "preco": cliente REAGIU negativamente a um valor já informado — achou caro, comparou com concorrente, pediu desconto, sumiu DEPOIS do preço ter sido enviado. Apenas PERGUNTAR valor ("qual o valor?", "quanto fica?", "quero saber o preço", "preciso saber o valor") NÃO é objeção de preço — é só pedir informação. Nesse caso use "nenhuma" e a proxima_resposta DEVE RESPONDER o valor do serviço que ela perguntou (ler da EQUIPE).
    - "agenda": cliente queria dia/horário específico que não encaixou, atendente demorou pra confirmar, agenda não tinha vaga.
    - "logistica": cliente de outra cidade/estado, mencionou distância, declarou que não consegue vir.
    - "tecnica": cliente perguntou algo específico (procedimento, duração, cuidado) e não recebeu resposta clara.
    - "indecisao": cliente ficou de "ver com o marido/mãe", "pensar", "retornar depois" sem motivo concreto.
    - "concorrencia": cliente mencionou outro salão/profissional em comparação.
-   - "nenhuma": não dá pra classificar com confiança (sumiu sem sinal claro).
+   - "nenhuma": não dá pra classificar com confiança (sumiu sem sinal claro) OU cliente só pediu informação e não houve reação negativa ainda.
    Se tipo != "nenhuma", "trecho" cita literalmente uma frase do cliente que revela essa objeção, e "tratamento" descreve em 1 frase como a proxima_resposta vai atacar.
 
 12. proxima_resposta DEVE atacar a objecao_detectada frontalmente (quando tipo != "nenhuma"):
-   - preco → oferecer profissional de tier INFERIOR da EQUIPE com valor exato ("temos a mesma técnica com Thais no combo em R$ 1.097, treinada pelo Fábio pelo método The Blonde Concept"). JAMAIS inventar desconto ou condição.
+   - preco → oferecer profissional de tier INFERIOR da EQUIPE com valor exato DO MESMO SERVIÇO que a cliente queria. Se a conversa é sobre corte, use valor de CORTE do tier inferior (ex: Rafael R$ 390, Jonne R$ 360, tier equipe R$ 345). Se é combo de mechas, use combo_valor. Se é coloração, use preço de coloração. NÃO empurre combo de mechas quando a cliente estava falando de corte. JAMAIS inventar desconto ou condição.
    - agenda → propor 2 horários/dias concretos OU pedir 2 opções da cliente. Se agenda do profissional original não encaixa, oferecer outro da EQUIPE.
    - logistica → reconhecer a barreira primeiro, oferecer alternativa consultiva (consultoria à distância se existir, "quando estiver em BH, me avisa").
    - tecnica → responder DIRETO a dúvida técnica com base em OFERTAS/DIFERENCIAIS/EQUIPE do brain; não mandar "me manda uma foto" como fuga.
@@ -203,7 +203,9 @@ REGRAS (leia a conversa INTEIRA antes de decidir):
    - Se tipo == "agenda" → opções alternativas de profissional.
    - Se cliente pediu literal "outros profissionais" ou "qual outro" → 2-3 opções diferentes do que ele já conhece.
    - Se cliente tem perfil claro (cacheado → Brenda; mega hair → Jonne) → 1 opção direta.
+   - Se cliente SÓ PERGUNTOU o valor (tipo="nenhuma") e ainda não houve objeção → array vazio []. Nesse caso a proxima_resposta só informa o valor do serviço discutido, sem empurrar alternativa.
    - Caso contrário → array vazio [].
+   - combo_valor TEM QUE SER DO MESMO SERVIÇO que a cliente está discutindo. Se é corte → preço de corte do profissional (ex: "R$ 390", "R$ 345"). Se é combo de mechas → combo_valor completo (ex: "R$ 1.097 / 1.247 / 1.397"). Se é coloração → valor da coloração. NUNCA retornar combo de mechas quando o assunto é corte.
    - NUNCA inventar nome/preço. Usa a EQUIPE literalmente. O nome em "proxima_resposta" deve bater com os sugeridos.
    - "nossa equipe treinada pelo Fábio pelo método The Blonde Concept" (ou variação natural) é a frase-âncora quando sugerir alguém diferente do que o cliente já conhecia.
 
