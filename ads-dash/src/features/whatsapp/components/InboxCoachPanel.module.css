@@ -361,3 +361,57 @@
   align-items: center;
   justify-content: center;
 }
+
+.profList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.profCard {
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.profHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.profNome {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.profTierBadge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+.profValor {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.profMotivo {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.profTierFabio         { border-left-color: #ef5656; }
+.profTierIntermediario { border-left-color: #ef9f27; }
+.profTierEquipe        { border-left-color: var(--accent); }

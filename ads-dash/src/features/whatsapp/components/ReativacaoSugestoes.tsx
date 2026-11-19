@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { invokeFunction } from '@/shared/lib/supabase';
 import { useToast } from '@/app/providers/ToastContext';
-import { coachRascunhosRepo, type CoachRascunho } from '../api/coachRascunhosRepo';
+import { coachRascunhosRepo, type CoachRascunho, type ObjecaoTipo } from '../api/coachRascunhosRepo';
 import { useCoachRascunhos } from '../hooks/useCoachRascunhos';
 import { whatsappRepo } from '../api/whatsappRepo';
 import type { WhatsAppMsgReal } from '../api/types';
@@ -36,6 +36,41 @@ function TagBadge({ tag }: { tag: CoachRascunho['tag_sugerida'] }) {
   const cls = tag === 'quente' ? styles.tagQuente : tag === 'morno' ? styles.tagMorno : styles.tagFrio;
   return <span className={`${styles.tag} ${cls}`}>{tag}</span>;
 }
+
+const OBJECAO_LABEL: Record<ObjecaoTipo, string> = {
+  preco:        'Preço',
+  agenda:       'Agenda',
+  logistica:    'Logística',
+  tecnica:      'Dúvida técnica',
+  indecisao:    'Indecisão',
+  concorrencia: 'Concorrência',
+  nenhuma:      '—',
+};
+const OBJECAO_BADGE_CLASS: Record<ObjecaoTipo, string> = {
+  preco:        styles.objPreco,
+  agenda:       styles.objAgenda,
+  logistica:    styles.objLogistica,
+  tecnica:      styles.objTecnica,
+  indecisao:    styles.objIndecisao,
+  concorrencia: styles.objConcorrencia,
+  nenhuma:      '',
+};
+const OBJECAO_BORDER_CLASS: Record<ObjecaoTipo, string> = {
+  preco:        styles.objBorderPreco,
+  agenda:       styles.objBorderAgenda,
+  logistica:    styles.objBorderLogistica,
+  tecnica:      styles.objBorderTecnica,
+  indecisao:    styles.objBorderIndecisao,
+  concorrencia: styles.objBorderConcorrencia,
+  nenhuma:      '',
+};
+
+const TIER_LABEL: Record<'fabio' | 'intermediario' | 'equipe', string> = {
+  fabio:         'Fábio',
+  intermediario: 'Intermediário',
+  equipe:        'Equipe',
+};
+function cap(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 export default function ReativacaoSugestoes() {
   const toast = useToast();
@@ -204,6 +239,40 @@ export default function ReativacaoSugestoes() {
             </p>
 
             {r.resumo_ia && <p className={styles.resumo}>{r.resumo_ia}</p>}
+
+            {r.objecao_detectada && (
+              <div className={`${styles.objBlock} ${OBJECAO_BORDER_CLASS[r.objecao_detectada.tipo]}`}>
+                <div className={styles.objHead}>
+                  <span className={`${styles.objBadge} ${OBJECAO_BADGE_CLASS[r.objecao_detectada.tipo]}`}>
+                    Objeção · {OBJECAO_LABEL[r.objecao_detectada.tipo]}
+                  </span>
+                </div>
+                {r.objecao_detectada.trecho && (
+                  <p className={styles.objTrecho}>"{r.objecao_detectada.trecho}"</p>
+                )}
+                {r.objecao_detectada.tratamento && (
+                  <p className={styles.objTratamento}>→ {r.objecao_detectada.tratamento}</p>
+                )}
+              </div>
+            )}
+
+            {!!r.profissionais_sugeridos?.length && (
+              <div>
+                <p className={styles.subLabel}>Profissionais sugeridos</p>
+                <div className={styles.profList}>
+                  {r.profissionais_sugeridos.map((p, i) => (
+                    <div key={i} className={`${styles.profCard} ${p.tier ? styles[`profTier${cap(p.tier)}`] : ''}`}>
+                      <div className={styles.profHead}>
+                        <span className={styles.profNome}>{p.nome}</span>
+                        {p.tier && <span className={styles.profTierBadge}>{TIER_LABEL[p.tier]}</span>}
+                      </div>
+                      {p.combo_valor && <div className={styles.profValor}>{p.combo_valor}</div>}
+                      {p.motivo && <div className={styles.profMotivo}>{p.motivo}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button
               type="button"

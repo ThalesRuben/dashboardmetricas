@@ -8,6 +8,10 @@ export interface AiBrain {
   diferenciais: string;
   evitar: string;
   palavras_chave: string;
+  // Equipe TBC — lista dos profissionais com faixa de preço e especialidade.
+  // Permite o coach sugerir alternativa de profissional quando o cliente dá
+  // sinal de preço ou tem perfil específico (ex: cacheado → Brenda).
+  equipe?: string;
   // Toggle do cron de reativação: quando false, o coach-reactivation-cron
   // aborta sem gerar rascunhos. Serve como "panic-off" sem precisar deployar.
   reativacao_auto_ativa?: boolean;

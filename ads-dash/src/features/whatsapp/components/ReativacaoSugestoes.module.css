@@ -318,3 +318,122 @@
   border-color: rgba(239, 86, 86, 0.4);
 }
 .btnGhost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Objeção detectada */
+.objBlock {
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.objHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.objBadge {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.objTrecho {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.objTratamento {
+  font-size: 10.5px;
+  color: var(--text-subtle);
+  line-height: 1.35;
+}
+
+.objPreco       { background: rgba(239, 86, 86, 0.14);  color: #ef5656; }
+.objAgenda      { background: rgba(239, 159, 39, 0.14); color: #ef9f27; }
+.objLogistica   { background: rgba(93, 202, 165, 0.14); color: #5dcaa5; }
+.objTecnica     { background: rgba(126, 160, 225, 0.14); color: #7ea0e1; }
+.objIndecisao   { background: var(--bg); color: var(--text-muted); }
+.objConcorrencia{ background: rgba(176, 90, 220, 0.14); color: #b05adc; }
+
+.objBorderPreco       { border-left-color: #ef5656; }
+.objBorderAgenda      { border-left-color: #ef9f27; }
+.objBorderLogistica   { border-left-color: #5dcaa5; }
+.objBorderTecnica     { border-left-color: #7ea0e1; }
+.objBorderIndecisao   { border-left-color: var(--border); }
+.objBorderConcorrencia{ border-left-color: #b05adc; }
+
+/* Profissionais sugeridos */
+.profList {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.profCard {
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.profHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.profNome {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.profTierBadge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border-soft);
+}
+.profValor {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.profMotivo {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.profTierFabio         { border-left-color: #ef5656; }
+.profTierIntermediario { border-left-color: #ef9f27; }
+.profTierEquipe        { border-left-color: var(--accent); }
+
+.subLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin: 0;
+}

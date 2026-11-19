@@ -66,6 +66,22 @@ interface MsgReal {
   hora: string
 }
 
+interface ProfissionalSugerido {
+  nome: string
+  tier?: 'fabio' | 'intermediario' | 'equipe'
+  combo_valor?: string
+  motivo?: string
+}
+
+interface ObjecaoDetectada {
+  // tipo pré-classificado pra UI filtrar / badge colorir.
+  tipo: 'preco' | 'agenda' | 'logistica' | 'tecnica' | 'indecisao' | 'concorrencia' | 'nenhuma'
+  // trecho real da conversa (frase do cliente) que motivou a classificação.
+  trecho: string
+  // 1 frase de como a proxima_resposta ataca essa objeção — serve de auditoria.
+  tratamento: string
+}
+
 interface CoachResult {
   score_lead?: number
   tag_sugerida?: 'quente' | 'morno' | 'frio'
@@ -76,6 +92,8 @@ interface CoachResult {
   resumo?: string
   proxima_resposta?: string
   reativacao_necessaria?: boolean
+  objecao_detectada?: ObjecaoDetectada
+  profissionais_sugeridos?: ProfissionalSugerido[]
 }
 
 // ---- cópia enxuta do prompt do coach (SÓ as partes que importam pra
@@ -98,6 +116,9 @@ DIFERENCIAIS: ${brain?.diferenciais ?? '-'}
 EVITAR: ${brain?.evitar ?? '-'}
 PALAVRAS-CHAVE: ${brain?.palavras_chave ?? '-'}
 
+EQUIPE E PREÇOS (fonte única de nomes e valores — você só pode citar o que está aqui):
+${brain?.equipe ?? '(equipe não cadastrada — não citar nome de profissional)'}
+
 CONTATO: ${nome} (${thread.contato_phone}) · status: ${thread.status}
 
 TRANSCRIÇÃO COMPLETA (mais antigas em cima):
@@ -112,7 +133,20 @@ Responda SOMENTE com JSON válido:
   "motivo_ja_resolvido": "<string curta quando ja_resolvido=true, senão vazio>",
   "primeiro_nome": "<ou string vazia>",
   "resumo": "<1 frase sobre o estado da conversa>",
-  "proxima_resposta": "<mensagem PRONTA de reativação, 1-3 frases, em pt-BR, tom da marca>",
+  "objecao_detectada": {
+    "tipo": "preco | agenda | logistica | tecnica | indecisao | concorrencia | nenhuma",
+    "trecho": "<citação literal do cliente que revela a objeção — ex: 'tá caro', 'não consigo nesse dia', 'moro em SP'. Vazio quando tipo=nenhuma.>",
+    "tratamento": "<em 1 frase, como a proxima_resposta ataca essa objeção — ex: 'oferece Thais do tier equipe a R$ 1.097 pra endereçar o preço do Fábio'. Vazio quando tipo=nenhuma.>"
+  },
+  "profissionais_sugeridos": [
+    {
+      "nome": "<nome EXATO da EQUIPE E PREÇOS>",
+      "tier": "fabio | intermediario | equipe",
+      "combo_valor": "<faixa EXATA do combo desse profissional lida da EQUIPE — ex: 'R$ 1.097 / 1.247 / 1.397'. Vazio se não é combo de mechas.>",
+      "motivo": "<em 1 frase, por que esse profissional casa com esta cliente — citando sinal concreto da conversa>"
+    }
+  ],
+  "proxima_resposta": "<mensagem PRONTA de reativação, 1-3 frases, em pt-BR, tom da marca, que ATACA a objecao_detectada>",
   "reativacao_necessaria": true|false
 }
 
@@ -143,7 +177,37 @@ REGRAS (leia a conversa INTEIRA antes de decidir):
 
 9. primeiro_nome: use o primeiro nome real se houver (ignorar emoji, "~", "cliente").
 
-10. proxima_resposta: 1-3 frases, direto, tom acolhedor, sem floreios, sem desculpar demais. Se ja_resolvido=true, string vazia.`
+10. proxima_resposta: 1-3 frases, direto, tom acolhedor, sem floreios, sem desculpar demais. Se ja_resolvido=true, string vazia.
+
+11. OBJEÇÃO — leia a transcrição inteira e identifique o motivo real do lead ter esfriado. Classifique em um dos tipos:
+   - "preco": cliente achou caro, comparou valor, pediu desconto, sumiu depois do preço ser enviado.
+   - "agenda": cliente queria dia/horário específico que não encaixou, atendente demorou pra confirmar, agenda não tinha vaga.
+   - "logistica": cliente de outra cidade/estado, mencionou distância, declarou que não consegue vir.
+   - "tecnica": cliente perguntou algo específico (procedimento, duração, cuidado) e não recebeu resposta clara.
+   - "indecisao": cliente ficou de "ver com o marido/mãe", "pensar", "retornar depois" sem motivo concreto.
+   - "concorrencia": cliente mencionou outro salão/profissional em comparação.
+   - "nenhuma": não dá pra classificar com confiança (sumiu sem sinal claro).
+   Se tipo != "nenhuma", "trecho" cita literalmente uma frase do cliente que revela essa objeção, e "tratamento" descreve em 1 frase como a proxima_resposta vai atacar.
+
+12. proxima_resposta DEVE atacar a objecao_detectada frontalmente (quando tipo != "nenhuma"):
+   - preco → oferecer profissional de tier INFERIOR da EQUIPE com valor exato ("temos a mesma técnica com Thais no combo em R$ 1.097, treinada pelo Fábio pelo método The Blonde Concept"). JAMAIS inventar desconto ou condição.
+   - agenda → propor 2 horários/dias concretos OU pedir 2 opções da cliente. Se agenda do profissional original não encaixa, oferecer outro da EQUIPE.
+   - logistica → reconhecer a barreira primeiro, oferecer alternativa consultiva (consultoria à distância se existir, "quando estiver em BH, me avisa").
+   - tecnica → responder DIRETO a dúvida técnica com base em OFERTAS/DIFERENCIAIS/EQUIPE do brain; não mandar "me manda uma foto" como fuga.
+   - indecisao → trazer gancho novo e CTA curto ("alguma novidade por aí? consegue me passar a decisão até sexta pra eu reservar o horário?").
+   - concorrencia → não brigar com o concorrente, reforçar diferencial ("nosso método é X, treinamento com Fábio Oliver, resultado Y").
+   - nenhuma → reativação clássica: reconhecer o tempo + gancho + CTA.
+
+13. profissionais_sugeridos:
+   - Se objecao_detectada.tipo == "preco" → 1 ou 2 opções de TIER INFERIOR ao profissional já envolvido na conversa (lido da EQUIPE).
+   - Se tipo == "agenda" → opções alternativas de profissional.
+   - Se cliente pediu literal "outros profissionais" ou "qual outro" → 2-3 opções diferentes do que ele já conhece.
+   - Se cliente tem perfil claro (cacheado → Brenda; mega hair → Jonne) → 1 opção direta.
+   - Caso contrário → array vazio [].
+   - NUNCA inventar nome/preço. Usa a EQUIPE literalmente. O nome em "proxima_resposta" deve bater com os sugeridos.
+   - "nossa equipe treinada pelo Fábio pelo método The Blonde Concept" (ou variação natural) é a frase-âncora quando sugerir alguém diferente do que o cliente já conhecia.
+
+14. Se ja_resolvido=true OU reativacao_necessaria=false OU nao_comercial=true: objecao_detectada.tipo="nenhuma", profissionais_sugeridos=[], e proxima_resposta="".`
 }
 
 async function chamarCoach(thread: Candidata, msgs: MsgReal[], brain: Record<string, string>): Promise<CoachResult | null> {

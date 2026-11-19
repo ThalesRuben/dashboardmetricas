@@ -248,8 +248,8 @@ function BrainTab({ brain, save, loading, toast }) {
             <span className={styles.fieldHint}>{f.hint}</span>
             <textarea
               className={styles.textarea}
-              rows={2}
-              value={draft[f.key] ?? ''}
+              rows={f.rows ?? 2}
+              value={(draft[f.key] as string | undefined) ?? ''}
               onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))}
             />
           </label>

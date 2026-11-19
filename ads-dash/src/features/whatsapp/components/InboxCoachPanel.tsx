@@ -19,6 +19,13 @@ interface AnaliseTempo {
   comentario: string
 }
 
+interface ProfissionalSugerido {
+  nome: string
+  tier?: 'fabio' | 'intermediario' | 'equipe'
+  combo_valor?: string
+  motivo?: string
+}
+
 interface CoachResult {
   modelo?: string
   primeiro_nome?: string
@@ -34,7 +41,14 @@ interface CoachResult {
   analise_tempo?: AnaliseTempo
   analise?: InsightItem[]
   oportunidades_perdidas?: string[]
+  profissionais_sugeridos?: ProfissionalSugerido[]
   gerado_em?: string
+}
+
+const TIER_LABEL: Record<NonNullable<ProfissionalSugerido['tier']>, string> = {
+  fabio:         'Fábio',
+  intermediario: 'Intermediário',
+  equipe:        'Equipe',
 }
 
 interface CrmContextoPayload {
@@ -270,6 +284,30 @@ export default function InboxCoachPanel({ thread, msgs, onUseSuggestion }: Inbox
                 {result.analise_tempo.comentario && (
                   <p className={styles.tempoComentario}>{result.analise_tempo.comentario}</p>
                 )}
+              </div>
+            </div>
+          )}
+
+          {!!result.profissionais_sugeridos?.length && (
+            <div className={styles.section}>
+              <h4 className={styles.sectionTitle}>Profissionais sugeridos</h4>
+              <div className={styles.profList}>
+                {result.profissionais_sugeridos.map((p, i) => (
+                  <div key={i} className={`${styles.profCard} ${p.tier ? styles[`profTier${cap(p.tier)}`] : ''}`}>
+                    <div className={styles.profHead}>
+                      <span className={styles.profNome}>{p.nome}</span>
+                      {p.tier && (
+                        <span className={styles.profTierBadge}>{TIER_LABEL[p.tier]}</span>
+                      )}
+                    </div>
+                    {p.combo_valor && (
+                      <div className={styles.profValor}>{p.combo_valor}</div>
+                    )}
+                    {p.motivo && (
+                      <div className={styles.profMotivo}>{p.motivo}</div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}

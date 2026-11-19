@@ -213,6 +213,9 @@ DIFERENCIAIS: ${brain?.diferenciais ?? '-'}
 EVITAR: ${brain?.evitar ?? '-'}
 PALAVRAS-CHAVE: ${brain?.palavras_chave ?? '-'}
 
+EQUIPE E PREÇOS (fonte única — todos os nomes, tiers e valores que você pode citar estão AQUI):
+${brain?.equipe ?? '(equipe não cadastrada no brain — fallback: só mencionar profissional se aparecer literal na transcrição)'}
+
 CONVERSA:
 - Contato: ${nome} (${thread.contato_phone})
 - Status atual: ${thread.status}
@@ -267,6 +270,14 @@ Sua tarefa: analise o estado da conversa como um coach comercial exigente e devo
   ],
   "oportunidades_perdidas": [
     "<algo que o atendente já deveria ter feito (responder preço direto, oferecer horário firme, usar oferta da Black Friday, quebrar objeção) — só se houver mesmo>"
+  ],
+  "profissionais_sugeridos": [
+    {
+      "nome": "<nome EXATO do profissional conforme aparece no bloco EQUIPE E PREÇOS — ex: 'Brenda Rocha', 'Thais Silva', 'Fábio Oliver'>",
+      "tier": "<'fabio' | 'intermediario' | 'equipe' — conforme o bloco EQUIPE>",
+      "combo_valor": "<faixa EXATA do combo desse profissional lida da EQUIPE — ex: 'R$ 1.097 / 1.247 / 1.397'. Deixa string vazia se o serviço em questão não é combo de mechas.>",
+      "motivo": "<em 1 frase: por que ESSE profissional casa com ESTA cliente — referenciando sinal concreto da conversa (ex: 'cliente pediu portfólio de outros profissionais e quer manhã', 'cliente tem cacheado', 'cliente sinalizou que o valor do Fábio está acima')>"
+    }
   ]
 }
 
@@ -302,7 +313,7 @@ REGRAS DURAS (não desobedeça):
 
 13. 2 a 4 itens em "analise". 1 a 3 itens em "proximos_passos". 0 a 4 em "sinais_de_compra", "objecoes_abertas" e "oportunidades_perdidas".
 
-13b. OBRIGATÓRIO retornar TODOS os campos do schema em TODA resposta, mesmo que como array vazio ou string vazia. Em particular: "score_lead" (sempre um inteiro), "primeiro_nome" (string, possivelmente ""), "sinais_de_compra" (array, possivelmente []), "objecoes_abertas" (array), "proximos_passos" (array, 1-3 itens — nunca vazio quando há conversa real), "nao_comercial" (boolean). Não omita nenhum deles.
+13b. OBRIGATÓRIO retornar TODOS os campos do schema em TODA resposta, mesmo que como array vazio ou string vazia. Em particular: "score_lead" (sempre um inteiro), "primeiro_nome" (string, possivelmente ""), "sinais_de_compra" (array, possivelmente []), "objecoes_abertas" (array), "proximos_passos" (array, 1-3 itens — nunca vazio quando há conversa real), "nao_comercial" (boolean), "profissionais_sugeridos" (array — [] quando nenhum cenário da Regra 21 se aplica, ou 1-3 itens quando aplica). Não omita nenhum deles.
 
 16. GEOGRAFIA/LOGÍSTICA: se o cliente mencionou que mora em outra cidade/estado, sinalizou distância ("sou de X", "moro em X", "venho de X"), ou declarou horário/data impossível ("não dá pra mim", "trabalho nesse dia"), NÃO force agenda/visita como se a barreira não existisse. Reconheça a barreira primeiro. Caminhos válidos: (a) qualificar se a pessoa consegue vir mesmo assim ("você vem a BH com alguma frequência?"); (b) guardar como referência futura ("quando estiver em BH, me avisa"); (c) sugerir indicação ou consultoria à distância se existir no brain. NUNCA ofertar "agende sua visita" cego quando o cliente acabou de dizer que não consegue.
 
@@ -312,7 +323,28 @@ REGRAS DURAS (não desobedeça):
 
 18. REATIVAÇÃO FORTE (lead frio ou atendente sumiu há >24h): a proxima_resposta DEVE começar reconhecendo explicitamente o tempo que passou. Exemplos bons de abertura: "Oi Fran, voltando aqui com você...", "Oi, retomando nosso papo", "Oi, passando pra ver se você ainda tem interesse". Exemplos ERRADOS (nunca usar quando é reativação): "Que ótimo ter você por aqui!", "Que ótimo receber seu contato!", "Olá, tudo bem?". Essas aberturas soam como primeira interação de hoje e NÃO combinam com conversa de dias atrás. Essa regra vale mesmo quando a 17b (qualificação pura) também se aplica — nesse caso, a abertura é "Oi, voltando aqui" + pergunta aberta de qualificação, SEM oferta. A regra 18 ganha a abertura; a 17b restringe o conteúdo.
 
-19. PROFISSIONAL CERTO: só mencione o nome de um profissional (Fábio Oliver, Rafael Martuchello, Wislan Cristian, Italo Ribeiro, Brenda, etc.) se ele apareceu LITERALMENTE na transcrição da conversa como foco atual — ou seja, o cliente disse o nome, OU o atendente propôs e o cliente aceitou, OU é o profissional confirmado num agendamento já fechado. Em "proximos_passos" e "proxima_resposta", use o profissional CORRETO da conversa. Se a thread fala claramente da Brenda, não escreva "agenda do Fábio". Se não há profissional definido ainda, use "o profissional" ou "a equipe" genericamente.
+19. PROFISSIONAL CERTO: nomes citáveis vêm SEMPRE do bloco EQUIPE E PREÇOS acima — nunca invente profissional fora dessa lista. Em "proximos_passos" e "proxima_resposta", se já existe profissional definido na conversa (cliente mencionou, atendente propôs e cliente aceitou, ou é o profissional de um agendamento fechado), use ESSE. Se a thread fala claramente da Brenda, não escreva "agenda do Fábio". Se nenhum profissional foi definido ainda e você não vai sugerir um pela Regra 21, use "o profissional" ou "a equipe" genericamente.
+
+21. SUGERIR PROFISSIONAL DA EQUIPE — regra de DECISÃO + regra de SAÍDA.
+
+   DECISÃO: você PODE citar nome de profissional da EQUIPE (e só dela) em 4 cenários:
+   a) **Match de perfil** — o cliente deu sinal de perfil que casa com especialidade listada. Ex: "tenho cacheado" → Brenda Rocha; "quero mega hair/alongamento" → Jonne Rizzardi; "quero visagismo premium pra uma data especial" → Fábio Oliver.
+   b) **Objeção de preço** — o cliente sinalizou que o valor tá alto, perguntou alternativa mais em conta, ou citou que viu preço melhor em outro lugar. Apresente profissional de TIER INFERIOR como alternativa VÁLIDA (não consolo).
+   c) **Agenda cheia / pediu horário que o tier atual não cobre** — se o cliente quer um dia/horário que claramente não cabe (ex: "pra amanhã de manhã" e o profissional citado está lotado), ofereça checar com outro profissional da EQUIPE.
+   d) **Cliente pediu explicitamente ver outros profissionais** — frases como "me manda o portfólio dos outros profissionais", "quais outras opções vocês têm", "quero ver outros profissionais / outros valores". Esse é o cenário mais claro: NÃO deixe de responder nominalmente.
+
+   PREENCHIMENTO DO CAMPO "profissionais_sugeridos" (SAÍDA):
+   - Se ALGUM dos cenários (a)–(d) se aplica, "profissionais_sugeridos" DEVE ter 1 a 3 itens, cada um com nome + tier + combo_valor + motivo lidos LITERALMENTE da EQUIPE E PREÇOS.
+   - Se NENHUM se aplica (ex: cliente ainda não qualificou, ou já aceitou profissional, ou é B2B), retorna array vazio [].
+   - Quando o campo for não-vazio, "proxima_resposta" TAMBÉM deve citar nominalmente ao menos 1 desses profissionais + valor exato do combo deles + a frase-âncora "treinados pelo Fábio pelo método The Blonde Concept" (ou variação natural dela). Não caia em "Rafael ou outro profissional" genérico — nome + preço sempre.
+   - "proximos_passos" inclui item relacionado à troca/opção sugerida (ex: "checar agenda da Thais Silva pra manhã de amanhã").
+
+   LIMITES:
+   - NUNCA ofereça alternativa de preço se o cliente ainda não deu sinal de objeção OU não pediu opções (Regra 17 qualificação primeiro). Não empurre tier inferior na cara do lead no primeiro contato.
+   - NUNCA invente combinação de preço e profissional. Os valores vêm LITERALMENTE da EQUIPE.
+   - Se o cliente já aceitou um profissional específico, NÃO force troca pra outro — só mude se ele próprio pedir.
+   - QUANDO O CLIENTE PEDE "OUTROS PROFISSIONAIS" (cenário d): os sugeridos têm que ser DIFERENTES de qualquer profissional já nomeado na conversa. Se ele mencionou Rafael, sugira OUTROS (ex: Jonne no mesmo tier intermediário, Thais ou Izabela no tier equipe) — nunca o próprio que ele já conhece. Nessa situação dê 2 a 3 opções, não 1, pra ele comparar de verdade.
+   - Se a conversa também tem objeção de preço (ex: Black Friday / promoção), priorize ao menos 1 opção de tier INFERIOR ao do profissional já citado — essa é a resposta que faz sentido comercial.
 
 20. CLIENTE JÁ DECLAROU "NÃO" (perdida / decidiu outra coisa): se o cliente explicitamente fechou com outro ("agendei em outro lugar", "comprei em outro salão", "já resolvi", "não é mais pra mim", "mudei de ideia"), a proxima_resposta NÃO empurra nova oferta, combo ou urgência. O tom é de respeito e porta aberta: agradecer o retorno, desejar um bom atendimento, deixar claro que a casa fica à disposição numa próxima. Nunca fazer "voltando aqui, temos oferta de BF" logo depois de um não — isso vira insistência e queima a marca. Reativacao_necessaria = false nesse caso (não é lead ativo). proximos_passos: 1 item só, normalmente "guardar como referência futura" ou "registrar follow-up pra daqui 60-90 dias".
 
