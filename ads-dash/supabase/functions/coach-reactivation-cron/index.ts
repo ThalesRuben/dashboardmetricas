@@ -11,7 +11,7 @@
 // Variáveis de ambiente (Supabase → Edge Functions → Secrets):
 //   SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY
-//   OPENAI_API_KEY
+//   ANTHROPIC_API_KEY
 //   COACH_CRON_SECRET          header x-cron-secret pra barrar invocação externa
 //
 // Deploy:
@@ -27,13 +27,13 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const OPENAI_KEY   = Deno.env.get('OPENAI_API_KEY')!
-const CRON_SECRET  = Deno.env.get('COACH_CRON_SECRET')
+const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
+const SERVICE_KEY    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const ANTHROPIC_KEY  = Deno.env.get('ANTHROPIC_API_KEY')!
+const CRON_SECRET    = Deno.env.get('COACH_CRON_SECRET')
 
 const TENANT_DEFAULT = '31cc6350-d721-477d-bac6-3d5d8c907582'  // the-blonde-concept
-const MODEL = 'gpt-4o'
+const MODEL = 'claude-sonnet-4-6'
 const MAX_THREADS_POR_RUN = 50
 const SCORE_MINIMO = 45           // só gera rascunho pra score ≥ 45 (morno pra cima)
 
@@ -98,13 +98,12 @@ interface CoachResult {
 
 // ---- cópia enxuta do prompt do coach (SÓ as partes que importam pra
 // reativação). Replica regra 16/17/18/20. ----
-function buildPrompt(thread: Candidata, msgs: MsgReal[], brain: Record<string, string>): string {
-  const recentes = msgs.slice(-60)
-  const transcricao = recentes
-    .map((m) => `[${new Date(m.hora).toLocaleString('pt-BR')}] ${m.autor === 'cliente' ? 'CLIENTE' : 'ATENDENTE'}: ${m.texto}`)
-    .join('\n')
-  const nome = thread.contato_nome || thread.contato_phone
+//
+// Dividido em 2 pedaços pra aproveitar o prompt caching do Claude: a parte
+// FIXA (regras + brain + equipe + schema) vai pro bloco `system` com
+// cache_control; a parte VARIÁVEL (contato + transcrição) vai no `messages`.
 
+function buildSystemPrompt(brain: Record<string, string>): string {
   return `Você é um coach de vendas sênior em WhatsApp Business de salão premium. Analise a conversa dormente abaixo e gere uma mensagem de REATIVAÇÃO afiada, no tom da marca, pronta pra enviar.
 
 CONTEXTO DA MARCA:
@@ -119,12 +118,7 @@ PALAVRAS-CHAVE: ${brain?.palavras_chave ?? '-'}
 EQUIPE E PREÇOS (fonte única de nomes e valores — você só pode citar o que está aqui):
 ${brain?.equipe ?? '(equipe não cadastrada — não citar nome de profissional)'}
 
-CONTATO: ${nome} (${thread.contato_phone}) · status: ${thread.status}
-
-TRANSCRIÇÃO COMPLETA (mais antigas em cima):
-${transcricao || '(sem mensagens)'}
-
-Responda SOMENTE com JSON válido:
+FORMATO DA SAÍDA — responda SOMENTE com um objeto JSON válido começando com { e terminando com }. Sem markdown, sem comentários, sem texto antes ou depois. Schema:
 {
   "score_lead": <inteiro 0-100>,
   "tag_sugerida": "quente|morno|frio",
@@ -212,26 +206,76 @@ REGRAS (leia a conversa INTEIRA antes de decidir):
 14. Se ja_resolvido=true OU reativacao_necessaria=false OU nao_comercial=true: objecao_detectada.tipo="nenhuma", profissionais_sugeridos=[], e proxima_resposta="".`
 }
 
+function buildUserPrompt(thread: Candidata, msgs: MsgReal[]): string {
+  const recentes = msgs.slice(-60)
+  const transcricao = recentes
+    .map((m) => `[${new Date(m.hora).toLocaleString('pt-BR')}] ${m.autor === 'cliente' ? 'CLIENTE' : 'ATENDENTE'}: ${m.texto}`)
+    .join('\n')
+  const nome = thread.contato_nome || thread.contato_phone
+
+  return `CONTATO: ${nome} (${thread.contato_phone}) · status: ${thread.status}
+
+TRANSCRIÇÃO COMPLETA (mais antigas em cima):
+${transcricao || '(sem mensagens)'}
+
+Agora responda SOMENTE com o JSON pedido no FORMATO DA SAÍDA — começa com { e termina com }.`
+}
+
+// Extrai o primeiro bloco JSON balanceado do texto (respeita strings e escapes).
+// Robusto a modelos que ocasionalmente adicionam preâmbulo apesar da instrução.
+function extractJson(text: string): any | null {
+  const first = text.indexOf('{')
+  if (first < 0) return null
+  let depth = 0
+  let inString = false
+  let escape = false
+  for (let i = first; i < text.length; i++) {
+    const c = text[i]
+    if (escape) { escape = false; continue }
+    if (c === '\\') { escape = true; continue }
+    if (c === '"') { inString = !inString; continue }
+    if (inString) continue
+    if (c === '{') depth++
+    else if (c === '}') {
+      depth--
+      if (depth === 0) {
+        try { return JSON.parse(text.slice(first, i + 1)) } catch { return null }
+      }
+    }
+  }
+  return null
+}
+
 async function chamarCoach(thread: Candidata, msgs: MsgReal[], brain: Record<string, string>): Promise<CoachResult | null> {
-  const prompt = buildPrompt(thread, msgs, brain)
+  const systemPrompt = buildSystemPrompt(brain)
+  const userPrompt   = buildUserPrompt(thread, msgs)
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_KEY}` },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+      },
       body: JSON.stringify({
         model: MODEL,
+        max_tokens: 2048,
         temperature: 0.4,
-        response_format: { type: 'json_object' },
+        // Prompt caching: system (regras + brain + equipe + schema) cacheia e
+        // paga ~10% nos tokens repetidos. Como o cron roda 2x/dia e varre ~50
+        // threads por run, ficam ~50 reads batendo no mesmo cache por run.
+        system: [
+          { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
+        ],
         messages: [
-          { role: 'system', content: 'Você é um coach de vendas sênior em WhatsApp Business premium. Afiado, direto. Responda sempre em JSON válido.' },
-          { role: 'user', content: prompt },
+          { role: 'user', content: userPrompt },
         ],
       }),
     })
     if (!res.ok) return null
     const data = await res.json()
-    const text = data.choices?.[0]?.message?.content || '{}'
-    return JSON.parse(text) as CoachResult
+    const text = typeof data?.content?.[0]?.text === 'string' ? data.content[0].text : ''
+    return extractJson(text) as CoachResult | null
   } catch {
     return null
   }

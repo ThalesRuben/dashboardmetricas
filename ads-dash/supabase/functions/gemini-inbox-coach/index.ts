@@ -1,6 +1,6 @@
 // Supabase Edge Function — gemini-inbox-coach
 //
-// [NOME MANTIDO POR COMPATIBILIDADE COM O FRONT — provider é OpenAI]
+// [NOME MANTIDO POR COMPATIBILIDADE COM O FRONT — provider é Anthropic/Claude]
 //
 // Recebe uma conversa do WhatsApp (thread + msgs + contexto do CRM) e devolve
 // sugestões da IA pra aumentar conversão: próxima resposta pronta pra colar,
@@ -10,7 +10,7 @@
 // A IA SÓ SUGERE — quem decide enviar é o atendente humano no painel.
 //
 // Variáveis de ambiente (Supabase → Edge Functions → Secrets):
-//   OPENAI_API_KEY   chave da API da OpenAI
+//   ANTHROPIC_API_KEY   chave da API Claude
 //
 // Deploy:
 //   supabase functions deploy gemini-inbox-coach --no-verify-jwt
@@ -20,8 +20,8 @@
 //     body: { thread, msgs, brain, crm_contexto }
 //   })
 
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
-const MODEL = 'gpt-4o'
+const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')
+const MODEL = 'claude-sonnet-4-6'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -186,22 +186,10 @@ function buildCrmBlock(crm: CrmContextoInput | undefined): string {
   return linhas.join('\n')
 }
 
-function buildPrompt(
-  thread: ThreadInput,
-  msgs: MsgInput[],
-  brain: Record<string, string>,
-  crm: CrmContextoInput | undefined,
-) {
-  // Limita a 60 msgs mais recentes pra não estourar contexto.
-  const recentes = msgs.slice(-60)
-  const transcricao = recentes
-    .map((m) => `[${new Date(m.hora).toLocaleString('pt-BR')}] ${m.autor === 'cliente' ? 'CLIENTE' : 'ATENDENTE'}: ${m.texto}`)
-    .join('\n')
-
-  const nome = thread.contato_nome || thread.contato_phone
-  const t = calcAnaliseTempo(recentes)
-  const crmBlock = buildCrmBlock(crm)
-
+// Parte FIXA do prompt (regras + brain + equipe + schema). Vai pro bloco `system`
+// da API da Anthropic com cache_control — enquanto brain não mudar, cacheia e
+// paga ~10% do custo pros tokens repetidos entre requests.
+function buildSystemPrompt(brain: Record<string, string>) {
   return `Você é um coach de vendas sênior especializado em WhatsApp Business de serviços premium (salão de beleza de alta performance). Sua missão: fazer cada atendente FECHAR MAIS VENDAS. Seja direto, afiado, comercial.
 
 CONTEXTO DA MARCA (use isso pra calibrar tom e oferta):
@@ -216,28 +204,8 @@ PALAVRAS-CHAVE: ${brain?.palavras_chave ?? '-'}
 EQUIPE E PREÇOS (fonte única — todos os nomes, tiers e valores que você pode citar estão AQUI):
 ${brain?.equipe ?? '(equipe não cadastrada no brain — fallback: só mencionar profissional se aparecer literal na transcrição)'}
 
-CONVERSA:
-- Contato: ${nome} (${thread.contato_phone})
-- Status atual: ${thread.status}
-- Origem: ${thread.origem}
-
-${crmBlock}
-
-MÉTRICAS DE TEMPO (já calculadas, fuso America/Sao_Paulo):
-- Mensagens: ${t.total_msgs} (cliente: ${t.msgs_cliente}, atendente: ${t.msgs_atendente})
-- Gaps cliente→atendente (min): [${t.gaps_resposta_min.join(', ') || '—'}]
-- Gap médio: ${fmtMin(t.gap_medio_min)} · Pior gap: ${fmtMin(t.pior_gap_min)}
-- Horários em que o atendente respondeu: [${t.horarios_atendente.join(', ') || '—'}]
-- Última mensagem foi do: ${t.ultima_msg_autor ?? '—'} · há ${fmtMin(t.inatividade_atual_min)}
-- Sinal lead frio (>24h sem resposta): ${t.lead_frio ? 'SIM' : 'não'}
-- Sinal atendente sumiu (cliente mandou por último e passou >2h): ${t.atendente_sumiu ? 'SIM' : 'não'}
-
-TRANSCRIÇÃO (mais antigas em cima):
-${transcricao || '(sem mensagens)'}
-
-Sua tarefa: analise o estado da conversa como um coach comercial exigente e devolva sugestões acionáveis pra fechar a venda ou avançar o lead. Responda SOMENTE com um objeto JSON válido (sem markdown, sem \`\`\`) neste formato:
+FORMATO DA SAÍDA — responda SOMENTE com um objeto JSON válido começando com { e terminando com }. Sem markdown, sem comentários, sem texto antes ou depois. Schema:
 {
-  "modelo": "${MODEL}",
   "primeiro_nome": "<primeiro nome do cliente (use o 'Contato' ou o que a pessoa escreveu). Se não houver nome real (ex: emoji, '~', vazio), devolve string vazia.>",
   "resumo": "<1-2 frases sobre o estado da conversa: o que o cliente quer, em que ponto travou, quão perto está de fechar>",
   "score_lead": <inteiro 0-100 — probabilidade real de fechar venda nos próximos 7 dias. 90+: pediu horário/aceitou valor; 70-89: pediu preço/referência clara; 50-69: curioso, perguntou genericamente; 30-49: sumiu depois de info; 0-29: frio/pouco engajado/B2B>,
@@ -255,9 +223,9 @@ Sua tarefa: analise o estado da conversa como um coach comercial exigente e devo
   ],
   "reativacao_necessaria": true|false,
   "analise_tempo": {
-    "gap_medio_min": ${t.gap_medio_min ?? 'null'},
-    "pior_gap_min": ${t.pior_gap_min ?? 'null'},
-    "inatividade_atual_min": ${t.inatividade_atual_min ?? 'null'},
+    "gap_medio_min": <inteiro ou null — copiar literalmente de MÉTRICAS DE TEMPO>,
+    "pior_gap_min": <inteiro ou null — copiar literalmente de MÉTRICAS DE TEMPO>,
+    "inatividade_atual_min": <inteiro ou null — copiar literalmente de MÉTRICAS DE TEMPO>,
     "janela_dominante": "<ex: 'madrugada', 'manhã', 'horário comercial', 'tarde', 'noite', 'fim de semana' ou 'sem padrão' — com base nos horários listados>",
     "comentario": "<1-2 frases: o atendente respondeu rápido ou demorou? o horário bate com o que o cliente usa? isso explica o lead ter esfriado?>"
   },
@@ -355,11 +323,79 @@ REGRAS DURAS (não desobedeça):
 15. Se a conversa estiver vazia ou só com 1 mensagem do cliente: score_lead = 50, "proxima_resposta" é a abertura ideal pra esse tipo de lead e "reativacao_necessaria" = false.`
 }
 
+// Parte VARIÁVEL do prompt (conversa + métricas + CRM + transcrição). Vai no
+// `messages` do request pra Claude — muda a cada chamada, NUNCA deve ir pro system.
+function buildUserPrompt(
+  thread: ThreadInput,
+  msgs: MsgInput[],
+  crm: CrmContextoInput | undefined,
+) {
+  const recentes = msgs.slice(-60)
+  const transcricao = recentes
+    .map((m) => `[${new Date(m.hora).toLocaleString('pt-BR')}] ${m.autor === 'cliente' ? 'CLIENTE' : 'ATENDENTE'}: ${m.texto}`)
+    .join('\n')
+
+  const nome = thread.contato_nome || thread.contato_phone
+  const t = calcAnaliseTempo(recentes)
+  const crmBlock = buildCrmBlock(crm)
+
+  return `CONVERSA:
+- Contato: ${nome} (${thread.contato_phone})
+- Status atual: ${thread.status}
+- Origem: ${thread.origem}
+
+${crmBlock}
+
+MÉTRICAS DE TEMPO (já calculadas, fuso America/Sao_Paulo):
+- Mensagens: ${t.total_msgs} (cliente: ${t.msgs_cliente}, atendente: ${t.msgs_atendente})
+- Gaps cliente→atendente (min): [${t.gaps_resposta_min.join(', ') || '—'}]
+- Gap médio: ${fmtMin(t.gap_medio_min)} · Pior gap: ${fmtMin(t.pior_gap_min)}
+- Horários em que o atendente respondeu: [${t.horarios_atendente.join(', ') || '—'}]
+- Última mensagem foi do: ${t.ultima_msg_autor ?? '—'} · há ${fmtMin(t.inatividade_atual_min)}
+- Sinal lead frio (>24h sem resposta): ${t.lead_frio ? 'SIM' : 'não'}
+- Sinal atendente sumiu (cliente mandou por último e passou >2h): ${t.atendente_sumiu ? 'SIM' : 'não'}
+
+Para o schema de analise_tempo, use estes valores numéricos literalmente:
+- gap_medio_min = ${t.gap_medio_min ?? 'null'}
+- pior_gap_min = ${t.pior_gap_min ?? 'null'}
+- inatividade_atual_min = ${t.inatividade_atual_min ?? 'null'}
+
+TRANSCRIÇÃO (mais antigas em cima):
+${transcricao || '(sem mensagens)'}
+
+Agora responda SOMENTE com o JSON pedido no FORMATO DA SAÍDA — começa com { e termina com }.`
+}
+
+// Extrai o primeiro bloco JSON balanceado do texto (respeita strings e escapes).
+// Robusto a modelos que ocasionalmente adicionam preâmbulo apesar da instrução.
+function extractJson(text: string): any | null {
+  const first = text.indexOf('{')
+  if (first < 0) return null
+  let depth = 0
+  let inString = false
+  let escape = false
+  for (let i = first; i < text.length; i++) {
+    const c = text[i]
+    if (escape) { escape = false; continue }
+    if (c === '\\') { escape = true; continue }
+    if (c === '"') { inString = !inString; continue }
+    if (inString) continue
+    if (c === '{') depth++
+    else if (c === '}') {
+      depth--
+      if (depth === 0) {
+        try { return JSON.parse(text.slice(first, i + 1)) } catch { return null }
+      }
+    }
+  }
+  return null
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  if (!OPENAI_API_KEY) {
-    return json({ error: 'OPENAI_API_KEY não configurada.' }, 400)
+  if (!ANTHROPIC_API_KEY) {
+    return json({ error: 'ANTHROPIC_API_KEY não configurada.' }, 400)
   }
 
   try {
@@ -367,32 +403,44 @@ Deno.serve(async (req) => {
     if (!thread || !Array.isArray(msgs)) {
       return json({ error: 'payload precisa de thread e msgs[]' }, 400)
     }
-    const prompt = buildPrompt(thread, msgs, brain || {}, crm_contexto)
 
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const systemPrompt = buildSystemPrompt(brain || {})
+    const userPrompt   = buildUserPrompt(thread, msgs, crm_contexto)
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
         model: MODEL,
+        max_tokens: 4096,
         temperature: 0.4,
-        response_format: { type: 'json_object' },
+        // Prompt caching: o system inteiro (regras + brain + equipe + schema) é
+        // cacheado. Enquanto o brain não mudar, chamadas pro mesmo tenant
+        // pagam ~10% do preço nos tokens do system (até 5 min por default).
+        system: [
+          { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
+        ],
         messages: [
-          { role: 'system', content: 'Você é um coach de vendas sênior em WhatsApp Business de serviços premium. Afiado, direto, comercial. Responda sempre em JSON válido, sem markdown.' },
-          { role: 'user', content: prompt },
+          { role: 'user', content: userPrompt },
         ],
       }),
     })
 
     const data = await res.json()
     if (!res.ok) {
-      return json({ error: `OpenAI ${res.status}: ${data.error?.message || 'erro'}` }, 502)
+      return json({ error: `Anthropic ${res.status}: ${data.error?.message || 'erro'}` }, 502)
     }
 
-    const text = data.choices?.[0]?.message?.content || '{}'
-    const analysis = JSON.parse(text)
+    const text = typeof data?.content?.[0]?.text === 'string' ? data.content[0].text : ''
+    const analysis = extractJson(text)
+    if (!analysis) {
+      return json({ error: 'resposta do Claude não contém JSON parseável', raw: text.slice(0, 500) }, 502)
+    }
+    analysis.modelo = MODEL
     analysis.gerado_em = new Date().toISOString()
     return json(analysis)
   } catch (e) {
