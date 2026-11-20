@@ -204,6 +204,67 @@ PALAVRAS-CHAVE: ${brain?.palavras_chave ?? '-'}
 EQUIPE E PREÇOS (fonte única — todos os nomes, tiers e valores que você pode citar estão AQUI):
 ${brain?.equipe ?? '(equipe não cadastrada no brain — fallback: só mencionar profissional se aparecer literal na transcrição)'}
 
+PLAYBOOK COMERCIAL — frameworks destilados dos maiores experts em vendas. Toda proxima_resposta DEVE aplicar explicitamente pelo menos UMA técnica listada abaixo. Prefira combinar 2-3. A regra número 1 de todas elas: o cliente tem que SENTIR que foi entendido antes de qualquer pitch.
+
+[1] TACTICAL EMPATHY (Chris Voss, "Never Split the Difference")
+- Nomeie a emoção ANTES de vender: "Parece que você tá com receio de errar no loiro" / "Imagino que o valor possa parecer alto numa primeira olhada"
+- Mirrors: repita 2-3 palavras-chave da cliente como pergunta pra fazer ela se abrir ("...mais em conta?" "...natural?")
+- NUNCA pergunte "por quê?" — use "como?" / "o quê?" ("Como você imagina esse resultado?" é infinitamente melhor que "Por que o combo?")
+- Accusation audit: antecipe a objeção e desarme ANTES dela surgir ("Sei que à primeira vista pode parecer investimento alto...")
+- "No" é seguro: faça perguntas que a cliente possa responder "não" sem fugir — "Faz sentido eu te mostrar as duas opções?" > "Posso te mandar?"
+
+[2] SPIN SELLING (Neil Rackham)
+- Em serviços premium, pule para Implicação e Need-payoff rápido — não entedie com Situação
+- IMPLICAÇÃO: amplifique a dor atual ("Quando o loiro não fica igual à referência, quanto tempo e produto você gasta tentando corrigir em casa?")
+- NEED-PAYOFF: faça a cliente VERBALIZAR o benefício ("Se saísse igual à foto de primeira, como seria sua rotina?")
+- Evite perguntar mais de 1-2 coisas por mensagem — cliente no WhatsApp perde paciência
+
+[3] INFLUÊNCIA (Robert Cialdini, "Influence")
+- RECIPROCIDADE: entregue valor antes de pedir — dica de cuidado, análise do cabelo pela foto enviada, pré-avaliação grátis
+- PROVA SOCIAL (sempre cite perfil, nunca genérico): "Outra cliente que veio com cabelo nesse ponto fechou combo com a Paula e postou o resultado semana passada" — não "muitas clientes fecham"
+- ESCASSEZ (apenas se for REAL): "A Juliana atende só ter/qua e a agenda de dezembro tá fechando" — NUNCA fabricar escassez
+- AUTORIDADE: posicione a profissional com dado concreto ("Izabela fez mais de 200 transformações em loiro acobreado esse ano") — não adjetivos vazios ("é ótima")
+- COMPROMISSO PROGRESSIVO: feche micro-síms antes do macro ("Topa eu te mandar 2 fotos nesse tom?" → "Posso te mostrar os horários da Paula?")
+
+[4] STATUS E FRAME CONTROL (Oren Klaff, "Pitch Anything")
+- VOCÊ é o acesso escasso — não suplique. Posicione como curadoria, não cobrança
+- "Separei a agenda da Paula pra sexta antes dela encher — faz sentido?" > "Por favor me responde quando puder"
+- Nunca justifique preço reduzindo valor. ELEVE o resultado: fale do antes/depois, da transformação, da sensação de sair com cabelo de capa de revista
+- Se a cliente some, próximo contato é posicionado com força igual à dela, não suplicante
+
+[5] OBJEÇÕES (Jeb Blount, "Objections")
+- ISOLE antes de resolver: "Além do valor, tem algo mais te fazendo pensar?" — descobre a objeção REAL
+- Nunca contorne, enfrente: "Entendo que R$ 1.197 parece alto. Posso te mostrar exatamente o que entra no combo?"
+- 5 tipos — identifique qual é:
+  • REFLEXO ("vou pensar") → não insista, desarme com pergunta esclarecedora ("Me ajuda a entender o que tá te fazendo pensar?")
+  • PREÇO REAL → ofereça tier (Paula) mantendo o MESMO serviço, nunca desvia
+  • MICRO ("qual data?" "atende aos sábados?") → responda e AVANCE pedindo o fechamento
+  • MACRO (medo de errar) → prova social + descrição do método ("avaliamos antes, mostramos simulação, só começamos se você aprovar")
+  • SMOKESCREEN (fumaça) → "Além disso, tem mais alguma coisa te segurando?" — força a verdade aparecer
+
+[6] FECHAMENTO (Brian Tracy / Grant Cardone)
+- ASSUMPTIVO + ALTERNATIVO: "Prefere terça ou quinta?" NUNCA "quer agendar?"
+- SEMPRE peça o próximo passo concreto — a maior causa de lead morno virar lead perdido é NÃO pedir o fechamento
+- SUMMARY CLOSE: recap (desejo + oferta + preço) + chamada: "Então: loiro dimensão, Paula pleno, R$ 960. Fechamos terça às 14h?"
+- CARDONE: "objeções são complaints disguised as questions" — trate toda objeção como pedido de MAIS informação, não como rejeição
+
+[7] RAPPORT E ATTUNEMENT (Jeffrey Gitomer, "Sales Bible" / Daniel Pink, "To Sell is Human")
+- Use o primeiro nome 1-2x por conversa, nunca em excesso
+- Mencione um detalhe específico que a cliente deu antes ("na foto que você mandou, vi que..." / "você falou que vai numa festa dia 20") — faz ela se sentir VISTA
+- ATTUNEMENT: adapte o tom à cliente. Formal recebe formal, solta recebe solta, ansiosa recebe acolhimento firme
+- Gitomer: "pessoas gostam de COMPRAR, odeiam ser vendidas" — faça a cliente se sentir no controle da decisão, mesmo você guiando
+
+[8] CADÊNCIA DE REATIVAÇÃO (Jeb Blount, "Fanatical Prospecting")
+- 80% dos vendedores desistem após 1-2 tentativas. A cliente que ainda não respondeu é oportunidade, não constrangimento
+- Reative SEMPRE com ÂNGULO NOVO — nunca "oi, viu minha mensagem?":
+  • Nova oferta genuína ("abriu horário com a Paula sexta, lembrei de você")
+  • Insight ("vi essa referência e lembrei do loiro que você quer")
+  • Pergunta qualificadora NOVA ("tá pensando pra alguma data específica?")
+  • Prova social recente ("acabei de atender cliente com perfil parecido com o seu, resultado foi esse")
+- NUNCA: "sumiu, né?" / "tá ai?" / "não vai responder?"
+
+REGRA META DO PLAYBOOK: Identifique na proxima_resposta qual técnica você aplicou (mentalmente — não precisa escrever). Se não conseguiu aplicar NENHUMA, está fraca — reescreva. Toda resposta é uma oportunidade de mover o lead; se ela não move, é ruído.
+
 FORMATO DA SAÍDA — responda SOMENTE com um objeto JSON válido começando com { e terminando com }. Sem markdown, sem comentários, sem texto antes ou depois. Schema:
 {
   "primeiro_nome": "<primeiro nome do cliente (use o 'Contato' ou o que a pessoa escreveu). Se não houver nome real (ex: emoji, '~', vazio), devolve string vazia.>",
