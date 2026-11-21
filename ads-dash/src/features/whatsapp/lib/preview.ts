@@ -58,6 +58,19 @@ export function prettyPreview(texto: string | null | undefined, isMe = false): s
 }
 
 /**
+ * Versão pro bubble do chat: traduz placeholder de mídia pra rótulo com ícone,
+ * mas NÃO mascara PII. O atendente precisa ver CPF/email/CEP reais da cliente
+ * dentro da conversa — mascarar faz sentido só em preview de listagem (LGPD).
+ */
+export function prettyBubbleText(texto: string | null | undefined): string {
+  const base = (texto || '').trim();
+  if (!base) return '';
+  const m = base.match(MIDIA_RE);
+  if (m) return MIDIA_LABEL[m[1].toLowerCase()] || '📎 Anexo';
+  return base;
+}
+
+/**
  * Nome visível de um contato. Fallback explícito:
  *   nome → telefone formatado → "Contato".
  * Nunca retorna string vazia nem telefone cru.

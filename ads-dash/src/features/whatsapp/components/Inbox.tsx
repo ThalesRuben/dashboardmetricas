@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useInbox } from '../hooks/useInbox'
 import { useWhatsAppInboxes } from '../hooks/useWhatsAppInboxes'
-import { prettyPreview, displayName } from '../lib/preview'
+import { prettyPreview, prettyBubbleText, displayName } from '../lib/preview'
 import { formatarPhoneBR } from '../lib/phone'
 import type {
   WhatsAppThreadReal,
@@ -337,7 +337,7 @@ function Bubble({ m, grouped }: { m: WhatsAppMsgReal; grouped: boolean }) {
           `${styles.bubble} ${isMe ? styles.bubbleMe : styles.bubbleThem} ${grouped ? styles.bubbleGrouped : ''}`
         }
       >
-        <p className={styles.bubbleText}>{m.texto}</p>
+        <p className={styles.bubbleText}>{prettyBubbleText(m.texto)}</p>
         <span className={styles.bubbleMeta}>
           <span className={styles.bubbleTime}>{fmtHora(m.hora)}</span>
           {isMe && <Tick status={m.status} />}

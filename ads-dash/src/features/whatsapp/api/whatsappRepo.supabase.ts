@@ -101,22 +101,27 @@ export const supabaseWhatsAppRepo: WhatsAppRepo = {
     });
   },
 
-  async listarMsgs(threadId: string, limit = 200) {
+  async listarMsgs(threadId: string, limit = 1000) {
+    // Chat UX pede as mensagens MAIS RECENTES, não as mais antigas — thread de
+    // 1500 msgs com ORDER ASC + LIMIT N retornava só o começo da conversa
+    // (meses atrás). Buscamos ORDER DESC, pegamos as N últimas e revertemos no
+    // client pra entregar em ordem cronológica crescente (velha→nova), que é o
+    // que a UI do bubble espera.
     const { data, error } = await supabase
       .from('whatsapp_msgs')
       .select('id, thread_id, autor, texto, status, hora, msg_id_externo')
       .eq('thread_id', threadId)
-      .order('hora', { ascending: true })
+      .order('hora', { ascending: false })
       .limit(limit);
     if (error || !data) return [];
-    return data as WhatsAppMsgReal[];
+    return (data as WhatsAppMsgReal[]).reverse();
   },
 
-  async listarMsgsPorContato(contatoId: string, limit = 400) {
+  async listarMsgsPorContato(contatoId: string, limit = 1000) {
     return listarMsgsPorContatosImpl([contatoId], limit);
   },
 
-  async listarMsgsPorContatos(contatoIds: string[], limit = 400, inboxPhone?: string | null) {
+  async listarMsgsPorContatos(contatoIds: string[], limit = 1000, inboxPhone?: string | null) {
     return listarMsgsPorContatosImpl(contatoIds, limit, inboxPhone);
   },
 
@@ -267,12 +272,15 @@ async function listarMsgsPorContatosImpl(
   if (tErr || !threads || threads.length === 0) return [];
   const threadIds = threads.map((t: { id: string }) => t.id);
 
+  // Idem listarMsgs: ORDER DESC + LIMIT pega as N mais recentes, revertemos no
+  // client. Antes era ASC + LIMIT, que escondia toda a conversa recente em
+  // threads longas (ex: thread com 1.480 msgs mostrava só as 400 mais velhas).
   const { data, error } = await supabase
     .from('whatsapp_msgs')
     .select('id, thread_id, autor, texto, status, hora, msg_id_externo')
     .in('thread_id', threadIds)
-    .order('hora', { ascending: true })
+    .order('hora', { ascending: false })
     .limit(limit);
   if (error || !data) return [];
-  return data as WhatsAppMsgReal[];
+  return (data as WhatsAppMsgReal[]).reverse();
 }
