@@ -75,26 +75,50 @@ export default function KeywordResearch({ onAdded }: Props) {
 
           <div className={styles.metricGrid}>
             <div className={styles.metric}>
-              <span className={styles.metricLabel}>Volume / mês</span>
+              <span className={styles.metricLabel}>
+                Volume / mês
+                <span className={styles.estBadge} title="Volume estimado a partir do termo. Para números reais, conecte uma fonte de keyword data (Keywords Everywhere, DataForSEO, etc).">EST</span>
+              </span>
               <span className={styles.metricVal}>{fmtNumber(result.volume)}</span>
             </div>
             <div className={styles.metric}>
-              <span className={styles.metricLabel}>Dificuldade</span>
+              <span className={styles.metricLabel}>
+                Dificuldade
+                <span className={styles.estBadge} title="Dificuldade estimada — não vem de SERP real.">EST</span>
+              </span>
               <span className={`${styles.metricChip} ${DIFICULDADE_TONE[result.dificuldade] || ''}`}>
                 {result.dificuldade}
               </span>
             </div>
             <div className={styles.metric}>
-              <span className={styles.metricLabel}>CPC estimado</span>
+              <span className={styles.metricLabel}>
+                CPC estimado
+                <span className={styles.estBadge} title="CPC estimado — não vem do Google Ads.">EST</span>
+              </span>
               <span className={styles.metricVal}>R$ {result.cpc.toFixed(2)}</span>
             </div>
             <div className={styles.metric}>
-              <span className={styles.metricLabel}>Tendência (90d)</span>
+              <span className={styles.metricLabel}>
+                Tendência (90d)
+                <span className={styles.estBadge} title="Tendência estimada — não vem do Google Trends.">EST</span>
+              </span>
               <span className={result.tendencia >= 0 ? styles.trendUp : styles.trendDown}>
                 {result.tendencia >= 0 ? '▲' : '▼'} {Math.abs(result.tendencia)}%
               </span>
             </div>
           </div>
+          {result.source === 'google-autocomplete+mock' && (
+            <p className={styles.estNote}>
+              Ideias e perguntas vêm do Google Autocomplete (reais). Volume, dificuldade, CPC e tendência
+              são estimativas determinísticas — conecte uma fonte de keyword data para números reais.
+            </p>
+          )}
+          {result.source === 'mock' && (
+            <p className={styles.estNote}>
+              Todos os números são estimativas — ambiente de demonstração. Configure o Supabase/SEO
+              em <strong>Integrações</strong> para ter ideias reais do Google Autocomplete.
+            </p>
+          )}
 
           <div className={styles.split}>
             <div>

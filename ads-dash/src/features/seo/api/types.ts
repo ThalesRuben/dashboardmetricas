@@ -44,12 +44,23 @@ export interface SeoSnapshot {
   auditoria: SeoAuditoriaItem[];
 }
 
+export interface SeoHistoryPoint {
+  date: string;                 // YYYY-MM-DD
+  score: number;
+  trafego_organico_mes: number;
+  no_top10: number;
+}
+
 export interface SeoKeywordIdea {
   termo: string;
   volume: number;
   dificuldade: SeoDificuldade;
   intent: SeoIntent;
 }
+
+// 'google-autocomplete+mock' = ideias/perguntas reais do Google Suggest + volume/dificuldade/CPC estimados
+// 'mock'                     = tudo determinístico (sem fonte externa)
+export type SeoResearchSource = 'google-autocomplete+mock' | 'mock';
 
 export interface SeoKeywordResearch {
   termo: string;
@@ -60,4 +71,5 @@ export interface SeoKeywordResearch {
   tendencia: number;
   ideias: SeoKeywordIdea[];
   perguntas: string[];
+  source?: SeoResearchSource;
 }

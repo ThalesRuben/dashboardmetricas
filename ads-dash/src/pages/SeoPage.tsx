@@ -1,5 +1,6 @@
 import { useSeoAgent, KeywordResearch } from '@/features/seo'
 import KpiCard from '@/shared/ui/KpiCard'
+import Sparkline from '@/shared/ui/Sparkline'
 import PageHeader from '@/components/ui/PageHeader'
 import { fmtNumber, fmtDelta } from '@/shared/lib/format'
 import styles from './SeoPage.module.css'
@@ -17,13 +18,17 @@ const AUDIT = {
 }
 
 export default function SeoPage() {
-  const { data, loading, usingMock, refresh } = useSeoAgent()
+  const { data, history, loading, usingMock, refresh } = useSeoAgent()
 
   if (loading || !data) {
     return <div className={styles.page}><div className={styles.loading}>Carregando dados de SEO...</div></div>
   }
 
   const r = data.resumo
+  const scoreSerie = history.map(h => h.score)
+  const trafegoSerie = history.map(h => h.trafego_organico_mes)
+  const top10Serie = history.map(h => h.no_top10)
+  const hasHistory = history.length > 1
 
   return (
     <div className={styles.page}>
@@ -51,14 +56,31 @@ export default function SeoPage() {
           <div className={styles.scoreTrack}>
             <span className={styles.scoreFill} style={{ width: `${data.score}%` }} />
           </div>
+          {hasHistory && (
+            <div className={styles.scoreSpark}>
+              <span className={styles.scoreSparkLabel}>Últimos {history.length}d</span>
+              <Sparkline serie={scoreSerie} width={220} height={28} />
+            </div>
+          )}
         </div>
         <div className={styles.kpiGrid}>
-          <KpiCard label="Keywords monitoradas" value={fmtNumber(r.keywords_monitoradas)} neutral />
-          <KpiCard label="No top 10" value={fmtNumber(r.no_top10)} neutral />
+          <KpiCard
+            label="Keywords monitoradas"
+            value={fmtNumber(r.keywords_monitoradas)}
+            serie={hasHistory ? [r.keywords_monitoradas] : undefined}
+            neutral
+          />
+          <KpiCard
+            label="No top 10"
+            value={fmtNumber(r.no_top10)}
+            serie={hasHistory ? top10Serie : undefined}
+            neutral
+          />
           <KpiCard
             label="Tráfego orgânico / mês"
             value={fmtNumber(r.trafego_organico_mes)}
             delta={`${fmtDelta(r.trafego_delta)} vs mês ant.`}
+            serie={hasHistory ? trafegoSerie : undefined}
             up
           />
         </div>

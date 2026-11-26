@@ -24,6 +24,7 @@
 // Invocação: POST sem body ou com { "extraPaths": ["/blog"] }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.46/deno-dom-wasm.ts'
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY      = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -69,11 +70,15 @@ Deno.serve(async (req) => {
 
     // 2-4. Parse HTML de cada página
     const htmlChecks = await Promise.all(urls.map(u => fetchAndParse(u).catch(err => ({
-      url: u, ok: false, error: String(err),
-      metaDescription: false, h1Count: 0, imgs: 0, imgsSemAlt: 0,
+      url: u, ok: false as const, error: String(err),
+      metaDescription: false as const, h1Count: 0 as const, imgs: 0 as const, imgsSemAlt: 0 as const,
+      spaLikely: false as const,
     }))))
-    const ok  = htmlChecks.filter(h => h.ok)
-    const bad = htmlChecks.filter(h => !h.ok)
+    const ok  = htmlChecks.filter(h => h.ok) as PageCheck[]
+    const bad = htmlChecks.filter(h => !h.ok) as PageFail[]
+
+    const spaPages = ok.filter(h => h.spaLikely).length
+    const spaAll = ok.length > 0 && spaPages === ok.length
 
     const semMeta = ok.filter(h => !h.metaDescription).length
     const h1Bad   = ok.filter(h => h.h1Count !== 1).length
@@ -86,9 +91,10 @@ Deno.serve(async (req) => {
 
     const auditoria: AuditItem[] = [
       psiItem(psi),
-      metaDescItem(semMeta, ok.length),
-      h1Item(h1Bad, ok.length),
-      altItem(imgs, imgsSemAlt, pctSemAlt),
+      ...(spaAll ? [spaItem(ok.length)] : []),
+      metaDescItem(semMeta, ok.length, spaAll),
+      h1Item(h1Bad, ok.length, spaAll),
+      altItem(imgs, imgsSemAlt, pctSemAlt, spaAll),
       sitemapItem(sitemap),
     ]
 
@@ -99,7 +105,9 @@ Deno.serve(async (req) => {
       audit: {
         audited_at: new Date().toISOString(),
         urls_checked: urls,
-        urls_failed: bad.map(b => ({ url: (b as { url: string }).url, error: (b as { error?: string }).error })),
+        urls_failed: bad.map(b => ({ url: b.url, error: b.error })),
+        spa_detected: spaAll,
+        spa_pages: spaPages,
         psi: { lcp_ms: psi.lcp_ms, cls: psi.cls, inp_ms: psi.inp_ms, score: psi.score },
       },
     }
@@ -212,8 +220,9 @@ interface PageCheck {
   h1Count: number
   imgs: number
   imgsSemAlt: number
+  spaLikely: boolean
 }
-interface PageFail { url: string; ok: false; error: string; metaDescription: false; h1Count: 0; imgs: 0; imgsSemAlt: 0 }
+interface PageFail { url: string; ok: false; error: string; metaDescription: false; h1Count: 0; imgs: 0; imgsSemAlt: 0; spaLikely: false }
 
 async function fetchAndParse(url: string): Promise<PageCheck | PageFail> {
   const res = await fetch(url, {
@@ -223,39 +232,66 @@ async function fetchAndParse(url: string): Promise<PageCheck | PageFail> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const html = await res.text()
 
-  const metaDescription = /<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["'][^>]*>/i.test(html)
-    || /<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["'][^>]*>/i.test(html)
-  const h1s = html.match(/<h1\b[^>]*>/gi) ?? []
-  const imgTags = html.match(/<img\b[^>]*>/gi) ?? []
-  const imgsSemAlt = imgTags.filter(tag => {
-    const m = tag.match(/\balt\s*=\s*(["'])([^"']*)\1/i)
-    if (!m) return true      // sem alt
-    return m[2].trim() === '' // alt vazio
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  if (!doc) throw new Error('parse falhou (HTML inválido)')
+
+  // Meta description: só conta se tem conteúdo não vazio.
+  const metaEl = doc.querySelector('meta[name="description"]')
+  const metaDescription = !!metaEl?.getAttribute('content')?.trim()
+
+  // H1 (count real, inclui aria-hidden também — não discrimina, igual Google).
+  const h1Count = doc.querySelectorAll('h1').length
+
+  // Imagens: ignora <img> dentro de <picture><source>, data-URIs, decorativas (alt="").
+  // Mas conta "sem alt" se não tem atributo alt nenhum.
+  const imgEls = Array.from(doc.querySelectorAll('img'))
+  const imgs = imgEls.length
+  const imgsSemAlt = imgEls.filter(el => {
+    const alt = el.getAttribute('alt')
+    return alt === null   // atributo ausente = problema
   }).length
+
+  // Detecção de SPA: body com estrutura mínima + root vazio + poucos H1/imgs renderizados.
+  // (Com SSR/SSG o body vem preenchido. Com Vite/CRA puro, aparece um #root vazio.)
+  const bodyText = doc.body?.textContent?.trim().length ?? 0
+  const rootEmpty = !!doc.querySelector('#root:empty, #app:empty, #__next:empty')
+  const spaLikely = rootEmpty || (bodyText < 200 && imgs === 0 && h1Count === 0)
 
   return {
     url, ok: true,
     metaDescription,
-    h1Count: h1s.length,
-    imgs: imgTags.length,
+    h1Count,
+    imgs,
     imgsSemAlt,
+    spaLikely,
   }
 }
 
-function metaDescItem(sem: number, total: number): AuditItem {
+function spaItem(total: number): AuditItem {
+  return {
+    item: 'Renderização do HTML (SSR)',
+    status: 'alerta',
+    nota: `Todas as ${total} páginas auditadas parecem SPA sem SSR — o HTML cru não traz conteúdo. Meta/H1/alt abaixo são inconclusivos. Considere SSR/SSG.`,
+  }
+}
+
+function metaDescItem(sem: number, total: number, spa = false): AuditItem {
   if (total === 0) return { item: 'Meta descriptions', status: 'alerta', nota: 'Nenhuma página auditada respondeu.' }
+  if (spa)         return { item: 'Meta descriptions', status: 'alerta', nota: 'Não aferível no HTML cru (SPA sem SSR).' }
   if (sem === 0)   return { item: 'Meta descriptions', status: 'ok',     nota: `Todas as ${total} páginas com meta description.` }
   if (sem / total < 0.5) return { item: 'Meta descriptions', status: 'alerta', nota: `${sem} de ${total} páginas sem meta description.` }
   return                   { item: 'Meta descriptions', status: 'erro',   nota: `${sem} de ${total} páginas sem meta description.` }
 }
 
-function h1Item(bad: number, total: number): AuditItem {
+function h1Item(bad: number, total: number, spa = false): AuditItem {
   if (total === 0) return { item: 'Títulos H1 únicos', status: 'alerta', nota: 'Nenhuma página auditada respondeu.' }
+  if (spa)         return { item: 'Títulos H1 únicos', status: 'alerta', nota: 'Não aferível no HTML cru (SPA sem SSR).' }
   if (bad === 0)   return { item: 'Títulos H1 únicos', status: 'ok',     nota: `Todas as ${total} páginas com H1 único.` }
   return               { item: 'Títulos H1 únicos', status: 'alerta', nota: `${bad} de ${total} páginas com 0 ou mais de 1 H1.` }
 }
 
-function altItem(imgs: number, semAlt: number, pct: number): AuditItem {
+function altItem(imgs: number, semAlt: number, pct: number, spa = false): AuditItem {
+  if (spa && imgs === 0) return { item: 'Imagens com texto alternativo (alt)', status: 'alerta', nota: 'Não aferível no HTML cru (SPA sem SSR).' }
   if (imgs === 0)      return { item: 'Imagens com texto alternativo (alt)', status: 'ok',     nota: 'Nenhuma imagem encontrada nas páginas auditadas.' }
   if (semAlt === 0)    return { item: 'Imagens com texto alternativo (alt)', status: 'ok',     nota: `${imgs} imagens, todas com alt.` }
   if (pct <= 30)       return { item: 'Imagens com texto alternativo (alt)', status: 'alerta', nota: `${pct.toFixed(0)}% das imagens sem atributo alt (${semAlt}/${imgs}).` }

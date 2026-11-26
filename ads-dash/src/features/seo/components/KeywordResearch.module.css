@@ -134,6 +134,31 @@
   background: var(--bg-elevated);
   color: var(--text-muted);
 }
+.estBadge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--amber-tint);
+  color: var(--amber);
+  margin-left: 6px;
+  vertical-align: middle;
+  cursor: help;
+}
+.estNote {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-soft);
+  line-height: 1.5;
+}
+
 .diffBaixa { background: var(--color-success-bg); color: var(--color-success); }
 .diffMedia { background: var(--amber-tint);       color: var(--amber); }
 .diffAlta  { background: var(--magenta-tint);     color: var(--magenta); }

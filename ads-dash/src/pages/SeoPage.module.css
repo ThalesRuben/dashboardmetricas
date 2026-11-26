@@ -72,6 +72,19 @@
   background: var(--accent);
   box-shadow: 0 0 10px -2px var(--accent-glow);
 }
+.scoreSpark {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.scoreSparkLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
 .kpiGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

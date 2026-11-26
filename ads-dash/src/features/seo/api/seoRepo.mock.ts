@@ -8,6 +8,7 @@ import type {
   SeoKeyword,
   SeoDificuldade,
   SeoIntent,
+  SeoHistoryPoint,
 } from './types';
 
 const LS_KEY = 'seo:monitored:extra';
@@ -116,7 +117,7 @@ function buildResearch(termoRaw: string): SeoKeywordResearch {
     .slice(0, 4)
     .map(x => x.q);
 
-  return { termo, volume, dificuldade, cpc, intent, tendencia, ideias, perguntas };
+  return { termo, volume, dificuldade, cpc, intent, tendencia, ideias, perguntas, source: 'mock' };
 }
 
 export const mockSeoRepo: SeoRepo = {
@@ -131,6 +132,27 @@ export const mockSeoRepo: SeoRepo = {
       resumo: { ...MOCK.resumo, keywords_monitoradas: merged.length },
     };
   },
+  async getHistory(days = 30) {
+    // Série sintética coerente com o snapshot: termina no score atual, caminha
+    // pra trás com variação determinística pequena.
+    const out: SeoHistoryPoint[] = [];
+    const endScore = MOCK.score;
+    const endTrafego = MOCK.resumo.trafego_organico_mes;
+    const endTop10 = MOCK.resumo.no_top10;
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const t = (days - 1 - i) / Math.max(1, days - 1); // 0..1 do passado pro hoje
+      const noise = (hash(`${d.toISOString().slice(0, 10)}`) % 7) - 3;
+      out.push({
+        date: d.toISOString().slice(0, 10),
+        score: Math.max(0, Math.round(endScore - 10 + t * 10 + noise * 0.3)),
+        trafego_organico_mes: Math.max(0, Math.round(endTrafego * (0.78 + t * 0.22) + noise * 20)),
+        no_top10: Math.max(0, Math.round(endTop10 * (0.6 + t * 0.4))),
+      });
+    }
+    return out;
+  },
+
   async researchKeyword(termo: string) {
     const clean = termo.trim();
     if (!clean) return null;

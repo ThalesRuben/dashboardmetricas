@@ -4,7 +4,7 @@
 import { supabase } from '@/shared/lib/supabase';
 import type { SeoRepo, AddMonitoredInput } from './seoRepo';
 import { MOCK_SEO, buildMockResearch } from './seoRepo.mock';
-import type { SeoKeyword, SeoKeywordResearch } from './types';
+import type { SeoKeyword, SeoKeywordResearch, SeoSnapshot, SeoHistoryPoint } from './types';
 
 export const supabaseSeoRepo: SeoRepo = {
   async getSnapshot() {
@@ -16,13 +16,27 @@ export const supabaseSeoRepo: SeoRepo = {
     if (snapErr) console.error('[seoRepo.getSnapshot]', snapErr);
     if (kwErr)   console.error('[seoRepo.getSnapshot] monitored', kwErr);
 
-    const base = snapRows?.[0]?.payload
-      ? { ...MOCK_SEO, ...snapRows[0].payload, score: snapRows[0].score ?? MOCK_SEO.score }
-      : MOCK_SEO;
+    const snapRow = snapRows?.[0];
+    const hasSnap = !!snapRow?.payload;
+    const hasKeywords = !!kwRows?.length;
 
-    if (!kwRows?.length) return base;
+    // Sem dado real nenhum → devolve null pra useSeoAgent setar usingMock.
+    if (!hasSnap && !hasKeywords) return null;
 
-    const keywords: SeoKeyword[] = kwRows.map(r => ({
+    // Base real: só espalha MOCK como preenchimento de campos ausentes (sugestoes/auditoria
+    // podem não ter sido geradas ainda), nunca sobrescreve resumo/keywords reais.
+    const base: SeoSnapshot = {
+      score: snapRow?.score ?? 0,
+      score_delta: snapRow?.payload?.score_delta ?? 0,
+      resumo: snapRow?.payload?.resumo ?? MOCK_SEO.resumo,
+      keywords: snapRow?.payload?.keywords ?? [],
+      sugestoes: snapRow?.payload?.sugestoes ?? [],
+      auditoria: snapRow?.payload?.auditoria ?? [],
+    };
+
+    if (!hasKeywords) return base;
+
+    const keywords: SeoKeyword[] = kwRows!.map(r => ({
       termo: r.termo,
       posicao: r.posicao ?? 0,
       posicao_anterior: r.posicao_anterior ?? r.posicao ?? 0,
@@ -32,12 +46,32 @@ export const supabaseSeoRepo: SeoRepo = {
     }));
 
     const no_top10 = keywords.filter(k => k.posicao > 0 && k.posicao <= 10).length;
+    const trafegoBase = base.resumo ?? MOCK_SEO.resumo;
 
     return {
       ...base,
       keywords,
-      resumo: { ...base.resumo, keywords_monitoradas: keywords.length, no_top10 },
+      resumo: { ...trafegoBase, keywords_monitoradas: keywords.length, no_top10 },
     };
+  },
+
+  async getHistory(days = 30) {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('seo_snapshots')
+      .select('date, score, payload')
+      .gte('date', since)
+      .order('date', { ascending: true });
+    if (error) {
+      console.error('[seoRepo.getHistory]', error);
+      return [];
+    }
+    return (data ?? []).map(r => ({
+      date: r.date,
+      score: r.score ?? 0,
+      trafego_organico_mes: r.payload?.resumo?.trafego_organico_mes ?? 0,
+      no_top10: r.payload?.resumo?.no_top10 ?? 0,
+    })) as SeoHistoryPoint[];
   },
 
   async researchKeyword(termo: string) {

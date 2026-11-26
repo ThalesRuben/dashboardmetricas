@@ -111,16 +111,22 @@ Deno.serve(async (req) => {
     const monitored = refreshed?.length ?? 0
     const no_top10  = (refreshed ?? []).filter(k => k.posicao > 0 && k.posicao <= 10).length
 
-    // 5. Score (fórmula simples — documentada abaixo).
+    // 5. Score (fórmula documentada abaixo).
     const score = computeScore({ monitored, no_top10, trafego_organico_mes, trafego_delta })
-    const { data: yesterday } = await supabase
+
+    // Delta comparando com snapshot de ~7 dias atrás (ou o mais próximo que existir
+    // nos últimos 14 dias). Se rodar 2x no mesmo dia, delta não zera.
+    const sevenDaysAgo = isoDaysAgo(7)
+    const fourteenDaysAgo = isoDaysAgo(14)
+    const { data: baseline } = await supabase
       .from('seo_snapshots')
-      .select('score')
+      .select('score, date')
       .eq('tenant_id', TENANT_ID)
-      .lt('date', new Date().toISOString().slice(0, 10))
+      .gte('date', fourteenDaysAgo)
+      .lte('date', sevenDaysAgo)
       .order('date', { ascending: false })
       .limit(1)
-    const score_delta = score - (yesterday?.[0]?.score ?? score)
+    const score_delta = score - (baseline?.[0]?.score ?? score)
 
     // 6. Merge parcial do snapshot do dia (não sobrescreve `auditoria` do seo-audit).
     const today = new Date().toISOString().slice(0, 10)
@@ -235,16 +241,24 @@ async function queryGSCTotal(token: string, startDate: string, endDate: string):
 // ---------- score ----------
 
 // Score 0-100 baseado em:
-//   40 pts  →  % de keywords monitoradas no top10
+//   40 pts  →  % de keywords monitoradas no top10, com piso mínimo de MIN_KEYWORDS.
+//              Com N < MIN_KEYWORDS, o percentual é penalizado linearmente —
+//              2 keywords no top10 não vale 40 pts.
 //   30 pts  →  volume de tráfego (log10, cap em 10k+ visitas = 30 pts)
 //   30 pts  →  evolução (delta% de tráfego; 0% = 15pts, +30% = 30pts, negativo desce)
+const MIN_KEYWORDS = 10
+
 function computeScore(x: {
   monitored: number
   no_top10: number
   trafego_organico_mes: number
   trafego_delta: number
 }): number {
-  const top10Pct = x.monitored > 0 ? x.no_top10 / x.monitored : 0
+  // Divide pelo MAIOR entre monitored e MIN_KEYWORDS — se tem só 3 e todas no top10,
+  // pontua 3/10 = 30% do bloco em vez de 100%.
+  const denom = Math.max(x.monitored, MIN_KEYWORDS)
+  const top10Pct = denom > 0 ? x.no_top10 / denom : 0
+
   const trafficPts = x.trafego_organico_mes > 0
     ? Math.min(30, Math.log10(x.trafego_organico_mes + 1) * 8)
     : 0

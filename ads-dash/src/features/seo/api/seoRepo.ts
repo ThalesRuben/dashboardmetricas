@@ -3,7 +3,7 @@
 import { createRepo } from '@/shared/lib/api/createRepo';
 import { mockSeoRepo } from './seoRepo.mock';
 import { supabaseSeoRepo } from './seoRepo.supabase';
-import type { SeoSnapshot, SeoKeywordResearch, SeoKeyword } from './types';
+import type { SeoSnapshot, SeoKeywordResearch, SeoKeyword, SeoHistoryPoint } from './types';
 
 export interface AddMonitoredInput {
   termo: string;
@@ -14,6 +14,7 @@ export interface AddMonitoredInput {
 
 export interface SeoRepo {
   getSnapshot(): Promise<SeoSnapshot | null>;
+  getHistory(days?: number): Promise<SeoHistoryPoint[]>;
   researchKeyword(termo: string): Promise<SeoKeywordResearch | null>;
   addMonitoredKeyword(input: AddMonitoredInput): Promise<{ ok: boolean; error?: string }>;
 }
