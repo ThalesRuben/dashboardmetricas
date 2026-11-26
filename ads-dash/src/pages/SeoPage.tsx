@@ -28,6 +28,7 @@ export default function SeoPage() {
   const scoreSerie = history.map(h => h.score)
   const trafegoSerie = history.map(h => h.trafego_organico_mes)
   const top10Serie = history.map(h => h.no_top10)
+  const kwMonSerie = history.map(h => h.keywords_monitoradas)
   const hasHistory = history.length > 1
 
   return (
@@ -58,7 +59,7 @@ export default function SeoPage() {
           </div>
           {hasHistory && (
             <div className={styles.scoreSpark}>
-              <span className={styles.scoreSparkLabel}>Últimos {history.length}d</span>
+              <span className={styles.scoreSparkLabel}>Últimos {history.length} dias</span>
               <Sparkline serie={scoreSerie} width={220} height={28} />
             </div>
           )}
@@ -67,7 +68,7 @@ export default function SeoPage() {
           <KpiCard
             label="Keywords monitoradas"
             value={fmtNumber(r.keywords_monitoradas)}
-            serie={hasHistory ? [r.keywords_monitoradas] : undefined}
+            serie={hasHistory ? kwMonSerie : undefined}
             neutral
           />
           <KpiCard

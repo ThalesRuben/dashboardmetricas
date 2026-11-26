@@ -71,6 +71,7 @@ export const supabaseSeoRepo: SeoRepo = {
       score: r.score ?? 0,
       trafego_organico_mes: r.payload?.resumo?.trafego_organico_mes ?? 0,
       no_top10: r.payload?.resumo?.no_top10 ?? 0,
+      keywords_monitoradas: r.payload?.resumo?.keywords_monitoradas ?? 0,
     })) as SeoHistoryPoint[];
   },
 

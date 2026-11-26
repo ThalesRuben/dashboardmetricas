@@ -49,6 +49,7 @@ export interface SeoHistoryPoint {
   score: number;
   trafego_organico_mes: number;
   no_top10: number;
+  keywords_monitoradas: number;
 }
 
 export interface SeoKeywordIdea {

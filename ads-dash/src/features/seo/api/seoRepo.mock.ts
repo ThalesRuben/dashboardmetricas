@@ -143,11 +143,13 @@ export const mockSeoRepo: SeoRepo = {
       const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
       const t = (days - 1 - i) / Math.max(1, days - 1); // 0..1 do passado pro hoje
       const noise = (hash(`${d.toISOString().slice(0, 10)}`) % 7) - 3;
+      const kwMon = MOCK.resumo.keywords_monitoradas;
       out.push({
         date: d.toISOString().slice(0, 10),
         score: Math.max(0, Math.round(endScore - 10 + t * 10 + noise * 0.3)),
         trafego_organico_mes: Math.max(0, Math.round(endTrafego * (0.78 + t * 0.22) + noise * 20)),
         no_top10: Math.max(0, Math.round(endTop10 * (0.6 + t * 0.4))),
+        keywords_monitoradas: Math.max(0, Math.round(kwMon * (0.65 + t * 0.35))),
       });
     }
     return out;
